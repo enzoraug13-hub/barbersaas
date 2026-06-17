@@ -1,0 +1,112 @@
+import { TrendingUp, TrendingDown, Calendar, Users, DollarSign, Percent, Loader2 } from 'lucide-react'
+import { useDashboard } from '../../features/dashboard/dashboardApi'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+
+const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtN = (n: number) => n.toLocaleString('pt-BR')
+
+function KPICard({ title, value, sub, icon: Icon, color }: { title: string; value: string; sub?: string; icon: any; color: string }) {
+  return (
+    <div className="card flex items-start gap-4">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+        <Icon size={22} />
+      </div>
+      <div>
+        <p className="text-muted text-sm">{title}</p>
+        <p className="text-2xl font-bold text-content mt-0.5">{value}</p>
+        {sub && <p className="text-xs text-subtle mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+export default function DashboardPage() {
+  const today = new Date()
+  const start = format(startOfMonth(today), 'yyyy-MM-dd')
+  const end   = format(endOfMonth(today), 'yyyy-MM-dd')
+  const { data, isLoading } = useDashboard(start, end)
+
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 size={32} className="animate-spin text-accent" />
+      </div>
+    )
+
+  if (!data) return null
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-content">Dashboard</h2>
+        <p className="text-muted text-sm mt-0.5">
+          {format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}
+        </p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KPICard title="Faturamento"  value={fmt(data.totalRevenue)}  icon={TrendingUp}   color="bg-green-500/20 text-green-400" />
+        <KPICard title="Despesas"     value={fmt(data.totalExpense)}   icon={TrendingDown} color="bg-red-500/20 text-red-400" />
+        <KPICard title="Lucro"        value={fmt(data.netProfit)}      icon={DollarSign}   color="bg-accent/20 text-accent" />
+        <KPICard title="Ticket Médio" value={fmt(data.averageTicket)}  icon={Percent}      color="bg-blue-500/20 text-blue-400" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard title="Agendamentos"     value={fmtN(data.totalAppointments)} icon={Calendar} color="bg-purple-500/20 text-purple-400" sub={`${data.completedCount} concluídos`} />
+        <KPICard title="Cancelamentos"    value={fmtN(data.cancelledCount)}    icon={Calendar} color="bg-red-500/20 text-red-400"    sub={`${data.cancellationRate.toFixed(1)}% de taxa`} />
+        <KPICard title="Clientes Únicos"  value={fmtN(data.uniqueClients)}     icon={Users}    color="bg-teal-500/20 text-teal-400" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Top Serviços */}
+        <div className="card">
+          <h3 className="font-semibold text-content mb-4">Serviços Mais Vendidos</h3>
+          <div className="space-y-3">
+            {data.topServices.length === 0 && (
+              <p className="text-subtle text-sm text-center py-4">Sem dados ainda</p>
+            )}
+            {data.topServices.map((s, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-content font-medium truncate">{s.name}</span>
+                    <span className="text-sm text-accent font-semibold ml-2">{fmt(s.revenue)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 bg-surfaceHover rounded-full h-1.5">
+                      <div className="bg-accent h-1.5 rounded-full" style={{ width: `${Math.min(100, (s.revenue / (data.topServices[0]?.revenue || 1)) * 100)}%` }} />
+                    </div>
+                    <span className="text-xs text-subtle">{s.count}x</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Resumo Financeiro */}
+        <div className="card">
+          <h3 className="font-semibold text-content mb-4">Resumo Financeiro</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Receitas', value: data.totalRevenue, color: 'bg-green-500' },
+              { label: 'Despesas', value: data.totalExpense, color: 'bg-red-500' },
+              { label: 'Lucro',    value: data.netProfit,    color: 'bg-accent' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${row.color}`} />
+                  <span className="text-sm text-muted">{row.label}</span>
+                </div>
+                <span className="text-sm font-semibold text-content">{fmt(row.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,5 @@
+{
+  "dotnet.server.useOmnisharp": false,
+  "omnisharp.dotnetPath": "C:\\Users\\Gus\\.dotnet\\dotnet.exe",
+  "csharp.dotnetPath": "C:\\Users\\Gus\\.dotnet\\dotnet.exe"
+}

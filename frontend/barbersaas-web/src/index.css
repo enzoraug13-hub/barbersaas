@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN TOKENS — valores em canais RGB (para suporte a opacidade
+   do Tailwind: rgb(var(--token) / <alpha>)). Tema dark é o padrão.
+   ============================================================ */
+:root {
+  /* Superfícies / texto (DARK) */
+  --bg:            11 12 16;     /* #0b0c10 */
+  --surface:       19 20 26;     /* #13141a */
+  --surface-hover: 28 30 38;     /* #1c1e26 */
+  --border:        38 40 49;     /* #262831 */
+  --text:          244 244 246;  /* #f4f4f6 */
+  --text-muted:    161 161 170;  /* #a1a1aa */
+  --text-subtle:   113 113 122;  /* #71717a */
+
+  /* Marca / acento (dourado premium de barbearia) */
+  --accent:        201 168 76;   /* #c9a84c */
+  --accent-hover:  214 184 99;   /* #d6b863 */
+  --accent-fg:     16 16 18;     /* texto sobre o acento */
+
+  /* Semânticos */
+  --success: 52 211 153;
+  --warning: 251 191 36;
+  --danger:  248 113 113;
+  --info:    96 165 250;
+
+  /* Cores por barbearia (página pública sobrescreve em runtime) */
+  --color-primary:   #1a1a1a;
+  --color-secondary: #c9a84c;
+  --color-accent:    #ffffff;
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg:            247 247 249;  /* #f7f7f9 */
+  --surface:       255 255 255;  /* #ffffff */
+  --surface-hover: 244 244 246;  /* #f4f4f6 */
+  --border:        228 228 233;  /* #e4e4e9 */
+  --text:          24 24 27;     /* #18181b */
+  --text-muted:    82 82 91;     /* #52525b */
+  --text-subtle:   130 130 140;
+
+  --accent:        161 122 30;   /* #a17a1e — dourado mais escuro p/ contraste no claro */
+  --accent-hover:  140 105 24;
+  --accent-fg:     255 255 255;
+
+  --success: 22 163 74;
+  --warning: 202 138 4;
+  --danger:  220 38 38;
+  --info:    37 99 235;
+
+  color-scheme: light;
+}
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-app text-content;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  #root { min-height: 100vh; min-height: 100dvh; }
+  /* Transição suave ao alternar tema */
+  body, .card, .input, aside, header { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+  :focus-visible { outline: 2px solid rgb(var(--accent) / 0.6); outline-offset: 2px; }
+
+  /* Acessibilidade: respeita quem pediu menos movimento (SO/navegador). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-accent text-accentFg font-semibold px-5 py-2.5 rounded-xl shadow-sm
+           hover:bg-accentHover active:scale-[0.98] transition-all duration-150 text-sm
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 border border-accent/60 text-accent font-semibold px-5 py-2.5 rounded-xl
+           hover:bg-accent hover:text-accentFg active:scale-[0.98] transition-all duration-150 text-sm;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-muted font-medium px-4 py-2 rounded-xl
+           hover:bg-surfaceHover hover:text-content transition-all duration-150 text-sm;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 bg-danger text-white font-semibold px-5 py-2.5 rounded-xl
+           hover:opacity-90 active:scale-[0.98] transition-all duration-150 text-sm;
+  }
+  .card {
+    @apply bg-surface border border-border rounded-2xl p-6 shadow-sm;
+  }
+  .input {
+    @apply w-full bg-surfaceHover border border-border text-content rounded-xl px-4 py-2.5 text-sm
+           placeholder-subtle transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/70;
+  }
+  .label { @apply block text-sm font-medium text-muted mb-1.5; }
+
+  .badge-pending   { @apply inline-flex items-center bg-warning/15 text-warning text-xs font-medium px-2.5 py-1 rounded-full; }
+  .badge-confirmed { @apply inline-flex items-center bg-info/15 text-info text-xs font-medium px-2.5 py-1 rounded-full; }
+  .badge-completed { @apply inline-flex items-center bg-success/15 text-success text-xs font-medium px-2.5 py-1 rounded-full; }
+  .badge-cancelled { @apply inline-flex items-center bg-danger/15 text-danger text-xs font-medium px-2.5 py-1 rounded-full; }
+  .kpi-card { @apply card flex flex-col gap-1; }
+
+  /* Card selecionável (fluxo do cliente): profundidade sutil + micro-interação. */
+  .card-tap {
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-accent/50
+           active:scale-[0.99] active:translate-y-0 cursor-pointer
+           focus-visible:border-accent/70;
+  }
+
+  /* Skeleton com shimmer (estado de carregamento). */
+  .skeleton { @apply relative overflow-hidden bg-surfaceHover rounded-xl; }
+  .skeleton::after {
+    content: '';
+    position: absolute; inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--text) / 0.06), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-subtle)); }

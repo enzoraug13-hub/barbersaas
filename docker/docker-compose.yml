@@ -1,0 +1,107 @@
+version: '3.9'
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - barbersaas_net
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../src
+      dockerfile: BarberSaaS.API/Dockerfile
+    expose:
+      - "8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Default=Server=sqlserver,1433;Database=BarberSaaS;User Id=sa;Password=BarberSaaS@123;TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379,password=barbersaas123
+      - Jwt__SecretKey=BarberSaaS-Super-Secret-Key-2024-MustBe32CharsOrMore!!
+      - Cors__Origins=http://localhost,https://localhost,http://app.barbersaas.com.br,https://app.barbersaas.com.br
+      - SendGrid__ApiKey=${SENDGRID_API_KEY:-}
+      - GoogleCalendar__ServiceAccountKeyPath=/app/secrets/google-calendar.json
+    volumes:
+      - ./secrets:/app/secrets:ro
+      - api_logs:/app/logs
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - barbersaas_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ../frontend/barbersaas-web
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    depends_on:
+      - api
+    networks:
+      - barbersaas_net
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - SA_PASSWORD=BarberSaaS@123
+      - ACCEPT_EULA=Y
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - barbersaas_net
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "BarberSaaS@123" -Q "SELECT 1" -b -C
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass barbersaas123 --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - barbersaas_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "barbersaas123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  redis_data:
+  api_logs:
+
+networks:
+  barbersaas_net:
+    driver: bridge
