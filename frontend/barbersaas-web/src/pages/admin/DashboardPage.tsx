@@ -1,14 +1,15 @@
-import { TrendingUp, TrendingDown, Calendar, Users, DollarSign, Percent, Loader2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Users, DollarSign, Percent } from 'lucide-react'
 import { useDashboard } from '../../features/dashboard/dashboardApi'
+import { CardGridSkeleton } from '../../components/ui/Skeleton'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtN = (n: number) => n.toLocaleString('pt-BR')
 
-function KPICard({ title, value, sub, icon: Icon, color }: { title: string; value: string; sub?: string; icon: any; color: string }) {
+function KPICard({ title, value, sub, icon: Icon, color, i = 0 }: { title: string; value: string; sub?: string; icon: any; color: string; i?: number }) {
   return (
-    <div className="card flex items-start gap-4">
+    <div className="card flex items-start gap-4 animate-slide-up" style={{ animationDelay: `${i * 45}ms` }}>
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
         <Icon size={22} />
       </div>
@@ -29,8 +30,13 @@ export default function DashboardPage() {
 
   if (isLoading)
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 size={32} className="animate-spin text-accent" />
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-content">Dashboard</h2>
+          <p className="text-muted text-sm mt-0.5">{format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}</p>
+        </div>
+        <CardGridSkeleton cells={4} />
+        <CardGridSkeleton cells={3} />
       </div>
     )
 
@@ -47,16 +53,16 @@ export default function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KPICard title="Faturamento"  value={fmt(data.totalRevenue)}  icon={TrendingUp}   color="bg-green-500/20 text-green-400" />
-        <KPICard title="Despesas"     value={fmt(data.totalExpense)}   icon={TrendingDown} color="bg-red-500/20 text-red-400" />
-        <KPICard title="Lucro"        value={fmt(data.netProfit)}      icon={DollarSign}   color="bg-accent/20 text-accent" />
-        <KPICard title="Ticket Médio" value={fmt(data.averageTicket)}  icon={Percent}      color="bg-blue-500/20 text-blue-400" />
+        <KPICard i={0} title="Faturamento"  value={fmt(data.totalRevenue)}  icon={TrendingUp}   color="bg-success/15 text-success" />
+        <KPICard i={1} title="Despesas"     value={fmt(data.totalExpense)}   icon={TrendingDown} color="bg-danger/15 text-danger" />
+        <KPICard i={2} title="Lucro"        value={fmt(data.netProfit)}      icon={DollarSign}   color="bg-accent/20 text-accent" />
+        <KPICard i={3} title="Ticket Médio" value={fmt(data.averageTicket)}  icon={Percent}      color="bg-info/15 text-info" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KPICard title="Agendamentos"     value={fmtN(data.totalAppointments)} icon={Calendar} color="bg-purple-500/20 text-purple-400" sub={`${data.completedCount} concluídos`} />
-        <KPICard title="Cancelamentos"    value={fmtN(data.cancelledCount)}    icon={Calendar} color="bg-red-500/20 text-red-400"    sub={`${data.cancellationRate.toFixed(1)}% de taxa`} />
-        <KPICard title="Clientes Únicos"  value={fmtN(data.uniqueClients)}     icon={Users}    color="bg-teal-500/20 text-teal-400" />
+        <KPICard i={4} title="Agendamentos"     value={fmtN(data.totalAppointments)} icon={Calendar} color="bg-accent/15 text-accent" sub={`${data.completedCount} concluídos`} />
+        <KPICard i={5} title="Cancelamentos"    value={fmtN(data.cancelledCount)}    icon={Calendar} color="bg-danger/15 text-danger"    sub={`${data.cancellationRate.toFixed(1)}% de taxa`} />
+        <KPICard i={6} title="Clientes Únicos"  value={fmtN(data.uniqueClients)}     icon={Users}    color="bg-info/15 text-info" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
