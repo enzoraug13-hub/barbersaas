@@ -3,6 +3,7 @@ import LoginPage    from '../pages/auth/LoginPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import BookingPage  from '../pages/public/BookingPage'
 import ClientAccountPage from '../pages/client/ClientAccountPage'
+import StyleGuidePage from '../pages/StyleGuidePage'
 import AdminLayout  from '../components/layout/AdminLayout'
 import DashboardPage from '../pages/admin/DashboardPage'
 import AgendaPage   from '../pages/admin/AgendaPage'
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
   { path: '/register', element: <RegisterPage /> },
   { path: '/b/:slug',       element: <BookingPage /> },
   { path: '/b/:slug/conta', element: <ClientAccountPage /> },
+  { path: '/style-guide',   element: <StyleGuidePage /> },
 
   { path: '/admin',              element: <AdminPage><DashboardPage /></AdminPage> },
   { path: '/admin/agenda',       element: <AdminPage><AgendaPage /></AdminPage> },
