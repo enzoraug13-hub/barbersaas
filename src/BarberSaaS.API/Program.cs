@@ -137,8 +137,10 @@ app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 
-// Hangfire Dashboard (apenas dev/staging)
-if (!app.Environment.IsProduction())
+// Hangfire Dashboard: somente em Development. O dashboard não tem autenticação,
+// então não pode ficar exposto em staging/produção. Para habilitar fora de dev,
+// adicionar um IDashboardAuthorizationFilter antes.
+if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard("/hangfire");
 
 // Hangfire recurring jobs (usa IRecurringJobManager para compatibilidade com InMemory storage)
