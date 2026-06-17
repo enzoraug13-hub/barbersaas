@@ -48,7 +48,14 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IDateTimeProvider, DateTimeProvider>();
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:SecretKey"]!;
+// Fail-fast: sem uma chave forte, o app NÃO sobe. Antes, uma env var ausente em
+// produção fazia o token ser assinado com chave vazia (forjável). HS256 exige
+// pelo menos 256 bits (32 bytes). Em dev a chave vem do appsettings.Development.json.
+var jwtKey = builder.Configuration["Jwt:SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+    throw new InvalidOperationException(
+        "Jwt:SecretKey ausente ou fraca (mínimo 32 bytes). Configure via variável de ambiente " +
+        "Jwt__SecretKey em produção, ou user-secrets / appsettings.Development.json em desenvolvimento.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
