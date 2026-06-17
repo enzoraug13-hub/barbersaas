@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Plus, Loader2, Trash2, Clock, DollarSign, Edit2, X, Eye, EyeOff } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useServices, useCreateService, useUpdateService, useDeleteService } from '../../features/services/servicesApi'
 import type { Service } from '../../types'
 import toast from 'react-hot-toast'
@@ -72,17 +74,14 @@ export default function ServicesPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+        <ListSkeleton rows={3} />
       ) : !services?.length ? (
-        <div className="card text-center py-12">
-          <Clock size={40} className="mx-auto text-subtle mb-3" />
-          <p className="text-muted">Nenhum serviço cadastrado</p>
-          <button onClick={openCreate} className="btn-primary mt-4">Cadastrar primeiro serviço</button>
-        </div>
+        <EmptyState icon={Clock} title="Nenhum serviço cadastrado"
+          action={<button onClick={openCreate} className="btn-primary">Cadastrar primeiro serviço</button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {services.map(s => (
-            <div key={s.id} className="card group hover:border-border transition-all">
+          {services.map((s, i) => (
+            <div key={s.id} style={{ animationDelay: `${i * 45}ms` }} className="card group hover:border-accent/40 transition-all animate-slide-up">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-3 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />

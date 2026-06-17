@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Plus, Loader2, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
@@ -72,7 +74,9 @@ export default function FinancialPage() {
 
       {/* Lista */}
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+        <ListSkeleton />
+      ) : !transactions?.length ? (
+        <EmptyState icon={TrendingUp} title="Nenhuma transação ainda" hint="Lance receitas e despesas para acompanhar o financeiro." />
       ) : (
         <div className="card overflow-hidden p-0">
           <div className="overflow-x-auto">

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Plus, Loader2, Target, Plus as PlusIcon } from 'lucide-react'
+import { Plus, Target, Plus as PlusIcon } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useGoals, useCreateGoal, useContributeGoal } from '../../features/goals/goalsApi'
 import type { Goal } from '../../types'
 import toast from 'react-hot-toast'
@@ -40,16 +42,13 @@ export default function GoalsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+        <ListSkeleton rows={3} />
       ) : !goals?.length ? (
-        <div className="card text-center py-12">
-          <Target size={40} className="mx-auto text-subtle mb-3" />
-          <p className="text-muted">Nenhuma meta criada ainda</p>
-        </div>
+        <EmptyState icon={Target} title="Nenhuma meta criada ainda" hint="Defina uma meta financeira para acompanhar seu progresso." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {goals.map(g => (
-            <div key={g.id} className="card space-y-4">
+          {goals.map((g, i) => (
+            <div key={g.id} style={{ animationDelay: `${i * 45}ms` }} className="card space-y-4 animate-slide-up">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold text-content">{g.name}</p>

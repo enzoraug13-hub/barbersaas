@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Loader2, X, CheckCircle, Plus, Calendar } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useAppointments, useCancelAppointment, useCompleteAppointment, useAdminCreateAppointment } from '../../features/appointments/appointmentsApi'
 import { useBarbers } from '../../features/barbers/barbersApi'
 import { useServices } from '../../features/services/servicesApi'
@@ -112,22 +114,15 @@ export default function AgendaPage() {
 
       {/* Lista */}
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 size={28} className="animate-spin text-accent" />
-        </div>
+        <ListSkeleton />
       ) : !appointments?.length ? (
-        <div className="card text-center py-12">
-          <Calendar size={40} className="mx-auto text-subtle mb-3" />
-          <p className="text-muted">Nenhum agendamento para este dia</p>
-          <button onClick={() => setShowNew(true)} className="btn-primary mt-4">
-            <Plus size={16} /> Criar agendamento
-          </button>
-        </div>
+        <EmptyState icon={Calendar} title="Nenhum agendamento para este dia"
+          action={<button onClick={() => setShowNew(true)} className="btn-primary"><Plus size={16} /> Criar agendamento</button>} />
       ) : (
         <div className="space-y-3">
-          {appointments.map(appt => (
-            <div key={appt.id}
-              className="card hover:border-border cursor-pointer transition-all duration-150"
+          {appointments.map((appt, i) => (
+            <div key={appt.id} style={{ animationDelay: `${i * 40}ms` }}
+              className="card card-tap animate-slide-up"
               onClick={() => { setSelected(appt); setPayMethod(1) }}>
               <div className="flex items-start gap-4">
                 <div className="text-center w-14 flex-shrink-0">

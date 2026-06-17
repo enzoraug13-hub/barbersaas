@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Search, Loader2, User, Phone, Star, Plus, X, Ban, CheckCircle } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useClients, useCreateClient, useBlockClient, useUnblockClient } from '../../features/clients/clientsApi'
 import type { Client } from '../../types'
 import toast from 'react-hot-toast'
@@ -68,13 +70,10 @@ export default function ClientsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+        <ListSkeleton />
       ) : !clients?.length ? (
-        <div className="card text-center py-12">
-          <User size={40} className="mx-auto text-subtle mb-3" />
-          <p className="text-muted">Nenhum cliente encontrado</p>
-          <button onClick={() => setShowForm(true)} className="btn-primary mt-4">Cadastrar cliente</button>
-        </div>
+        <EmptyState icon={User} title="Nenhum cliente encontrado"
+          action={<button onClick={() => setShowForm(true)} className="btn-primary">Cadastrar cliente</button>} />
       ) : (
         <div className="card overflow-hidden p-0">
           <div className="overflow-x-auto">

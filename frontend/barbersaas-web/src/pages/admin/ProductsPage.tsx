@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Plus, Loader2, Trash2, Package, AlertTriangle, Edit2, X, TrendingUp, TrendingDown, Tag } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import {
   useProducts, useProductCategories, useCreateProduct,
   useUpdateProduct, useDeleteProduct, useAdjustStock, useCreateCategory,
@@ -131,13 +133,10 @@ export default function ProductsPage() {
       {/* Lista de Produtos */}
       {tab === 'products' && (
         isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+          <ListSkeleton />
         ) : !products?.length ? (
-          <div className="card text-center py-12">
-            <Package size={40} className="mx-auto text-subtle mb-3" />
-            <p className="text-muted">Nenhum produto cadastrado</p>
-            <button onClick={openCreate} className="btn-primary mt-4">Cadastrar primeiro produto</button>
-          </div>
+          <EmptyState icon={Package} title="Nenhum produto cadastrado"
+            action={<button onClick={openCreate} className="btn-primary">Cadastrar primeiro produto</button>} />
         ) : (
           <div className="card overflow-hidden p-0">
             <div className="overflow-x-auto">

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Plus, Loader2, User, Clock, ToggleLeft, ToggleRight, X } from 'lucide-react'
+import { ListSkeleton } from '../../components/ui/Skeleton'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
@@ -138,17 +140,14 @@ export default function BarbersPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-accent" /></div>
+        <ListSkeleton rows={3} />
       ) : !barbers?.length ? (
-        <div className="card text-center py-12">
-          <User size={40} className="mx-auto text-subtle mb-3" />
-          <p className="text-muted">Nenhum barbeiro cadastrado</p>
-          <button onClick={() => setShowForm(true)} className="btn-primary mt-4">Cadastrar primeiro barbeiro</button>
-        </div>
+        <EmptyState icon={User} title="Nenhum barbeiro cadastrado"
+          action={<button onClick={() => setShowForm(true)} className="btn-primary">Cadastrar primeiro barbeiro</button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {barbers.map(b => (
-            <div key={b.id} className="card group">
+          {barbers.map((b, i) => (
+            <div key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="card group animate-slide-up">
               <div className="flex items-center gap-4">
                 {b.photoUrl ? (
                   <img src={b.photoUrl} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
