@@ -2,6 +2,7 @@ using BarberSaaS.Application.Appointments.Commands.CreateAppointment;
 using BarberSaaS.Application.Appointments.Queries.GetAvailableSlots;
 using BarberSaaS.Application.Common.DTOs;
 using BarberSaaS.Application.Common.Interfaces;
+using BarberSaaS.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -20,11 +21,20 @@ public class PublicController : ControllerBase
         _mediator = mediator; _tenants = tenants;
     }
 
+    // Resolve o tenant pelo slug (fluxo público, sem JWT). Centraliza a checagem
+    // que antes estava repetida em todas as ações.
+    private async Task<(Tenant? tenant, IActionResult? error)> ResolveTenantAsync(string slug, CancellationToken ct)
+    {
+        var tenant = await _tenants.GetBySlugAsync(slug, ct);
+        return tenant is null ? (null, NotFound()) : (tenant, null);
+    }
+
     [HttpGet("{slug}")]
     public async Task<IActionResult> GetPublicPage(string slug, CancellationToken ct)
     {
-        var tenant = await _tenants.GetBySlugAsync(slug, ct);
-        if (tenant == null || !tenant.IsActive) return NotFound();
+        var (tenant, error) = await ResolveTenantAsync(slug, ct);
+        if (error != null) return error;
+        if (!tenant!.IsActive) return NotFound();
 
         return Ok(ApiResponse<object>.Ok(new
         {
@@ -47,10 +57,10 @@ public class PublicController : ControllerBase
     [HttpGet("{slug}/barbers")]
     public async Task<IActionResult> GetBarbers(string slug, [FromServices] IBarberRepository barbers, CancellationToken ct)
     {
-        var tenant = await _tenants.GetBySlugAsync(slug, ct);
-        if (tenant == null) return NotFound();
+        var (tenant, error) = await ResolveTenantAsync(slug, ct);
+        if (error != null) return error;
 
-        var list = await barbers.GetShowInPublicPageAsync(tenant.Id, ct);
+        var list = await barbers.GetShowInPublicPageAsync(tenant!.Id, ct);
         return Ok(ApiResponse<object>.Ok(list.Select(b => new
         {
             b.Id, b.Name, b.PhotoUrl, b.Bio, b.DisplayOrder
@@ -60,10 +70,10 @@ public class PublicController : ControllerBase
     [HttpGet("{slug}/services")]
     public async Task<IActionResult> GetServices(string slug, [FromServices] IServiceRepository services, CancellationToken ct)
     {
-        var tenant = await _tenants.GetBySlugAsync(slug, ct);
-        if (tenant == null) return NotFound();
+        var (tenant, error) = await ResolveTenantAsync(slug, ct);
+        if (error != null) return error;
 
-        var list = await services.GetPublicByTenantAsync(tenant.Id, ct);
+        var list = await services.GetPublicByTenantAsync(tenant!.Id, ct);
         return Ok(ApiResponse<object>.Ok(list.Select(s => new
         {
             s.Id, s.Name, s.Description, s.DurationMinutes, s.Price, s.ColorHex
@@ -73,10 +83,10 @@ public class PublicController : ControllerBase
     [HttpGet("{slug}/slots")]
     public async Task<IActionResult> GetSlots(string slug, [FromQuery] Guid barberId, [FromQuery] Guid serviceId, [FromQuery] DateOnly date, CancellationToken ct)
     {
-        var tenant = await _tenants.GetBySlugAsync(slug, ct);
-        if (tenant == null) return NotFound();
+        var (tenant, error) = await ResolveTenantAsync(slug, ct);
+        if (error != null) return error;
 
-        var result = await _mediator.Send(new GetAvailableSlotsQuery(barberId, serviceId, date, tenant.Id), ct);
+        var result = await _mediator.Send(new GetAvailableSlotsQuery(barberId, serviceId, date, tenant!.Id), ct);
         return Ok(ApiResponse<IReadOnlyList<SlotDto>>.Ok(result));
     }
 
@@ -84,9 +94,9 @@ public class PublicController : ControllerBase
     [EnableRateLimiting("booking")]
     public async Task<IActionResult> CreateAppointment(string slug, [FromBody] PublicBookingRequest request, CancellationToken ct)
     {
-        var tenant = await _tenants.GetBySlugAsync(slug, ct);
-        if (tenant == null) return NotFound();
-        if (tenant.Settings?.AllowOnlineBooking == false)
+        var (tenant, error) = await ResolveTenantAsync(slug, ct);
+        if (error != null) return error;
+        if (tenant!.Settings?.AllowOnlineBooking == false)
             return BadRequest(ApiResponse<object>.Fail("Agendamento online desabilitado."));
 
         var command = new CreateAppointmentCommand(
