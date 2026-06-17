@@ -53,7 +53,7 @@ public class CreateBarberHandler : IRequestHandler<CreateBarberCommand, BarberDt
     public async Task<BarberDto> Handle(CreateBarberCommand request, CancellationToken ct)
     {
         var emailExists = await _users.EmailExistsAsync(request.Email, ct);
-        if (emailExists) throw new InvalidOperationException("Este e-mail já está em uso.");
+        if (emailExists) throw new BarberSaaS.Domain.Exceptions.DomainException("Este e-mail já está em uso.");
 
         var user = new User
         {

@@ -35,10 +35,10 @@ public class GetAvailableSlotsHandler : IRequestHandler<GetAvailableSlotsQuery, 
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var schedule = await _schedules.GetWithShiftsAsync(request.BarberId, ct)
-                ?? throw new InvalidOperationException("Barbeiro sem horários configurados.");
+                ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Barbeiro sem horários configurados.");
 
             var service = await _services.GetByIdAsync(request.ServiceId, ct)
-                ?? throw new InvalidOperationException("Serviço não encontrado.");
+                ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Serviço não encontrado.");
 
             var existingAppts = await _appointments.GetByBarberAndDateAsync(request.BarberId, request.Date, ct);
             var daysOff = await _appointments.GetDaysOffAsync(request.BarberId, request.Date, ct);

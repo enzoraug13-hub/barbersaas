@@ -69,17 +69,17 @@ public class CreateAppointmentHandler : IRequestHandler<CreateAppointmentCommand
     public async Task<AppointmentResultDto> Handle(CreateAppointmentCommand request, CancellationToken ct)
     {
         var service = await _services.GetByIdAsync(request.ServiceId, ct)
-            ?? throw new InvalidOperationException("Serviço não encontrado.");
+            ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Serviço não encontrado.");
         var barber = await _barbers.GetByIdAsync(request.BarberId, ct)
-            ?? throw new InvalidOperationException("Barbeiro não encontrado.");
+            ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Barbeiro não encontrado.");
 
         // Defesa explícita de tenant: no fluxo público o filtro global fica desativado
         // (sem tenant no contexto), então garantimos que serviço e barbeiro pertencem
         // mesmo ao tenant do agendamento — impede reservar usando IDs de outra barbearia.
         if (service.TenantId != request.TenantId)
-            throw new InvalidOperationException("Serviço não encontrado.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Serviço não encontrado.");
         if (barber.TenantId != request.TenantId)
-            throw new InvalidOperationException("Barbeiro não encontrado.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Barbeiro não encontrado.");
 
         var endTime = request.StartTime.AddMinutes(service.DurationMinutes);
 

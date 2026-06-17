@@ -31,10 +31,10 @@ public class CompleteAppointmentHandler : IRequestHandler<CompleteAppointmentCom
             ?? throw new Domain.Exceptions.EntityNotFoundException("Agendamento", request.AppointmentId);
 
         if (appointment.Status == AppointmentStatus.Completed)
-            throw new InvalidOperationException("Agendamento já está concluído.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Agendamento já está concluído.");
 
         if (appointment.Status == AppointmentStatus.Cancelled)
-            throw new InvalidOperationException("Não é possível concluir um agendamento cancelado.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Não é possível concluir um agendamento cancelado.");
 
         appointment.Complete(request.PaymentMethod);
         await _appointments.UpdateAsync(appointment, ct);

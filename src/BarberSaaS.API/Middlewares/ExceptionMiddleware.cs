@@ -26,12 +26,15 @@ public class ExceptionMiddleware
     {
         context.Response.ContentType = "application/json";
 
+        // Apenas exceções de domínio/validação têm a mensagem exposta ao cliente
+        // (são mensagens escritas para o usuário). Qualquer outra exceção — incluindo
+        // InvalidOperationException vinda de bibliotecas/infra — cai no genérico 500
+        // e é logada, para não vazar detalhes internos.
         var (statusCode, errors) = exception switch
         {
             ValidationException ve          => (HttpStatusCode.BadRequest, ve.Errors.Select(e => e.ErrorMessage)),
             DomainException de              => (HttpStatusCode.BadRequest, new[] { de.Message }.AsEnumerable()),
             UnauthorizedAccessException ue  => (HttpStatusCode.Unauthorized, new[] { ue.Message }.AsEnumerable()),
-            InvalidOperationException ie    => (HttpStatusCode.BadRequest, new[] { ie.Message }.AsEnumerable()),
             _                               => (HttpStatusCode.InternalServerError, new[] { "Erro interno do servidor." }.AsEnumerable())
         };
 

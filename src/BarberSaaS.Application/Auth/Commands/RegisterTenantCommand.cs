@@ -51,10 +51,10 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
         if (slugExists) slug = $"{slug}-{Guid.NewGuid().ToString()[..4]}";
 
         var emailExists = await _users.EmailExistsAsync(request.Email, ct);
-        if (emailExists) throw new InvalidOperationException("Este e-mail já está cadastrado.");
+        if (emailExists) throw new BarberSaaS.Domain.Exceptions.DomainException("Este e-mail já está cadastrado.");
 
         var freePlan = await _plans.GetBySlugAsync("gratuito", ct)
-            ?? throw new InvalidOperationException("Plano gratuito não encontrado.");
+            ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Plano gratuito não encontrado.");
 
         var tenant = new Tenant { Name = request.BusinessName, Slug = slug };
         var settings = new TenantSettings

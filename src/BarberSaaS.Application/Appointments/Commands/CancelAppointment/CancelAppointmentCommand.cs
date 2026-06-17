@@ -32,7 +32,7 @@ public class CancelAppointmentHandler : IRequestHandler<CancelAppointmentCommand
             ?? throw new BarberSaaS.Domain.Exceptions.EntityNotFoundException("Agendamento", request.AppointmentId);
 
         if (appointment.Status == AppointmentStatus.Cancelled)
-            throw new InvalidOperationException("Agendamento já está cancelado.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Agendamento já está cancelado.");
 
         var clientName = appointment.Client?.Name ?? "Cliente";
         appointment.Cancel(request.CancelledBy, request.Reason);

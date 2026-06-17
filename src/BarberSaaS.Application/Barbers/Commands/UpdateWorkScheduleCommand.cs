@@ -24,7 +24,7 @@ public class UpdateWorkScheduleHandler : IRequestHandler<UpdateWorkScheduleComma
     public async Task<bool> Handle(UpdateWorkScheduleCommand request, CancellationToken ct)
     {
         var schedule = await _schedules.GetWithShiftsAsync(request.BarberId, ct);
-        if (schedule == null) throw new InvalidOperationException("Horário não encontrado para este barbeiro.");
+        if (schedule == null) throw new BarberSaaS.Domain.Exceptions.DomainException("Horário não encontrado para este barbeiro.");
 
         // Remove shifts existentes e recria
         await _write.ReplaceShiftsAsync(schedule.Id, request.Shifts.Select(s => new WorkShift
