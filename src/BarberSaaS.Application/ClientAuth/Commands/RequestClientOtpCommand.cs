@@ -25,17 +25,18 @@ public class RequestClientOtpHandler : IRequestHandler<RequestClientOtpCommand, 
     private readonly ITenantRepository _tenants;
     private readonly IClientRepository _clients;
     private readonly ISmsService _sms;
+    private readonly IPasswordHasher _hasher;
     private readonly ILogger<RequestClientOtpHandler> _logger;
 
-    public RequestClientOtpHandler(ITenantRepository tenants, IClientRepository clients, ISmsService sms, ILogger<RequestClientOtpHandler> logger)
+    public RequestClientOtpHandler(ITenantRepository tenants, IClientRepository clients, ISmsService sms, IPasswordHasher hasher, ILogger<RequestClientOtpHandler> logger)
     {
-        _tenants = tenants; _clients = clients; _sms = sms; _logger = logger;
+        _tenants = tenants; _clients = clients; _sms = sms; _hasher = hasher; _logger = logger;
     }
 
     public async Task<RequestClientOtpResult> Handle(RequestClientOtpCommand request, CancellationToken ct)
     {
         var tenant = await _tenants.GetBySlugAsync(request.TenantSlug, ct)
-            ?? throw new InvalidOperationException("Barbearia não encontrada.");
+            ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Barbearia não encontrada.");
 
         // Find-or-create: evita enumeração de telefones (sempre "envia") e permite cadastro por telefone.
         var client = await _clients.GetByPhoneAsync(request.Phone, tenant.Id, ct);
@@ -46,10 +47,12 @@ public class RequestClientOtpHandler : IRequestHandler<RequestClientOtpCommand, 
         }
 
         if (client.IsBlocked)
-            throw new InvalidOperationException("Cadastro bloqueado. Procure a barbearia.");
+            throw new BarberSaaS.Domain.Exceptions.DomainException("Cadastro bloqueado. Procure a barbearia.");
 
         var code = Random.Shared.Next(100000, 1000000).ToString();
-        client.OtpCode      = code;
+        // Guarda apenas o HASH do código. Se o banco vazar, os códigos ativos não
+        // ficam expostos. O texto puro só vai pelo SMS (e como devCode em dev).
+        client.OtpCode      = _hasher.Hash(code);
         client.OtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
         await _clients.UpdateAsync(client, ct);
 

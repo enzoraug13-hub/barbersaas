@@ -24,16 +24,17 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
     private readonly ITenantRepository _tenants;
     private readonly IClientRepository _clients;
     private readonly IJwtService _jwt;
+    private readonly IPasswordHasher _hasher;
 
-    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, IJwtService jwt)
+    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, IJwtService jwt, IPasswordHasher hasher)
     {
-        _tenants = tenants; _clients = clients; _jwt = jwt;
+        _tenants = tenants; _clients = clients; _jwt = jwt; _hasher = hasher;
     }
 
     public async Task<ClientAuthResult> Handle(VerifyClientOtpCommand request, CancellationToken ct)
     {
         var tenant = await _tenants.GetBySlugAsync(request.TenantSlug, ct)
-            ?? throw new InvalidOperationException("Barbearia não encontrada.");
+            ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Barbearia não encontrada.");
 
         var client = await _clients.GetByPhoneAsync(request.Phone, tenant.Id, ct)
             ?? throw new UnauthorizedAccessException("Código inválido.");
@@ -41,7 +42,12 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
         if (client.OtpCode == null || client.OtpExpiresAt == null || client.OtpExpiresAt < DateTime.UtcNow)
             throw new UnauthorizedAccessException("Código expirado. Solicite um novo.");
 
-        if (client.OtpCode != request.Code)
+        // OtpCode está hasheado; compara via verificação. Try/catch protege contra
+        // hashes legados em formato antigo (tratados como código inválido).
+        bool ok;
+        try { ok = _hasher.Verify(request.Code, client.OtpCode); }
+        catch { ok = false; }
+        if (!ok)
             throw new UnauthorizedAccessException("Código inválido.");
 
         // Consome o OTP e marca verificado.
