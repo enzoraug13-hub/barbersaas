@@ -43,6 +43,8 @@ public static class DependencyInjection
         services.AddScoped<IFinancialRepository,   FinancialRepository>();
         services.AddScoped<IGoalRepository,        GoalRepository>();
         services.AddScoped<IProductRepository,     ProductRepository>();
+        services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+        services.AddScoped<IStockMovementRepository,   StockMovementRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IPlanRepository,        PlanRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

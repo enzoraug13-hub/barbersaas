@@ -109,6 +109,16 @@ public class ProductRepository : BaseRepository<Product>, IProductRepository
         => await _set.AsNoTracking().Where(p => p.TenantId == tenantId && p.IsActive && p.StockQuantity <= p.MinStockAlert).ToListAsync(ct);
 }
 
+public class ProductCategoryRepository : BaseRepository<ProductCategory>, IProductCategoryRepository
+{
+    public ProductCategoryRepository(AppDbContext db) : base(db) { }
+}
+
+public class StockMovementRepository : BaseRepository<StockMovement>, IStockMovementRepository
+{
+    public StockMovementRepository(AppDbContext db) : base(db) { }
+}
+
 public class NotificationRepository : BaseRepository<NotificationQueue>, INotificationRepository
 {
     public NotificationRepository(AppDbContext db) : base(db) { }

@@ -53,6 +53,10 @@ public interface IProductRepository : IBaseRepository<Product>
     Task<IReadOnlyList<Product>> GetLowStockAsync(Guid tenantId, CancellationToken ct = default);
 }
 
+public interface IProductCategoryRepository : IBaseRepository<ProductCategory> { }
+
+public interface IStockMovementRepository : IBaseRepository<StockMovement> { }
+
 public interface INotificationRepository : IBaseRepository<NotificationQueue>
 {
     Task<IReadOnlyList<NotificationQueue>> GetPendingAsync(int limit = 50, CancellationToken ct = default);
