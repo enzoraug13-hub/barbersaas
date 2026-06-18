@@ -1,5 +1,7 @@
+using BarberSaaS.Application.Clients.Commands;
+using BarberSaaS.Application.Clients.Queries;
 using BarberSaaS.Application.Common.DTOs;
-using BarberSaaS.Application.Common.Interfaces;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,75 +12,46 @@ namespace BarberSaaS.API.Controllers.v1;
 [Authorize(Policy = "RequireOwnerOrAdmin")]
 public class ClientsController : ControllerBase
 {
-    private readonly IClientRepository _clients;
-    private readonly ICurrentTenant _tenant;
+    private readonly IMediator _mediator;
 
-    public ClientsController(IClientRepository clients, ICurrentTenant tenant)
-    {
-        _clients = clients; _tenant = tenant;
-    }
+    public ClientsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? search, CancellationToken ct)
     {
-        var all = await _clients.GetAllAsync(ct);
-        if (!string.IsNullOrEmpty(search))
-            all = all.Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                                 c.PhoneNumber.Contains(search)).ToList();
-
-        return Ok(ApiResponse<object>.Ok(all.Select(c => new
-        {
-            c.Id, c.Name, c.PhoneNumber, c.Email,
-            c.TotalVisits, c.LastVisitAt, c.LoyaltyPoints, c.IsBlocked
-        })));
+        var clients = await _mediator.Send(new GetClientsQuery(search), ct);
+        return Ok(ApiResponse<IReadOnlyList<ClientListItemDto>>.Ok(clients));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var client = await _clients.GetByIdAsync(id, ct);
-        if (client == null) return NotFound();
-        return Ok(ApiResponse<object>.Ok(client));
+        var client = await _mediator.Send(new GetClientByIdQuery(id), ct);
+        return client is null ? NotFound() : Ok(ApiResponse<ClientListItemDto>.Ok(client));
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateClientRequest request, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateClientCommand command, CancellationToken ct)
     {
-        if (await _clients.PhoneExistsAsync(request.Phone, _tenant.Id, ct))
-            return Conflict(ApiResponse<bool>.Fail("Já existe um cliente com este telefone."));
-
-        var client = new Domain.Entities.Client
-        {
-            Name        = request.Name,
-            PhoneNumber = request.Phone,
-            Email       = request.Email,
-        };
-        await _clients.AddAsync(client, ct);
-        return Ok(ApiResponse<object>.Ok(new { client.Id, client.Name, client.PhoneNumber, client.Email }));
+        var created = await _mediator.Send(command, ct);
+        return created is null
+            ? Conflict(ApiResponse<bool>.Fail("Já existe um cliente com este telefone."))
+            : Ok(ApiResponse<ClientListItemDto>.Ok(created));
     }
 
     [HttpPatch("{id:guid}/block")]
     public async Task<IActionResult> Block(Guid id, [FromBody] BlockClientRequest request, CancellationToken ct)
     {
-        var client = await _clients.GetByIdAsync(id, ct);
-        if (client == null) return NotFound();
-        client.IsBlocked   = true;
-        client.BlockReason = request.Reason;
-        await _clients.UpdateAsync(client, ct);
-        return Ok(ApiResponse<bool>.Ok(true));
+        var ok = await _mediator.Send(new BlockClientCommand(id, request.Reason), ct);
+        return ok ? Ok(ApiResponse<bool>.Ok(true)) : NotFound();
     }
 
     [HttpPatch("{id:guid}/unblock")]
     public async Task<IActionResult> Unblock(Guid id, CancellationToken ct)
     {
-        var client = await _clients.GetByIdAsync(id, ct);
-        if (client == null) return NotFound();
-        client.IsBlocked   = false;
-        client.BlockReason = null;
-        await _clients.UpdateAsync(client, ct);
-        return Ok(ApiResponse<bool>.Ok(true));
+        var ok = await _mediator.Send(new UnblockClientCommand(id), ct);
+        return ok ? Ok(ApiResponse<bool>.Ok(true)) : NotFound();
     }
 }
 
-public record BlockClientRequest(string Reason);
-public record CreateClientRequest(string Name, string Phone, string? Email);
+public record BlockClientRequest(string? Reason);
