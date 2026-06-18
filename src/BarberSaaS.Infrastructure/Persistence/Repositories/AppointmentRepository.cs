@@ -49,4 +49,12 @@ public class AppointmentRepository :
 
         return await query.OrderBy(a => a.StartTime).ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<Appointment>> GetByClientAsync(Guid clientId, CancellationToken ct = default)
+        => await _set.AsNoTracking()
+            .Include(a => a.Barber)
+            .Include(a => a.Service)
+            .Where(a => a.ClientId == clientId)
+            .OrderByDescending(a => a.Date).ThenByDescending(a => a.StartTime)
+            .ToListAsync(ct);
 }

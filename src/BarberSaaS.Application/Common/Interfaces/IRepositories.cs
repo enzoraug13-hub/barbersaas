@@ -87,4 +87,5 @@ public interface IAppointmentRepositoryFull : IAppointmentRepositoryApp
     Task<Appointment?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task UpdateAsync(Appointment appointment, CancellationToken ct = default);
     Task<IReadOnlyList<Appointment>> GetByTenantAndDateAsync(Guid tenantId, DateOnly date, Guid? barberId, CancellationToken ct = default);
+    Task<IReadOnlyList<Appointment>> GetByClientAsync(Guid clientId, CancellationToken ct = default);
 }
