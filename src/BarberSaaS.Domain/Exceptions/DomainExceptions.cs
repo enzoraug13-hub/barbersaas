@@ -35,3 +35,9 @@ public class FeatureNotAvailableException : DomainException
     public FeatureNotAvailableException(string feature)
         : base($"O recurso '{feature}' não está disponível no plano atual. Faça upgrade para continuar.") { }
 }
+
+public class ClientBlockedException : DomainException
+{
+    public ClientBlockedException()
+        : base("Sua conta está bloqueada. Entre em contato com a barbearia para mais informações.") { }
+}

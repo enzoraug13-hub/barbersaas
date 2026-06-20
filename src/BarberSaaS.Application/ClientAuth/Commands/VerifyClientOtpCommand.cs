@@ -4,7 +4,7 @@ using MediatR;
 
 namespace BarberSaaS.Application.ClientAuth.Commands;
 
-public record VerifyClientOtpCommand(string TenantSlug, string Phone, string Code, string? Name) : IRequest<ClientAuthResult>;
+public record VerifyClientOtpCommand(string TenantSlug, string Phone, string Code) : IRequest<ClientAuthResult>;
 
 public record ClientAuthResult(string AccessToken, DateTime ExpiresAt, ClientProfileDto Client);
 public record ClientProfileDto(Guid Id, string Name, string Phone, string? Email, int LoyaltyPoints, int TotalVisits);
@@ -39,6 +39,11 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
         var client = await _clients.GetByPhoneAsync(request.Phone, tenant.Id, ct)
             ?? throw new UnauthorizedAccessException("Código inválido.");
 
+        // Recheca o bloqueio aqui: o cliente pode ter sido bloqueado entre o
+        // request-otp e este verify (código já enviado, mas não deve logar).
+        if (client.IsBlocked)
+            throw new BarberSaaS.Domain.Exceptions.ClientBlockedException();
+
         if (client.OtpCode == null || client.OtpExpiresAt == null || client.OtpExpiresAt < DateTime.UtcNow)
             throw new UnauthorizedAccessException("Código expirado. Solicite um novo.");
 
@@ -54,7 +59,6 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
         client.OtpCode      = null;
         client.OtpExpiresAt = null;
         client.IsVerified   = true;
-        if (!string.IsNullOrWhiteSpace(request.Name)) client.Name = request.Name.Trim();
         await _clients.UpdateAsync(client, ct);
 
         // Token do cliente: role="client", sub=clientId, tenant_id=tenant.Id (sem refresh token — ver AI_HANDOFF).

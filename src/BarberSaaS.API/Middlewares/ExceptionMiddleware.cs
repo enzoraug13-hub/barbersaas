@@ -33,6 +33,7 @@ public class ExceptionMiddleware
         var (statusCode, errors) = exception switch
         {
             ValidationException ve          => (HttpStatusCode.BadRequest, ve.Errors.Select(e => e.ErrorMessage)),
+            ClientBlockedException cbe      => (HttpStatusCode.Forbidden, new[] { cbe.Message }.AsEnumerable()),
             DomainException de              => (HttpStatusCode.BadRequest, new[] { de.Message }.AsEnumerable()),
             UnauthorizedAccessException ue  => (HttpStatusCode.Unauthorized, new[] { ue.Message }.AsEnumerable()),
             _                               => (HttpStatusCode.InternalServerError, new[] { "Erro interno do servidor." }.AsEnumerable())

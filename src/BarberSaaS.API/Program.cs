@@ -88,10 +88,13 @@ builder.Services.AddAuthorization(opt =>
 });
 
 // Rate Limiting
+// Em Development o limite de "auth" é bem mais alto: testes manuais repetidos
+// (login admin, OTP de cliente, etc.) batiam nos 5/15min pensados para produção.
+var isDev = builder.Environment.IsDevelopment();
 builder.Services.AddRateLimiter(opt =>
 {
     opt.AddFixedWindowLimiter("global", o => { o.Window = TimeSpan.FromMinutes(1); o.PermitLimit = 100; });
-    opt.AddFixedWindowLimiter("auth",   o => { o.Window = TimeSpan.FromMinutes(15); o.PermitLimit = 5; });
+    opt.AddFixedWindowLimiter("auth",   o => { o.Window = TimeSpan.FromMinutes(isDev ? 1 : 15); o.PermitLimit = isDev ? 100 : 5; });
     opt.AddFixedWindowLimiter("booking",o => { o.Window = TimeSpan.FromMinutes(1); o.PermitLimit = 10; });
     opt.RejectionStatusCode = 429;
 });

@@ -13,6 +13,7 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
 
         b.Property(x => x.Name).HasMaxLength(150).IsRequired();
         b.Property(x => x.PhoneNumber).HasMaxLength(30).IsRequired();
+        b.Property(x => x.Cpf).HasMaxLength(14);
         b.Property(x => x.Email).HasMaxLength(200);
         b.Property(x => x.PhotoUrl).HasMaxLength(500);
         b.Property(x => x.OtpCode).HasMaxLength(10);
