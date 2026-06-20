@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, Phone, User } from 'lucide-react'
+import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '../../lib/api'
 import { usePublicBarbers } from '../../features/barbers/barbersApi'
 import { usePublicServices } from '../../features/services/servicesApi'
 import { useAvailableSlots, useCreateAppointment } from '../../features/appointments/appointmentsApi'
 import { applyTenantTheme } from '../../lib/theme-tenant'
+import { useClientAuthStore } from '../../store/clientAuthStore'
 import { Button } from '../../components/ui/Button'
+import { PhoneField, COUNTRIES } from '../../components/ui/PhoneField'
+import { onlyDigits, isValidBRPhone } from '../../lib/masks'
 import type { TenantPublicInfo, Barber, Service } from '../../types'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -56,8 +59,25 @@ export default function BookingPage() {
   const [service, setService]   = useState<Service | null>(null)
   const [date, setDate]         = useState('')
   const [slot, setSlot]         = useState('')
+  // client.phone guarda só os dígitos do número (sem +55) — o prefixo é fixo no PhoneField.
   const [client, setClient]     = useState({ name: '', phone: '', email: '' })
   const [result, setResult]     = useState<any>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+
+  // Cliente já logado nesta barbearia (via OTP) — pula a etapa de dados pessoais,
+  // já que nome/telefone/e-mail já estão na conta.
+  const clientAuth = useClientAuthStore()
+  const loggedIn = clientAuth.slug === slug && !!clientAuth.token && !!clientAuth.client && clientAuth.profileComplete
+
+  useEffect(() => {
+    if (loggedIn && clientAuth.client) {
+      setClient({
+        name: clientAuth.client.name,
+        phone: onlyDigits(clientAuth.client.phone).replace(/^55/, ''),
+        email: clientAuth.client.email ?? '',
+      })
+    }
+  }, [loggedIn, clientAuth.client])
 
   const { data: info } = useQuery<TenantPublicInfo>({
     queryKey: ['public-info', slug],
@@ -84,7 +104,7 @@ export default function BookingPage() {
     try {
       const res = await createAppt.mutateAsync({
         barberId: barber!.id, serviceId: service!.id,
-        clientName: client.name, clientPhone: client.phone, clientEmail: client.email || undefined,
+        clientName: client.name, clientPhone: `${COUNTRIES[0].dial}${client.phone}`, clientEmail: client.email || undefined,
         date, startTime: slot
       })
       setResult(res); setStep('done')
@@ -94,7 +114,9 @@ export default function BookingPage() {
   }
 
   const back = () => {
-    const steps: Step[] = ['barber','service','date','slots','client','confirm']
+    const steps: Step[] = loggedIn
+      ? ['barber','service','date','slots','confirm']
+      : ['barber','service','date','slots','client','confirm']
     const i = steps.indexOf(step as any)
     if (i > 0) setStep(steps[i - 1])
   }
@@ -136,10 +158,11 @@ export default function BookingPage() {
         {/* Progress — stepper visual */}
         {step !== 'done' && (
           <div className="flex items-center gap-1 mb-6">
-            {(['barber','service','date','slots','client','confirm'] as Step[]).map((s) => (
+            {(loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm'] as Step[]).map((s) => (
               <div key={s} className="h-1 flex-1 transition-all" style={{
                 borderRadius: 'var(--radius-full)',
-                background: ['barber','service','date','slots','client','confirm'].indexOf(step) >= ['barber','service','date','slots','client','confirm'].indexOf(s)
+                background: (loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm']).indexOf(step) >=
+                  (loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm']).indexOf(s)
                   ? 'var(--tenant-primary)' : 'var(--bg-elevated)',
               }} />
             ))}
@@ -234,7 +257,7 @@ export default function BookingPage() {
             : (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((s, i) => (
-                  <button key={s.start} onClick={() => { setSlot(s.start); setStep('client') }}
+                  <button key={s.start} onClick={() => { setSlot(s.start); setStep(loggedIn ? 'confirm' : 'client') }}
                     style={{
                       animationDelay: `${i * 20}ms`, minHeight: 44,
                       borderColor: slot === s.start ? 'var(--accent)' : undefined,
@@ -257,21 +280,15 @@ export default function BookingPage() {
             <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Seus dados</h2>
             <div className="ds-card space-y-4">
               <div className="ds-field"><label className="ds-label">Nome completo</label><input className="ds-input" placeholder="João Silva" value={client.name} onChange={e => setClient(c => ({...c, name: e.target.value}))} required /></div>
-              <div className="ds-field">
-                <label className="ds-label">WhatsApp</label>
-                <div className="relative">
-                  <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
-                  <input type="tel" className="ds-input pl-10" placeholder="+5511999999999" value={client.phone} onChange={e => setClient(c => ({...c, phone: e.target.value}))} required />
-                </div>
-              </div>
+              <PhoneField label="WhatsApp" value={client.phone}
+                onChange={digits => setClient(c => ({ ...c, phone: digits }))}
+                error={phoneError ?? undefined} />
               <div className="ds-field"><label className="ds-label">E-mail (opcional)</label><input type="email" className="ds-input" placeholder="joao@email.com" value={client.email} onChange={e => setClient(c => ({...c, email: e.target.value}))} /></div>
               <Button
                 onClick={() => {
                   if (!client.name.trim()) { toast.error('Informe seu nome completo.'); return }
-                  if (!/^\+[1-9]\d{7,14}$/.test(client.phone.trim())) {
-                    toast.error('WhatsApp inválido. Use o formato internacional, ex: +5511999999999.')
-                    return
-                  }
+                  if (!isValidBRPhone(client.phone)) { setPhoneError('Telefone inválido. Informe DDD + número.'); return }
+                  setPhoneError(null)
                   setStep('confirm')
                 }}
                 className="w-full">Continuar</Button>
@@ -292,7 +309,7 @@ export default function BookingPage() {
                 { label: 'Horário',      value: slot },
                 { label: 'Valor',        value: `R$ ${service?.price.toFixed(2)}` },
                 { label: 'Nome',         value: client.name },
-                { label: 'Telefone',     value: client.phone },
+                { label: 'Telefone',     value: `${COUNTRIES[0].dial} ${client.phone}` },
               ].map(r => (
                 <div key={r.label} className="flex justify-between py-1.5 last:border-0" style={{ fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <span className="ds-text-secondary">{r.label}</span>

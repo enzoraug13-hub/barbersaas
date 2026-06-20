@@ -103,6 +103,35 @@
 .ds-input-error:focus { border-color: var(--color-error); box-shadow: 0 0 0 3px rgba(224,92,92,0.25); }
 .ds-error-text { font-size: var(--text-xs); color: var(--color-error); }
 
+/* ---------------- Telefone (prefixo de país + número) ---------------- */
+.ds-phone-group { display: flex; }
+.ds-phone-prefix {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+.ds-phone-prefix select {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+.ds-phone-group .ds-input {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
 /* ---------------- Card ---------------- */
 .ds-card {
   background: var(--bg-subtle);

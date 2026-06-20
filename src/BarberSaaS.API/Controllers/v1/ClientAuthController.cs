@@ -13,16 +13,10 @@ public class ClientAuthController : ControllerBase
     private readonly IMediator _mediator;
     public ClientAuthController(IMediator mediator) => _mediator = mediator;
 
-    /// <summary>Cliente já cadastrado pede o código OTP para entrar.</summary>
-    [HttpPost("login/request-otp")]
+    /// <summary>Pede o código OTP por telefone. Find-or-create — não distingue login/cadastro.</summary>
+    [HttpPost("request-otp")]
     [EnableRateLimiting("auth")]
-    public async Task<IActionResult> RequestLoginOtp([FromBody] RequestLoginOtpCommand command, CancellationToken ct)
-        => Ok(ApiResponse<RequestOtpResult>.Ok(await _mediator.Send(command, ct), "Código enviado."));
-
-    /// <summary>Cliente novo se cadastra (nome, telefone, CPF) e pede o código OTP.</summary>
-    [HttpPost("register/request-otp")]
-    [EnableRateLimiting("auth")]
-    public async Task<IActionResult> RequestRegisterOtp([FromBody] RequestRegisterOtpCommand command, CancellationToken ct)
+    public async Task<IActionResult> RequestOtp([FromBody] RequestOtpCommand command, CancellationToken ct)
         => Ok(ApiResponse<RequestOtpResult>.Ok(await _mediator.Send(command, ct), "Código enviado."));
 
     /// <summary>Verifica o OTP e retorna o token de acesso do cliente.</summary>

@@ -6,7 +6,7 @@ namespace BarberSaaS.Application.ClientPortal.Queries;
 // Área do cliente autenticado por OTP: usa o id do próprio cliente (claim sub).
 public record GetMyProfileQuery : IRequest<MyProfileDto?>;
 
-public record MyProfileDto(Guid Id, string Name, string Phone, string? Email, int LoyaltyPoints, int TotalVisits);
+public record MyProfileDto(Guid Id, string Name, string Phone, string? Cpf, string? Email, int LoyaltyPoints, int TotalVisits, bool ProfileComplete);
 
 public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, MyProfileDto?>
 {
@@ -21,6 +21,8 @@ public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, MyProfileD
     public async Task<MyProfileDto?> Handle(GetMyProfileQuery request, CancellationToken ct)
     {
         var c = await _clients.GetByIdAsync(_user.Id, ct);
-        return c is null ? null : new MyProfileDto(c.Id, c.Name, c.PhoneNumber, c.Email, c.LoyaltyPoints, c.TotalVisits);
+        if (c is null) return null;
+        var complete = !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Cpf);
+        return new MyProfileDto(c.Id, c.Name, c.PhoneNumber, c.Cpf, c.Email, c.LoyaltyPoints, c.TotalVisits, complete);
     }
 }

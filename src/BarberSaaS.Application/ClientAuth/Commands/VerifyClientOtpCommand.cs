@@ -6,8 +6,8 @@ namespace BarberSaaS.Application.ClientAuth.Commands;
 
 public record VerifyClientOtpCommand(string TenantSlug, string Phone, string Code) : IRequest<ClientAuthResult>;
 
-public record ClientAuthResult(string AccessToken, DateTime ExpiresAt, ClientProfileDto Client);
-public record ClientProfileDto(Guid Id, string Name, string Phone, string? Email, int LoyaltyPoints, int TotalVisits);
+public record ClientAuthResult(string AccessToken, DateTime ExpiresAt, ClientProfileDto Client, bool ProfileComplete);
+public record ClientProfileDto(Guid Id, string Name, string Phone, string? Cpf, string? Email, int LoyaltyPoints, int TotalVisits);
 
 public class VerifyClientOtpValidator : AbstractValidator<VerifyClientOtpCommand>
 {
@@ -65,7 +65,10 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
         var displayName = string.IsNullOrWhiteSpace(client.Name) ? "Cliente" : client.Name;
         var tokens = _jwt.GenerateTokens(client.Id, client.Email ?? "", displayName, "client", tenant.Id);
 
+        var profileComplete = !string.IsNullOrWhiteSpace(client.Name) && !string.IsNullOrWhiteSpace(client.Cpf);
+
         return new ClientAuthResult(tokens.AccessToken, tokens.ExpiresAt,
-            new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Email, client.LoyaltyPoints, client.TotalVisits));
+            new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Cpf, client.Email, client.LoyaltyPoints, client.TotalVisits),
+            profileComplete);
     }
 }
