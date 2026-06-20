@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Plus, Loader2, User, Clock, ToggleLeft, ToggleRight, X } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
 import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
@@ -40,72 +43,61 @@ function ScheduleModal({ barber, onClose }: { barber: Barber; onClose: () => voi
   const byDay = DAYS.map((_, d) => currentShifts.filter(s => s.dayOfWeek === d))
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4 flex-shrink-0">
-          <div>
-            <h3 className="font-semibold text-content">Horários — {barber.name}</h3>
-            <p className="text-xs text-subtle mt-0.5">Configure os turnos de trabalho</p>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-content"><X size={20} /></button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-accent" /></div>
-        ) : (
-          <div className="overflow-y-auto flex-1 space-y-4 pr-1">
-            {DAYS.map((dayName, day) => (
-              <div key={day} className="bg-surfaceHover/50 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-content">{dayName}</span>
-                  <button onClick={() => addShift(day)} className="text-xs text-accent hover:text-accent flex items-center gap-1">
-                    <Plus size={12} /> Turno
-                  </button>
-                </div>
-
-                {byDay[day].length === 0 ? (
-                  <p className="text-xs text-subtle italic">Folga / sem atendimento</p>
-                ) : (
-                  <div className="space-y-2">
-                    {byDay[day].map((shift) => {
-                      const globalIdx = currentShifts.indexOf(shift)
-                      return (
-                        <div key={globalIdx} className={`flex items-center gap-2 ${!shift.isActive ? 'opacity-50' : ''}`}>
-                          <input
-                            type="checkbox"
-                            checked={shift.isActive}
-                            onChange={e => updateShift(globalIdx, 'isActive', e.target.checked)}
-                            className="w-4 h-4 accent-accent flex-shrink-0"
-                          />
-                          <input type="time" className="input py-1.5 text-sm w-28 flex-shrink-0"
-                            value={shift.startTime}
-                            onChange={e => updateShift(globalIdx, 'startTime', e.target.value)} />
-                          <span className="text-subtle text-sm">→</span>
-                          <input type="time" className="input py-1.5 text-sm w-28 flex-shrink-0"
-                            value={shift.endTime}
-                            onChange={e => updateShift(globalIdx, 'endTime', e.target.value)} />
-                          <button onClick={() => removeShift(globalIdx)} className="text-subtle hover:text-red-400 ml-auto flex-shrink-0">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+    <Modal isOpen onClose={onClose} title={`Horários — ${barber.name}`} subtitle="Configure os turnos de trabalho"
+      panelClassName="max-w-2xl" panelStyle={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
+      ) : (
+        <div className="overflow-y-auto flex-1 space-y-4 pr-1">
+          {DAYS.map((dayName, day) => (
+            <div key={day} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{dayName}</span>
+                <button onClick={() => addShift(day)} className="ds-text-accent flex items-center gap-1" style={{ fontSize: 'var(--text-xs)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <Plus size={12} /> Turno
+                </button>
               </div>
-            ))}
-          </div>
-        )}
 
-        <div className="flex gap-3 mt-4 pt-4 border-t border-border flex-shrink-0">
-          <button onClick={onClose} className="btn-ghost flex-1">Cancelar</button>
-          <button onClick={handleSave} disabled={update.isPending} className="btn-primary flex-1">
-            {update.isPending ? <Loader2 size={15} className="animate-spin" /> : null}
-            Salvar Horários
-          </button>
+              {byDay[day].length === 0 ? (
+                <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>Folga / sem atendimento</p>
+              ) : (
+                <div className="space-y-2">
+                  {byDay[day].map((shift) => {
+                    const globalIdx = currentShifts.indexOf(shift)
+                    return (
+                      <div key={globalIdx} className="flex items-center gap-2" style={{ opacity: shift.isActive ? 1 : 0.5 }}>
+                        <input
+                          type="checkbox"
+                          checked={shift.isActive}
+                          onChange={e => updateShift(globalIdx, 'isActive', e.target.checked)}
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ accentColor: 'var(--accent)' }}
+                        />
+                        <input type="time" className="ds-input flex-shrink-0" style={{ width: 112, height: 32, fontSize: 'var(--text-sm)' }}
+                          value={shift.startTime}
+                          onChange={e => updateShift(globalIdx, 'startTime', e.target.value)} />
+                        <span className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>→</span>
+                        <input type="time" className="ds-input flex-shrink-0" style={{ width: 112, height: 32, fontSize: 'var(--text-sm)' }}
+                          value={shift.endTime}
+                          onChange={e => updateShift(globalIdx, 'endTime', e.target.value)} />
+                        <button onClick={() => removeShift(globalIdx)} className="ml-auto flex-shrink-0" style={{ color: 'var(--text-disabled)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
+      )}
+
+      <div className="flex gap-3 mt-4 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <Button variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
+        <Button className="flex-1" onClick={handleSave} loading={update.isPending}>Salvar Horários</Button>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -133,36 +125,35 @@ export default function BarbersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-content">Barbeiros</h2>
-        <button onClick={() => setShowForm(true)} className="btn-primary">
-          <Plus size={18} /> Novo Barbeiro
-        </button>
+        <h2 className="ds-page-title">Barbeiros</h2>
+        <Button onClick={() => setShowForm(true)}><Plus size={18} /> Novo Barbeiro</Button>
       </div>
 
       {isLoading ? (
         <ListSkeleton rows={3} />
       ) : !barbers?.length ? (
         <EmptyState icon={User} title="Nenhum barbeiro cadastrado"
-          action={<button onClick={() => setShowForm(true)} className="btn-primary">Cadastrar primeiro barbeiro</button>} />
+          action={<Button onClick={() => setShowForm(true)}>Cadastrar primeiro barbeiro</Button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {barbers.map((b, i) => (
-            <div key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="card group animate-slide-up">
+            <Card key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="animate-slide-up">
               <div className="flex items-center gap-4">
                 {b.photoUrl ? (
                   <img src={b.photoUrl} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                    <User size={24} className="text-accent" />
+                  <div className="ds-icon-chip ds-icon-chip-accent" style={{ width: 56, height: 56, borderRadius: '50%' }}>
+                    <User size={24} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-content truncate">{b.name}</p>
-                  {b.phone && <p className="text-xs text-subtle">{b.phone}</p>}
+                  <p className="ds-text-primary font-semibold truncate">{b.name}</p>
+                  {b.phone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{b.phone}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <button
                       onClick={() => toggle.mutate(b.id)}
-                      className={`flex items-center gap-1 text-xs font-medium transition-colors ${b.isActive ? 'text-green-400' : 'text-subtle'}`}>
+                      className="flex items-center gap-1 font-medium"
+                      style={{ fontSize: 'var(--text-xs)', color: b.isActive ? 'var(--color-success)' : 'var(--text-disabled)', background: 'none', border: 'none', cursor: 'pointer' }}>
                       {b.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                       {b.isActive ? 'Ativo' : 'Inativo'}
                     </button>
@@ -170,55 +161,46 @@ export default function BarbersPage() {
                 </div>
               </div>
 
-              {b.bio && <p className="text-xs text-subtle mt-3 line-clamp-2">{b.bio}</p>}
+              {b.bio && <p className="ds-text-disabled mt-3 line-clamp-2" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
 
-              <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-                <button
-                  onClick={() => setScheduleBarber(b)}
-                  className="btn-ghost flex-1 text-xs py-2 gap-1.5">
+              <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <Button variant="ghost" className="flex-1" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setScheduleBarber(b)}>
                   <Clock size={14} /> Horários
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Modal novo barbeiro */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-content mb-4">Novo Barbeiro</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div><label className="label">Nome</label><input className="input" value={form.name} onChange={set('name')} required /></div>
-              <div><label className="label">E-mail</label><input type="email" className="input" value={form.email} onChange={set('email')} required /></div>
-              <div><label className="label">Senha</label><input type="password" className="input" value={form.password} onChange={set('password')} minLength={8} required /></div>
-              <div><label className="label">Telefone</label><input className="input" value={form.phone} onChange={set('phone')} /></div>
-              <div><label className="label">Bio</label><input className="input" value={form.bio} onChange={set('bio')} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Comissão</label>
-                  <select className="input" value={form.commissionType} onChange={set('commissionType')}>
-                    <option value={0}>Percentual (%)</option>
-                    <option value={1}>Fixo (R$)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Valor</label>
-                  <input type="number" className="input" value={form.commissionValue} onChange={set('commissionValue')} />
-                </div>
-              </div>
-              <div><label className="label">ID do Google Calendar (opcional)</label><input className="input" value={form.googleCalendarId} onChange={set('googleCalendarId')} /></div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={create.isPending} className="btn-primary flex-1">
-                  {create.isPending && <Loader2 size={16} className="animate-spin" />} Criar
-                </button>
-              </div>
-            </form>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Barbeiro" panelClassName="max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={set('name')} required /></div>
+          <div className="ds-field"><label className="ds-label">E-mail</label><input type="email" className="ds-input" value={form.email} onChange={set('email')} required /></div>
+          <div className="ds-field"><label className="ds-label">Senha</label><input type="password" className="ds-input" value={form.password} onChange={set('password')} minLength={8} required /></div>
+          <div className="ds-field"><label className="ds-label">Telefone</label><input className="ds-input" value={form.phone} onChange={set('phone')} /></div>
+          <div className="ds-field"><label className="ds-label">Bio</label><input className="ds-input" value={form.bio} onChange={set('bio')} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="ds-field">
+              <label className="ds-label">Comissão</label>
+              <select className="ds-input" value={form.commissionType} onChange={set('commissionType')}>
+                <option value={0}>Percentual (%)</option>
+                <option value={1}>Fixo (R$)</option>
+              </select>
+            </div>
+            <div className="ds-field">
+              <label className="ds-label">Valor</label>
+              <input type="number" className="ds-input" value={form.commissionValue} onChange={set('commissionValue')} />
+            </div>
           </div>
-        </div>
-      )}
+          <div className="ds-field"><label className="ds-label">ID do Google Calendar (opcional)</label><input className="ds-input" value={form.googleCalendarId} onChange={set('googleCalendarId')} /></div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" loading={create.isPending}>Criar</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Modal de horários */}
       {scheduleBarber && (

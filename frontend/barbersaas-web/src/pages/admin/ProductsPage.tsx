@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Plus, Loader2, Trash2, Package, AlertTriangle, Edit2, X, TrendingUp, TrendingDown, Tag } from 'lucide-react'
+import { Plus, Trash2, Package, AlertTriangle, Edit2, TrendingUp, TrendingDown, Tag } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
 import {
   useProducts, useProductCategories, useCreateProduct,
   useUpdateProduct, useDeleteProduct, useAdjustStock, useCreateCategory,
@@ -86,48 +89,46 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-content">Produtos</h2>
+        <h2 className="ds-page-title">Produtos</h2>
         <div className="flex gap-2">
-          <button onClick={() => setTab('categories')} className={`btn-ghost text-sm px-3 py-2 gap-1.5 ${tab === 'categories' ? 'border-accent/50 text-accent' : ''}`}>
+          <Button variant="ghost" onClick={() => setTab('categories')} style={tab === 'categories' ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : undefined}>
             <Tag size={15} /> Categorias
-          </button>
-          <button onClick={openCreate} className="btn-primary"><Plus size={18} /> Novo Produto</button>
+          </Button>
+          <Button onClick={openCreate}><Plus size={18} /> Novo Produto</Button>
         </div>
       </div>
 
       {/* Alerta estoque baixo */}
       {lowStock.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3" style={{ background: 'rgba(224,160,48,0.1)', border: '1px solid rgba(224,160,48,0.3)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
+          <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-warning)' }} />
           <div>
-            <p className="text-sm font-medium text-amber-300">Estoque baixo em {lowStock.length} produto(s)</p>
-            <p className="text-xs text-amber-400/70 mt-0.5">{lowStock.map(p => p.name).join(', ')}</p>
+            <p className="font-medium" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-warning)' }}>Estoque baixo em {lowStock.length} produto(s)</p>
+            <p className="mt-0.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warning)', opacity: 0.8 }}>{lowStock.map(p => p.name).join(', ')}</p>
           </div>
         </div>
       )}
 
       {/* Tab Categorias */}
       {tab === 'categories' && (
-        <div className="card space-y-4">
-          <h3 className="font-semibold text-content">Categorias</h3>
+        <Card className="space-y-4">
+          <h3 className="ds-section-title">Categorias</h3>
           <form onSubmit={handleCreateCategory} className="flex gap-2">
-            <input className="input flex-1" placeholder="Nome da nova categoria" value={newCatName} onChange={e => setNewCatName(e.target.value)} required />
-            <button type="submit" disabled={createCategory.isPending} className="btn-primary px-4">
-              {createCategory.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            </button>
+            <input className="ds-input flex-1" placeholder="Nome da nova categoria" value={newCatName} onChange={e => setNewCatName(e.target.value)} required />
+            <Button type="submit" loading={createCategory.isPending}>{!createCategory.isPending && <Plus size={16} />}</Button>
           </form>
           {categories?.length ? (
-            <ul className="divide-y divide-border">
+            <ul>
               {categories.map(c => (
-                <li key={c.id} className="py-2.5 flex items-center gap-2 text-sm text-muted">
-                  <Tag size={13} className="text-accent" /> {c.name}
+                <li key={c.id} className="flex items-center gap-2 py-2.5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <Tag size={13} style={{ color: 'var(--accent)' }} /> {c.name}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-subtle text-sm text-center py-4">Nenhuma categoria. Crie uma acima.</p>
+            <p className="ds-text-disabled text-center py-4" style={{ fontSize: 'var(--text-sm)' }}>Nenhuma categoria. Crie uma acima.</p>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Lista de Produtos */}
@@ -136,51 +137,51 @@ export default function ProductsPage() {
           <ListSkeleton />
         ) : !products?.length ? (
           <EmptyState icon={Package} title="Nenhum produto cadastrado"
-            action={<button onClick={openCreate} className="btn-primary">Cadastrar primeiro produto</button>} />
+            action={<Button onClick={openCreate}>Cadastrar primeiro produto</Button>} />
         ) : (
-          <div className="card overflow-hidden p-0">
+          <div className="ds-table-wrap">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="ds-table">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left text-muted font-medium px-6 py-4">Produto</th>
-                    <th className="text-left text-muted font-medium px-4 py-4 hidden md:table-cell">Categoria</th>
-                    <th className="text-right text-muted font-medium px-4 py-4">Venda</th>
-                    <th className="text-center text-muted font-medium px-4 py-4">Estoque</th>
-                    <th className="text-center text-muted font-medium px-4 py-4">Ações</th>
+                  <tr>
+                    <th>Produto</th>
+                    <th className="hidden md:table-cell">Categoria</th>
+                    <th className="text-right">Venda</th>
+                    <th className="text-center">Estoque</th>
+                    <th className="text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {products.map(p => (
-                    <tr key={p.id} className="hover:bg-surfaceHover/40 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-content">{p.name}</p>
-                        {p.sku && <p className="text-xs text-subtle">SKU: {p.sku}</p>}
-                        {p.description && <p className="text-xs text-subtle truncate max-w-[200px]">{p.description}</p>}
+                    <tr key={p.id}>
+                      <td>
+                        <p className="ds-text-primary font-medium">{p.name}</p>
+                        {p.sku && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>SKU: {p.sku}</p>}
+                        {p.description && <p className="ds-text-disabled truncate max-w-[200px]" style={{ fontSize: 'var(--text-xs)' }}>{p.description}</p>}
                       </td>
-                      <td className="px-4 py-4 text-muted hidden md:table-cell">{p.categoryName}</td>
-                      <td className="px-4 py-4 text-right">
-                        <p className="font-semibold text-accent">{fmt(p.salePrice)}</p>
-                        <p className="text-xs text-subtle">custo: {fmt(p.costPrice)}</p>
+                      <td className="ds-text-secondary hidden md:table-cell">{p.categoryName}</td>
+                      <td className="text-right">
+                        <p className="ds-text-accent font-semibold">{fmt(p.salePrice)}</p>
+                        <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>custo: {fmt(p.costPrice)}</p>
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className={`text-sm font-bold ${p.isLowStock ? 'text-amber-400' : 'text-content'}`}>
+                      <td className="text-center">
+                        <span className="font-bold" style={{ fontSize: 'var(--text-sm)', color: p.isLowStock ? 'var(--color-warning)' : 'var(--text-primary)' }}>
                           {p.stockQuantity}
                         </span>
-                        {p.isLowStock && <AlertTriangle size={12} className="inline ml-1 text-amber-400" />}
-                        <p className="text-xs text-subtle">mín: {p.minStockAlert}</p>
+                        {p.isLowStock && <AlertTriangle size={12} className="inline ml-1" style={{ color: 'var(--color-warning)' }} />}
+                        <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>mín: {p.minStockAlert}</p>
                       </td>
-                      <td className="px-4 py-4">
+                      <td>
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => { setStockProduct(p); setStockDir('entry'); setStockQty(''); setStockReason('') }}
-                            className="btn-ghost p-1.5 text-xs" title="Ajustar estoque">
-                            <TrendingUp size={14} className="text-green-400" />
+                            className="ds-icon-btn" title="Ajustar estoque">
+                            <TrendingUp size={14} style={{ color: 'var(--color-success)' }} />
                           </button>
-                          <button onClick={() => openEdit(p)} className="btn-ghost p-1.5" title="Editar">
-                            <Edit2 size={14} className="text-muted" />
+                          <button onClick={() => openEdit(p)} className="ds-icon-btn" title="Editar">
+                            <Edit2 size={14} />
                           </button>
-                          <button onClick={() => handleDelete(p.id)} className="btn-ghost p-1.5" title="Excluir">
-                            <Trash2 size={14} className="text-red-400" />
+                          <button onClick={() => handleDelete(p.id)} className="ds-icon-btn" title="Excluir" style={{ color: 'var(--color-error)' }}>
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -194,82 +195,79 @@ export default function ProductsPage() {
       )}
 
       {/* Modal criar/editar produto */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-content">{editing ? 'Editar Produto' : 'Novo Produto'}</h3>
-              <button onClick={() => setShowForm(false)} className="text-muted hover:text-content"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div><label className="label">Nome</label><input className="input" value={form.name} onChange={set('name')} required /></div>
-              <div><label className="label">Descrição</label><input className="input" value={form.description} onChange={set('description')} /></div>
-              <div>
-                <label className="label">Categoria</label>
-                <select className="input" value={form.categoryId} onChange={set('categoryId')}>
-                  <option value="">-- Selecionar --</option>
-                  {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Preço de venda</label><input type="number" step="0.01" min="0" className="input" value={form.salePrice} onChange={set('salePrice')} required /></div>
-                <div><label className="label">Preço de custo</label><input type="number" step="0.01" min="0" className="input" value={form.costPrice} onChange={set('costPrice')} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {!editing && (
-                  <div><label className="label">Estoque inicial</label><input type="number" min="0" className="input" value={form.initialStock} onChange={set('initialStock')} /></div>
-                )}
-                <div><label className="label">Alerta mínimo</label><input type="number" min="0" className="input" value={form.minStockAlert} onChange={set('minStockAlert')} /></div>
-              </div>
-              <div><label className="label">SKU</label><input className="input" value={form.sku} onChange={set('sku')} placeholder="Código interno" /></div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={createProduct.isPending || updateProduct.isPending} className="btn-primary flex-1">
-                  {(createProduct.isPending || updateProduct.isPending) && <Loader2 size={16} className="animate-spin" />}
-                  {editing ? 'Salvar' : 'Criar'}
-                </button>
-              </div>
-            </form>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar Produto' : 'Novo Produto'} panelClassName="max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={set('name')} required /></div>
+          <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={set('description')} /></div>
+          <div className="ds-field">
+            <label className="ds-label">Categoria</label>
+            <select className="ds-input" value={form.categoryId} onChange={set('categoryId')}>
+              <option value="">-- Selecionar --</option>
+              {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="ds-field"><label className="ds-label">Preço de venda</label><input type="number" step="0.01" min="0" className="ds-input" value={form.salePrice} onChange={set('salePrice')} required /></div>
+            <div className="ds-field"><label className="ds-label">Preço de custo</label><input type="number" step="0.01" min="0" className="ds-input" value={form.costPrice} onChange={set('costPrice')} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {!editing && (
+              <div className="ds-field"><label className="ds-label">Estoque inicial</label><input type="number" min="0" className="ds-input" value={form.initialStock} onChange={set('initialStock')} /></div>
+            )}
+            <div className="ds-field"><label className="ds-label">Alerta mínimo</label><input type="number" min="0" className="ds-input" value={form.minStockAlert} onChange={set('minStockAlert')} /></div>
+          </div>
+          <div className="ds-field"><label className="ds-label">SKU</label><input className="ds-input" value={form.sku} onChange={set('sku')} placeholder="Código interno" /></div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" loading={createProduct.isPending || updateProduct.isPending}>{editing ? 'Salvar' : 'Criar'}</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Modal ajuste de estoque */}
-      {stockProduct && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setStockProduct(null)}>
-          <div className="card w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-content">Ajustar Estoque</h3>
-              <button onClick={() => setStockProduct(null)} className="text-muted hover:text-content"><X size={20} /></button>
-            </div>
-            <p className="text-accent font-medium mb-1">{stockProduct.name}</p>
-            <p className="text-sm text-muted mb-4">Estoque atual: <span className="text-content font-bold">{stockProduct.stockQuantity}</span></p>
+      <Modal isOpen={!!stockProduct} onClose={() => setStockProduct(null)} title="Ajustar Estoque">
+        {stockProduct && (
+          <>
+            <p className="ds-text-accent font-medium mb-1">{stockProduct.name}</p>
+            <p className="ds-text-secondary mb-4" style={{ fontSize: 'var(--text-sm)' }}>Estoque atual: <span className="ds-text-primary font-bold">{stockProduct.stockQuantity}</span></p>
             <form onSubmit={handleStock} className="space-y-4">
-              <div>
-                <label className="label">Tipo</label>
+              <div className="ds-field">
+                <label className="ds-label">Tipo</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setStockDir('entry')}
-                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors ${stockDir === 'entry' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-border text-muted'}`}>
+                    className="flex items-center justify-center gap-2 font-medium"
+                    style={{
+                      padding: '10px 0', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)',
+                      border: `1px solid ${stockDir === 'entry' ? 'var(--color-success)' : 'var(--border-default)'}`,
+                      background: stockDir === 'entry' ? 'rgba(76,175,125,0.1)' : 'transparent',
+                      color: stockDir === 'entry' ? 'var(--color-success)' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}>
                     <TrendingUp size={14} /> Entrada
                   </button>
                   <button type="button" onClick={() => setStockDir('exit')}
-                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-colors ${stockDir === 'exit' ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-border text-muted'}`}>
+                    className="flex items-center justify-center gap-2 font-medium"
+                    style={{
+                      padding: '10px 0', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)',
+                      border: `1px solid ${stockDir === 'exit' ? 'var(--color-error)' : 'var(--border-default)'}`,
+                      background: stockDir === 'exit' ? 'rgba(224,92,92,0.1)' : 'transparent',
+                      color: stockDir === 'exit' ? 'var(--color-error)' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}>
                     <TrendingDown size={14} /> Saída
                   </button>
                 </div>
               </div>
-              <div><label className="label">Quantidade</label><input type="number" min="1" className="input" value={stockQty} onChange={e => setStockQty(e.target.value)} required autoFocus /></div>
-              <div><label className="label">Motivo (opcional)</label><input className="input" value={stockReason} onChange={e => setStockReason(e.target.value)} placeholder="Ex: compra de fornecedor" /></div>
+              <div className="ds-field"><label className="ds-label">Quantidade</label><input type="number" min="1" className="ds-input" value={stockQty} onChange={e => setStockQty(e.target.value)} required autoFocus /></div>
+              <div className="ds-field"><label className="ds-label">Motivo (opcional)</label><input className="ds-input" value={stockReason} onChange={e => setStockReason(e.target.value)} placeholder="Ex: compra de fornecedor" /></div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setStockProduct(null)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={adjustStock.isPending} className="btn-primary flex-1">
-                  {adjustStock.isPending && <Loader2 size={16} className="animate-spin" />} Confirmar
-                </button>
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setStockProduct(null)}>Cancelar</Button>
+                <Button type="submit" className="flex-1" loading={adjustStock.isPending}>Confirmar</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

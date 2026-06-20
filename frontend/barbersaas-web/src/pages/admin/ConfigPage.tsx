@@ -3,6 +3,8 @@ import { Loader2, Save, Upload, X, Image as ImageIcon, Palette, Store, CalendarC
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import toast from 'react-hot-toast'
 
 interface SettingsForm {
@@ -53,29 +55,29 @@ function ImageField({ label, hint, value, onChange, tall }: {
     finally { setBusy(false) }
   }
 
+  const boxStyle: React.CSSProperties = { width: '100%', height: tall ? 144 : 112, borderRadius: 'var(--radius-md)' }
+
   return (
-    <div>
-      <label className="label">{label}</label>
+    <div className="ds-field">
+      <label className="ds-label">{label}</label>
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onFile} />
       {value ? (
         <div className="relative group">
-          <img src={value} alt={label}
-            className={`w-full ${tall ? 'h-36' : 'h-28'} object-cover rounded-xl border border-border bg-surfaceHover`} />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-            <button type="button" onClick={pick} disabled={busy} className="btn-secondary text-xs px-3 py-1.5">
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Trocar
-            </button>
-            <button type="button" onClick={() => onChange('')} className="btn-danger text-xs px-3 py-1.5"><X size={13} /> Remover</button>
+          <img src={value} alt={label} style={{ ...boxStyle, objectFit: 'cover', border: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }} />
+          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-md)' }}>
+            <Button type="button" variant="ghost" onClick={pick} loading={busy} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}>{!busy && <Upload size={13} />} Trocar</Button>
+            <Button type="button" variant="danger" onClick={() => onChange('')} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}><X size={13} /> Remover</Button>
           </div>
         </div>
       ) : (
         <button type="button" onClick={pick} disabled={busy}
-          className={`w-full ${tall ? 'h-36' : 'h-28'} rounded-xl border-2 border-dashed border-border hover:border-accent/60 hover:bg-surfaceHover transition-colors flex flex-col items-center justify-center gap-1 text-subtle`}>
-          {busy ? <Loader2 size={20} className="animate-spin text-accent" /> : <ImageIcon size={22} />}
-          <span className="text-xs">{busy ? 'Enviando…' : 'Clique para enviar'}</span>
+          className="w-full flex flex-col items-center justify-center gap-1 transition-colors"
+          style={{ ...boxStyle, border: '2px dashed var(--border-default)', color: 'var(--text-disabled)', background: 'none', cursor: 'pointer' }}>
+          {busy ? <Loader2 size={20} className="animate-spin" style={{ color: 'var(--accent)' }} /> : <ImageIcon size={22} />}
+          <span style={{ fontSize: 'var(--text-xs)' }}>{busy ? 'Enviando…' : 'Clique para enviar'}</span>
         </button>
       )}
-      {hint && <p className="text-xs text-subtle mt-1.5">{hint}</p>}
+      {hint && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{hint}</p>}
     </div>
   )
 }
@@ -84,16 +86,16 @@ function SectionCard({ icon: Icon, title, desc, children }: {
   icon: any; title: string; desc?: string; children: React.ReactNode
 }) {
   return (
-    <section className="card space-y-5">
-      <div className="flex items-start gap-3 border-b border-border pb-4">
-        <div className="w-9 h-9 rounded-xl bg-accent/15 text-accent flex items-center justify-center flex-shrink-0"><Icon size={18} /></div>
+    <Card className="space-y-5" style={{ padding: 'var(--space-6)' }}>
+      <div className="flex items-start gap-3 pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 36, height: 36 }}><Icon size={18} /></div>
         <div>
-          <h3 className="font-semibold text-content">{title}</h3>
-          {desc && <p className="text-xs text-subtle mt-0.5">{desc}</p>}
+          <h3 className="ds-section-title">{title}</h3>
+          {desc && <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{desc}</p>}
         </div>
       </div>
       {children}
-    </section>
+    </Card>
   )
 }
 
@@ -103,14 +105,14 @@ function ColorField({ label, hint, value, fallback, onChange }: {
 }) {
   const v = value || fallback
   return (
-    <div className="rounded-xl border border-border p-3 flex items-center gap-3">
+    <div className="flex items-center gap-3" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
       <input type="color" value={v} onChange={e => onChange(e.target.value)}
-        className="w-11 h-11 rounded-lg cursor-pointer bg-transparent flex-shrink-0" aria-label={label} />
+        className="cursor-pointer flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'transparent' }} aria-label={label} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-content">{label}</p>
-        <p className="text-xs text-subtle">{hint}</p>
+        <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{label}</p>
+        <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{hint}</p>
       </div>
-      <span className="text-xs font-mono text-muted uppercase flex-shrink-0">{v}</span>
+      <span className="ds-text-secondary uppercase flex-shrink-0" style={{ fontSize: 'var(--text-xs)', fontFamily: 'monospace' }}>{v}</span>
     </div>
   )
 }
@@ -121,24 +123,23 @@ function ThemePreview({ brand, hero, logoUrl, name }: {
 }) {
   const fg = fgFor(brand)
   return (
-    <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+    <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
       <div className="h-24 flex flex-col items-center justify-center gap-1.5"
-        style={{ background: `linear-gradient(to bottom, ${hero}, rgb(var(--surface)))` }}>
+        style={{ background: `linear-gradient(to bottom, ${hero}, var(--bg-elevated))` }}>
         {logoUrl
-          ? <img src={logoUrl} alt="" className="w-10 h-10 rounded-xl object-cover border-2" style={{ borderColor: `${brand}80` }} />
-          : <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: brand }}>
+          ? <img src={logoUrl} alt="" className="w-10 h-10 object-cover" style={{ borderRadius: 'var(--radius-md)', border: `2px solid ${brand}80` }} />
+          : <div className="w-10 h-10 flex items-center justify-center" style={{ borderRadius: 'var(--radius-md)', background: brand }}>
               <Scissors size={18} style={{ color: fg }} />
             </div>}
-        <span className="text-sm font-bold text-content drop-shadow">{name || 'Sua Barbearia'}</span>
+        <span className="font-bold drop-shadow" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{name || 'Sua Barbearia'}</span>
       </div>
-      <div className="p-4 flex items-center gap-3 flex-wrap bg-surface">
-        <button type="button" className="rounded-xl px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5"
-          style={{ background: brand, color: fg }}>
+      <div className="p-4 flex items-center gap-3 flex-wrap" style={{ background: 'var(--bg-subtle)' }}>
+        <button type="button" className="inline-flex items-center gap-1.5 font-semibold"
+          style={{ borderRadius: 'var(--radius-md)', padding: '8px var(--space-4)', fontSize: 'var(--text-sm)', background: brand, color: fg, border: 'none', cursor: 'default' }}>
           <Check size={14} /> Agendar
         </button>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full border"
-          style={{ color: brand, borderColor: `${brand}66`, background: `${brand}1a` }}>Destaque</span>
-        <span className="text-sm font-semibold" style={{ color: brand }}>Ver mais →</span>
+        <span className="font-medium" style={{ fontSize: 'var(--text-xs)', padding: '4px var(--space-3)', borderRadius: 'var(--radius-full)', border: `1px solid ${brand}66`, background: `${brand}1a`, color: brand }}>Destaque</span>
+        <span className="font-semibold" style={{ fontSize: 'var(--text-sm)', color: brand }}>Ver mais →</span>
       </div>
     </div>
   )
@@ -175,7 +176,7 @@ export default function ConfigPage() {
   const setVal = (k: keyof SettingsForm, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   if (isLoading)
-    return <div className="flex justify-center py-20"><Loader2 size={28} className="animate-spin text-accent" /></div>
+    return <div className="flex justify-center py-20"><Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
 
   const brand = form.secondaryColor || '#c9a84c'
   const hero  = form.primaryColor   || '#1a1a1a'
@@ -185,13 +186,13 @@ export default function ConfigPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold text-content">Configurações</h2>
-          <p className="text-sm text-muted mt-0.5">Identidade, aparência e regras de agendamento da sua barbearia.</p>
+          <h2 className="ds-page-title">Configurações</h2>
+          <p className="ds-page-sub">Identidade, aparência e regras de agendamento da sua barbearia.</p>
         </div>
-        <button onClick={() => update.mutate()} disabled={update.isPending} className="btn-primary">
-          {update.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+        <Button onClick={() => update.mutate()} loading={update.isPending}>
+          {!update.isPending && <Save size={16} />}
           {update.isPending ? 'Salvando…' : 'Salvar alterações'}
-        </button>
+        </Button>
       </div>
 
       {/* Aparência */}
@@ -202,12 +203,12 @@ export default function ConfigPage() {
               value={form.secondaryColor} fallback="#c9a84c" onChange={v => setVal('secondaryColor', v)} />
             <ColorField label="Cor do topo" hint="Fundo do banner da página pública."
               value={form.primaryColor} fallback="#1a1a1a" onChange={v => setVal('primaryColor', v)} />
-            <p className="text-xs text-subtle flex items-center gap-1.5">
-              <Check size={13} className="text-accent" /> O contraste do texto se ajusta sozinho para manter a leitura.
+            <p className="ds-text-disabled flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)' }}>
+              <Check size={13} style={{ color: 'var(--accent)' }} /> O contraste do texto se ajusta sozinho para manter a leitura.
             </p>
           </div>
           <div>
-            <p className="label">Prévia ao vivo</p>
+            <p className="ds-label mb-2">Prévia ao vivo</p>
             <ThemePreview brand={brand} hero={hero} logoUrl={form.logoUrl} name={form.businessName} />
           </div>
         </div>
@@ -223,25 +224,25 @@ export default function ConfigPage() {
 
       {/* Identidade */}
       <SectionCard icon={Store} title="Identidade" desc="Nome, contato e endereço — aparecem na página pública e nas mensagens.">
-        <div><label className="label">Nome</label><input className="input" value={form.businessName ?? ''} onChange={set('businessName')} /></div>
-        <div><label className="label">Descrição</label><textarea className="input resize-none h-20" value={form.description ?? ''} onChange={set('description')} /></div>
+        <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.businessName ?? ''} onChange={set('businessName')} /></div>
+        <div className="ds-field"><label className="ds-label">Descrição</label><textarea className="ds-input resize-none" style={{ height: 80, paddingTop: 8 }} value={form.description ?? ''} onChange={set('description')} /></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label className="label">Telefone</label><input className="input" value={form.phone ?? ''} onChange={set('phone')} placeholder="+5511999999999" /></div>
-          <div><label className="label">WhatsApp</label><input className="input" value={form.whatsAppNumber ?? ''} onChange={set('whatsAppNumber')} placeholder="+5511999999999" /></div>
+          <div className="ds-field"><label className="ds-label">Telefone</label><input className="ds-input" value={form.phone ?? ''} onChange={set('phone')} placeholder="+5511999999999" /></div>
+          <div className="ds-field"><label className="ds-label">WhatsApp</label><input className="ds-input" value={form.whatsAppNumber ?? ''} onChange={set('whatsAppNumber')} placeholder="+5511999999999" /></div>
         </div>
-        <div><label className="label">Instagram</label><input className="input" value={form.instagramUrl ?? ''} onChange={set('instagramUrl')} placeholder="https://instagram.com/sua_barbearia" /></div>
-        <div><label className="label">Endereço</label><input className="input" value={form.address ?? ''} onChange={set('address')} /></div>
+        <div className="ds-field"><label className="ds-label">Instagram</label><input className="ds-input" value={form.instagramUrl ?? ''} onChange={set('instagramUrl')} placeholder="https://instagram.com/sua_barbearia" /></div>
+        <div className="ds-field"><label className="ds-label">Endereço</label><input className="ds-input" value={form.address ?? ''} onChange={set('address')} /></div>
         <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2"><label className="label">Cidade</label><input className="input" value={form.city ?? ''} onChange={set('city')} /></div>
-          <div><label className="label">Estado</label><input className="input" value={form.state ?? ''} onChange={set('state')} placeholder="UF" /></div>
+          <div className="ds-field col-span-2"><label className="ds-label">Cidade</label><input className="ds-input" value={form.city ?? ''} onChange={set('city')} /></div>
+          <div className="ds-field"><label className="ds-label">Estado</label><input className="ds-input" value={form.state ?? ''} onChange={set('state')} placeholder="UF" /></div>
         </div>
       </SectionCard>
 
       {/* Agenda */}
       <SectionCard icon={CalendarClock} title="Agenda" desc="Como os clientes agendam online.">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label className="label">Intervalo entre horários (min)</label><input type="number" min={5} step={5} className="input" value={form.slotIntervalMinutes ?? 15} onChange={set('slotIntervalMinutes')} /></div>
-          <div><label className="label">Antecedência máxima (dias)</label><input type="number" min={1} className="input" value={form.maxAdvanceDays ?? 30} onChange={set('maxAdvanceDays')} /></div>
+          <div className="ds-field"><label className="ds-label">Intervalo entre horários (min)</label><input type="number" min={5} step={5} className="ds-input" value={form.slotIntervalMinutes ?? 15} onChange={set('slotIntervalMinutes')} /></div>
+          <div className="ds-field"><label className="ds-label">Antecedência máxima (dias)</label><input type="number" min={1} className="ds-input" value={form.maxAdvanceDays ?? 30} onChange={set('maxAdvanceDays')} /></div>
         </div>
         <Toggle label="Permitir agendamento online" desc="Clientes podem marcar pela página pública." checked={form.allowOnlineBooking ?? true} onChange={v => setVal('allowOnlineBooking', v)} />
         <Toggle label="Exigir confirmação manual" desc="Você aprova cada agendamento antes de confirmar." checked={form.requireConfirmation ?? false} onChange={v => setVal('requireConfirmation', v)} />
@@ -254,13 +255,14 @@ export default function ConfigPage() {
 function Toggle({ label, desc, checked, onChange }: { label: string; desc?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between gap-4 rounded-xl border border-border p-3 text-left hover:bg-surfaceHover transition-colors">
+      className="w-full flex items-center justify-between gap-4 text-left transition-colors"
+      style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', padding: 'var(--space-3)', background: 'none', cursor: 'pointer' }}>
       <div>
-        <p className="text-sm font-medium text-content">{label}</p>
-        {desc && <p className="text-xs text-subtle mt-0.5">{desc}</p>}
+        <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{label}</p>
+        {desc && <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{desc}</p>}
       </div>
-      <span className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors ${checked ? 'bg-accent' : 'bg-surfaceHover border border-border'}`}>
-        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
+      <span className="relative flex-shrink-0 transition-colors" style={{ width: 44, height: 24, borderRadius: 'var(--radius-full)', background: checked ? 'var(--tenant-primary)' : 'var(--bg-elevated)', border: checked ? 'none' : '1px solid var(--border-default)' }}>
+        <span className="absolute shadow transition-transform" style={{ top: 2, left: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transform: checked ? 'translateX(20px)' : 'none' }} />
       </span>
     </button>
   )

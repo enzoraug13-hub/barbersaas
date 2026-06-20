@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Search, Loader2, User, Phone, Star, Plus, X, Ban, CheckCircle } from 'lucide-react'
+import { Search, User, Phone, Star, Plus, Ban, CheckCircle } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
+import { Modal } from '../../components/ui/Modal'
 import { useClients, useCreateClient, useBlockClient, useUnblockClient } from '../../features/clients/clientsApi'
 import type { Client } from '../../types'
 import toast from 'react-hot-toast'
@@ -50,19 +53,17 @@ export default function ClientsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-content">Clientes</h2>
+        <h2 className="ds-page-title">Clientes</h2>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted">{clients?.length ?? 0} clientes</span>
-          <button onClick={() => setShowForm(true)} className="btn-primary">
-            <Plus size={18} /> Novo Cliente
-          </button>
+          <span className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{clients?.length ?? 0} clientes</span>
+          <Button onClick={() => setShowForm(true)}><Plus size={18} /> Novo Cliente</Button>
         </div>
       </div>
 
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
         <input
-          className="input pl-10"
+          className="ds-input pl-10"
           placeholder="Buscar por nome ou telefone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -73,61 +74,61 @@ export default function ClientsPage() {
         <ListSkeleton />
       ) : !clients?.length ? (
         <EmptyState icon={User} title="Nenhum cliente encontrado"
-          action={<button onClick={() => setShowForm(true)} className="btn-primary">Cadastrar cliente</button>} />
+          action={<Button onClick={() => setShowForm(true)}>Cadastrar cliente</Button>} />
       ) : (
-        <div className="card overflow-hidden p-0">
+        <div className="ds-table-wrap">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="ds-table">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-muted font-medium px-6 py-4">Cliente</th>
-                  <th className="text-left text-muted font-medium px-6 py-4 hidden sm:table-cell">Telefone</th>
-                  <th className="text-center text-muted font-medium px-4 py-4 hidden md:table-cell">Visitas</th>
-                  <th className="text-center text-muted font-medium px-4 py-4 hidden md:table-cell">Pontos</th>
-                  <th className="text-center text-muted font-medium px-4 py-4">Status</th>
-                  <th className="text-center text-muted font-medium px-4 py-4">Ações</th>
+                <tr>
+                  <th>Cliente</th>
+                  <th className="hidden sm:table-cell">Telefone</th>
+                  <th className="text-center hidden md:table-cell">Visitas</th>
+                  <th className="text-center hidden md:table-cell">Pontos</th>
+                  <th className="text-center">Status</th>
+                  <th className="text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {clients.map(c => (
-                  <tr key={c.id} className="hover:bg-surfaceHover/50 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={c.id}>
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-sm flex-shrink-0">
+                        <div className="ds-avatar flex items-center justify-center flex-shrink-0" style={{ width: 32, height: 32, borderRadius: '50%', fontSize: 'var(--text-sm)' }}>
                           {c.name[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-content">{c.name}</p>
-                          {c.email && <p className="text-xs text-subtle">{c.email}</p>}
-                          <p className="text-xs text-subtle sm:hidden">{c.phoneNumber}</p>
+                          <p className="ds-text-primary font-medium">{c.name}</p>
+                          {c.email && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{c.email}</p>}
+                          <p className="ds-text-disabled sm:hidden" style={{ fontSize: 'var(--text-xs)' }}>{c.phoneNumber}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-muted hidden sm:table-cell">
+                    <td className="ds-text-secondary hidden sm:table-cell">
                       <div className="flex items-center gap-1.5"><Phone size={13} />{c.phoneNumber}</div>
                     </td>
-                    <td className="px-4 py-4 text-center text-muted hidden md:table-cell">{c.totalVisits}</td>
-                    <td className="px-4 py-4 text-center hidden md:table-cell">
-                      <div className="flex items-center justify-center gap-1 text-accent">
+                    <td className="ds-text-secondary text-center hidden md:table-cell">{c.totalVisits}</td>
+                    <td className="text-center hidden md:table-cell">
+                      <div className="ds-text-accent flex items-center justify-center gap-1">
                         <Star size={13} />{c.loyaltyPoints}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="text-center">
                       {c.isBlocked
-                        ? <span className="badge-cancelled">Bloqueado</span>
-                        : <span className="badge-confirmed">Ativo</span>}
+                        ? <Badge variant="error">Bloqueado</Badge>
+                        : <Badge variant="info">Ativo</Badge>}
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="text-center">
                       {c.isBlocked ? (
-                        <button onClick={() => handleUnblock(c.id)} disabled={unblockClient.isPending}
-                          className="btn-ghost py-1 px-2 text-xs gap-1 text-green-400 hover:text-green-300">
+                        <Button variant="ghost" onClick={() => handleUnblock(c.id)} disabled={unblockClient.isPending}
+                          style={{ height: 28, padding: '0 var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
                           <CheckCircle size={13} /> Desbloquear
-                        </button>
+                        </Button>
                       ) : (
-                        <button onClick={() => { setBlock(c); setBlockReason('') }}
-                          className="btn-ghost py-1 px-2 text-xs gap-1 text-red-400 hover:text-red-300">
+                        <Button variant="ghost" onClick={() => { setBlock(c); setBlockReason('') }}
+                          style={{ height: 28, padding: '0 var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>
                           <Ban size={13} /> Bloquear
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -139,49 +140,36 @@ export default function ClientsPage() {
       )}
 
       {/* Modal novo cliente */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-content">Novo Cliente</h3>
-              <button onClick={() => setShowForm(false)} className="text-muted hover:text-content"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div><label className="label">Nome</label><input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
-              <div>
-                <label className="label">Telefone (formato internacional)</label>
-                <input className="input" placeholder="+5511999999999" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} required />
-              </div>
-              <div><label className="label">E-mail (opcional)</label><input type="email" className="input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} /></div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={createClient.isPending} className="btn-primary flex-1">
-                  {createClient.isPending && <Loader2 size={16} className="animate-spin" />} Cadastrar
-                </button>
-              </div>
-            </form>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Cliente">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
+          <div className="ds-field">
+            <label className="ds-label">Telefone (formato internacional)</label>
+            <input className="ds-input" placeholder="+5511999999999" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} required />
           </div>
-        </div>
-      )}
+          <div className="ds-field"><label className="ds-label">E-mail (opcional)</label><input type="email" className="ds-input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} /></div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" loading={createClient.isPending}>Cadastrar</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Modal bloquear */}
-      {blockTarget && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setBlock(null)}>
-          <div className="card w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-content mb-1">Bloquear Cliente</h3>
-            <p className="text-accent font-medium mb-4">{blockTarget.name}</p>
+      <Modal isOpen={!!blockTarget} onClose={() => setBlock(null)} title="Bloquear Cliente">
+        {blockTarget && (
+          <>
+            <p className="ds-text-accent font-medium mb-4">{blockTarget.name}</p>
             <form onSubmit={handleBlock} className="space-y-4">
-              <div><label className="label">Motivo</label><input className="input" value={blockReason} onChange={e => setBlockReason(e.target.value)} required autoFocus /></div>
+              <div className="ds-field"><label className="ds-label">Motivo</label><input className="ds-input" value={blockReason} onChange={e => setBlockReason(e.target.value)} required autoFocus /></div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setBlock(null)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={blockClient.isPending} className="btn-danger flex-1">
-                  {blockClient.isPending && <Loader2 size={16} className="animate-spin" />} Bloquear
-                </button>
+                <Button type="button" variant="ghost" className="flex-1" onClick={() => setBlock(null)}>Cancelar</Button>
+                <Button type="submit" variant="danger" className="flex-1" loading={blockClient.isPending}>Bloquear</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

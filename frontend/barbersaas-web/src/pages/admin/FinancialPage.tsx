@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { Plus, TrendingUp, TrendingDown } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
+import { Modal } from '../../components/ui/Modal'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
@@ -54,21 +58,21 @@ export default function FinancialPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-content">Financeiro</h2>
+        <h2 className="ds-page-title">Financeiro</h2>
         <div className="flex items-center gap-3 flex-wrap">
-          <input type="date" className="input w-auto" value={start} onChange={e => setStart(e.target.value)} />
-          <span className="text-subtle">→</span>
-          <input type="date" className="input w-auto" value={end} onChange={e => setEnd(e.target.value)} />
-          <button onClick={() => setShowForm(true)} className="btn-primary"><Plus size={18} /> Lançamento</button>
+          <input type="date" className="ds-input w-auto" value={start} onChange={e => setStart(e.target.value)} />
+          <span className="ds-text-disabled">→</span>
+          <input type="date" className="ds-input w-auto" value={end} onChange={e => setEnd(e.target.value)} />
+          <Button onClick={() => setShowForm(true)}><Plus size={18} /> Lançamento</Button>
         </div>
       </div>
 
       {/* Resumo */}
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card"><p className="text-muted text-sm">Receitas</p><p className="text-2xl font-bold text-green-400 mt-1">{fmt(summary.revenue)}</p></div>
-          <div className="card"><p className="text-muted text-sm">Despesas</p><p className="text-2xl font-bold text-red-400 mt-1">{fmt(summary.expense)}</p></div>
-          <div className="card"><p className="text-muted text-sm">Lucro</p><p className={`text-2xl font-bold mt-1 ${summary.netProfit >= 0 ? 'text-accent' : 'text-red-400'}`}>{fmt(summary.netProfit)}</p></div>
+          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Receitas</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(summary.revenue)}</p></Card>
+          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Despesas</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-error)' }}>{fmt(summary.expense)}</p></Card>
+          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Lucro</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: summary.netProfit >= 0 ? 'var(--accent)' : 'var(--color-error)' }}>{fmt(summary.netProfit)}</p></Card>
         </div>
       )}
 
@@ -78,33 +82,33 @@ export default function FinancialPage() {
       ) : !transactions?.length ? (
         <EmptyState icon={TrendingUp} title="Nenhuma transação ainda" hint="Lance receitas e despesas para acompanhar o financeiro." />
       ) : (
-        <div className="card overflow-hidden p-0">
+        <div className="ds-table-wrap">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="ds-table">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-muted font-medium px-6 py-4">Descrição</th>
-                  <th className="text-left text-muted font-medium px-6 py-4 hidden sm:table-cell">Categoria</th>
-                  <th className="text-right text-muted font-medium px-6 py-4">Valor</th>
-                  <th className="text-center text-muted font-medium px-6 py-4 hidden md:table-cell">Status</th>
+                <tr>
+                  <th>Descrição</th>
+                  <th className="hidden sm:table-cell">Categoria</th>
+                  <th className="text-right">Valor</th>
+                  <th className="text-center hidden md:table-cell">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {transactions?.map(t => (
-                  <tr key={t.id} className="hover:bg-surfaceHover/50">
-                    <td className="px-6 py-4">
+                  <tr key={t.id}>
+                    <td>
                       <div className="flex items-center gap-2">
-                        {t.type === 'Revenue' ? <TrendingUp size={14} className="text-green-400 flex-shrink-0" /> : <TrendingDown size={14} className="text-red-400 flex-shrink-0" />}
-                        <span className="text-content font-medium truncate">{t.description}</span>
+                        {t.type === 'Revenue' ? <TrendingUp size={14} style={{ color: 'var(--color-success)' }} className="flex-shrink-0" /> : <TrendingDown size={14} style={{ color: 'var(--color-error)' }} className="flex-shrink-0" />}
+                        <span className="ds-text-primary font-medium truncate">{t.description}</span>
                       </div>
-                      <span className="text-xs text-subtle sm:hidden">{categories[+t.category] ?? t.category}</span>
+                      <span className="ds-text-disabled sm:hidden" style={{ fontSize: 'var(--text-xs)' }}>{categories[+t.category] ?? t.category}</span>
                     </td>
-                    <td className="px-6 py-4 text-muted hidden sm:table-cell">{categories[+t.category] ?? t.category}</td>
-                    <td className={`px-6 py-4 text-right font-semibold ${t.type === 'Revenue' ? 'text-green-400' : 'text-red-400'}`}>{fmt(t.amount)}</td>
-                    <td className="px-6 py-4 text-center hidden md:table-cell">
-                      <span className={t.status === 'Paid' ? 'badge-completed' : t.status === 'Partial' ? 'badge-confirmed' : 'badge-pending'}>
+                    <td className="ds-text-secondary hidden sm:table-cell">{categories[+t.category] ?? t.category}</td>
+                    <td className="text-right font-semibold" style={{ color: t.type === 'Revenue' ? 'var(--color-success)' : 'var(--color-error)' }}>{fmt(t.amount)}</td>
+                    <td className="text-center hidden md:table-cell">
+                      <Badge variant={t.status === 'Paid' ? 'success' : t.status === 'Partial' ? 'info' : 'warning'}>
                         {t.status === 'Paid' ? 'Pago' : t.status === 'Partial' ? 'Parcial' : 'Pendente'}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
@@ -115,37 +119,32 @@ export default function FinancialPage() {
       )}
 
       {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-content mb-4">Novo Lançamento</h3>
-            <form onSubmit={e => { e.preventDefault(); create.mutate() }} className="space-y-4">
-              <div>
-                <label className="label">Tipo</label>
-                <select className="input" value={form.type} onChange={set('type')}>
-                  <option value={0}>Receita</option>
-                  <option value={1}>Despesa</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Categoria</label>
-                <select className="input" value={form.category} onChange={set('category')}>
-                  {categories.map((c, i) => <option key={i} value={i}>{c}</option>)}
-                </select>
-              </div>
-              <div><label className="label">Descrição</label><input className="input" value={form.description} onChange={set('description')} required /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Valor (R$)</label><input type="number" step="0.01" className="input" value={form.amount} onChange={set('amount')} required /></div>
-                <div><label className="label">Data</label><input type="date" className="input" value={form.dueDate} onChange={set('dueDate')} required /></div>
-              </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={create.isPending} className="btn-primary flex-1">Criar</button>
-              </div>
-            </form>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Lançamento">
+        <form onSubmit={e => { e.preventDefault(); create.mutate() }} className="space-y-4">
+          <div className="ds-field">
+            <label className="ds-label">Tipo</label>
+            <select className="ds-input" value={form.type} onChange={set('type')}>
+              <option value={0}>Receita</option>
+              <option value={1}>Despesa</option>
+            </select>
           </div>
-        </div>
-      )}
+          <div className="ds-field">
+            <label className="ds-label">Categoria</label>
+            <select className="ds-input" value={form.category} onChange={set('category')}>
+              {categories.map((c, i) => <option key={i} value={i}>{c}</option>)}
+            </select>
+          </div>
+          <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={set('description')} required /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="ds-field"><label className="ds-label">Valor (R$)</label><input type="number" step="0.01" className="ds-input" value={form.amount} onChange={set('amount')} required /></div>
+            <div className="ds-field"><label className="ds-label">Data</label><input type="date" className="ds-input" value={form.dueDate} onChange={set('dueDate')} required /></div>
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" loading={create.isPending}>Criar</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

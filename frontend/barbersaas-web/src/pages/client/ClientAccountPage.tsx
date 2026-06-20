@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Scissors, Loader2, Phone, ChevronLeft, LogOut, Calendar, Star, CheckCircle, ArrowRight, User, IdCard, ShieldAlert } from 'lucide-react'
+import { Scissors, Phone, ChevronLeft, LogOut, Calendar, Star, CheckCircle, ArrowRight, User, IdCard, ShieldAlert } from 'lucide-react'
 import { publicApi } from '../../lib/api'
 import { clientApi } from '../../lib/clientApi'
 import { useClientAuthStore } from '../../store/clientAuthStore'
 import { applyTenantTheme } from '../../lib/theme-tenant'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -15,8 +17,8 @@ const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 const statusLabel: Record<string, string> = {
   Pending: 'Pendente', Confirmed: 'Confirmado', Completed: 'Concluído', Cancelled: 'Cancelado', NoShow: 'Não compareceu',
 }
-const statusBadge: Record<string, string> = {
-  Pending: 'badge-pending', Confirmed: 'badge-confirmed', Completed: 'badge-completed', Cancelled: 'badge-cancelled', NoShow: 'badge-cancelled',
+const statusVariant: Record<string, 'warning' | 'info' | 'success' | 'error'> = {
+  Pending: 'warning', Confirmed: 'info', Completed: 'success', Cancelled: 'error', NoShow: 'error',
 }
 
 export default function ClientAccountPage() {
@@ -32,13 +34,13 @@ export default function ClientAccountPage() {
   useEffect(() => { if (info) applyTenantTheme(info) }, [info])
 
   return (
-    <div className="min-h-screen bg-app flex flex-col">
-      <header className="h-16 border-b border-border flex items-center justify-between px-4 max-w-lg w-full mx-auto">
-        <Link to={`/b/${slug}`} className="flex items-center gap-1.5 text-muted hover:text-content text-sm transition-colors">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
+      <header className="h-16 flex items-center justify-between px-4 max-w-lg w-full mx-auto" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <Link to={`/b/${slug}`} className="flex items-center gap-1.5 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
           <ChevronLeft size={16} /> {info?.businessName ?? 'Voltar'}
         </Link>
         {loggedIn && (
-          <button onClick={logout} className="flex items-center gap-1.5 text-muted hover:text-danger text-sm transition-colors">
+          <button onClick={logout} className="flex items-center gap-1.5 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}>
             <LogOut size={15} /> Sair
           </button>
         )}
@@ -112,17 +114,17 @@ function Login({ slug, businessPhone, onAuth }: { slug: string; businessPhone?: 
     return (
       <div>
         <div className="flex flex-col items-center text-center mb-8 animate-slide-up">
-          <div className="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mb-4 animate-scale-in"><Scissors size={26} className="text-accentFg" /></div>
-          <h1 className="text-xl font-bold text-content">Minha conta</h1>
+          <div className="w-14 h-14 flex items-center justify-center mb-4 animate-scale-in" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}><Scissors size={26} style={{ color: 'var(--bg-base)' }} /></div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-xl)', color: 'var(--text-primary)' }}>Minha conta</h1>
         </div>
-        <div className="card text-center py-8 space-y-3 animate-fade-in">
-          <ShieldAlert size={36} className="mx-auto text-danger" />
-          <p className="text-content font-semibold">Conta bloqueada</p>
-          <p className="text-muted text-sm">{blocked}</p>
-          {businessPhone && <p className="text-subtle text-sm">Contato: {businessPhone}</p>}
-          <button onClick={() => setBlocked(null)} className="btn-secondary mt-2">
+        <div className="ds-card text-center py-8 space-y-3 animate-fade-in">
+          <ShieldAlert size={36} className="mx-auto" style={{ color: 'var(--color-error)' }} />
+          <p className="ds-text-primary font-semibold">Conta bloqueada</p>
+          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{blocked}</p>
+          {businessPhone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>Contato: {businessPhone}</p>}
+          <Button variant="ghost" onClick={() => setBlocked(null)} className="mt-2">
             <ChevronLeft size={15} /> Voltar
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -131,71 +133,69 @@ function Login({ slug, businessPhone, onAuth }: { slug: string; businessPhone?: 
   return (
     <div>
       <div className="flex flex-col items-center text-center mb-8 animate-slide-up">
-        <div className="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mb-4 animate-scale-in"><Scissors size={26} className="text-accentFg" /></div>
-        <h1 className="text-xl font-bold text-content">Minha conta</h1>
-        <p className="text-muted text-sm mt-1">
+        <div className="w-14 h-14 flex items-center justify-center mb-4 animate-scale-in" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}><Scissors size={26} style={{ color: 'var(--bg-base)' }} /></div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-xl)', color: 'var(--text-primary)' }}>Minha conta</h1>
+        <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)' }}>
           {mode === 'login' ? 'Entre com seu telefone para ver seus agendamentos.' : 'Crie sua conta para acompanhar seus agendamentos.'}
         </p>
       </div>
 
-      <div key={`${mode}-${step}`} className="card space-y-4 animate-fade-in">
+      <div key={`${mode}-${step}`} className="ds-card space-y-4 animate-fade-in">
         {step === 'form' ? (
           <>
             {mode === 'register' && (
-              <div>
-                <label className="label">Nome</label>
+              <div className="ds-field">
+                <label className="ds-label">Nome</label>
                 <div className="relative">
-                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
-                  <input className="input pl-10" placeholder="Seu nome" value={name}
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
+                  <input className="ds-input pl-10" placeholder="Seu nome" value={name}
                     onChange={e => setName(e.target.value)} autoFocus />
                 </div>
               </div>
             )}
-            <div>
-              <label className="label">Telefone (WhatsApp)</label>
+            <div className="ds-field">
+              <label className="ds-label">Telefone (WhatsApp)</label>
               <div className="relative">
-                <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
-                <input className="input pl-10" type="tel" placeholder="+5511999999999" value={phone}
+                <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
+                <input className="ds-input pl-10" type="tel" placeholder="+5511999999999" value={phone}
                   onChange={e => setPhone(e.target.value)} onKeyDown={e => e.key === 'Enter' && requestCode()}
                   autoFocus={mode === 'login'} />
               </div>
             </div>
             {mode === 'register' && (
-              <div>
-                <label className="label">CPF</label>
+              <div className="ds-field">
+                <label className="ds-label">CPF</label>
                 <div className="relative">
-                  <IdCard size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
-                  <input className="input pl-10" inputMode="numeric" maxLength={14} placeholder="000.000.000-00" value={cpf}
+                  <IdCard size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
+                  <input className="ds-input pl-10" inputMode="numeric" maxLength={14} placeholder="000.000.000-00" value={cpf}
                     onChange={e => setCpf(e.target.value)} onKeyDown={e => e.key === 'Enter' && requestCode()} />
                 </div>
               </div>
             )}
-            <button onClick={requestCode} disabled={busy} className="btn-primary w-full">
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+            <Button onClick={requestCode} loading={busy} className="w-full">
+              {!busy && <ArrowRight size={16} />}
               {mode === 'login' ? 'Enviar código' : 'Criar conta'}
-            </button>
-            <p className="text-center text-sm text-muted">
+            </Button>
+            <p className="text-center ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
               {mode === 'login' ? (
-                <>Primeira vez? <button onClick={() => switchMode('register')} className="text-accent hover:underline font-medium">Criar conta</button></>
+                <>Primeira vez? <button onClick={() => switchMode('register')} className="ds-text-accent font-medium hover:underline" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Criar conta</button></>
               ) : (
-                <>Já tem conta? <button onClick={() => switchMode('login')} className="text-accent hover:underline font-medium">Entrar</button></>
+                <>Já tem conta? <button onClick={() => switchMode('login')} className="ds-text-accent font-medium hover:underline" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Entrar</button></>
               )}
             </p>
           </>
         ) : (
           <>
-            <button onClick={() => setStep('form')} className="flex items-center gap-1 text-muted hover:text-content text-sm transition-colors">
+            <button onClick={() => setStep('form')} className="flex items-center gap-1 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}>
               <ChevronLeft size={15} /> Voltar
             </button>
-            <div>
-              <label className="label">Código de 6 dígitos</label>
-              <input className="input text-center text-lg tracking-[0.4em] font-semibold" inputMode="numeric" maxLength={6}
+            <div className="ds-field">
+              <label className="ds-label">Código de 6 dígitos</label>
+              <input className="ds-input text-center font-semibold" style={{ fontSize: 'var(--text-lg)', letterSpacing: '0.4em' }} inputMode="numeric" maxLength={6}
                 placeholder="••••••" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={e => e.key === 'Enter' && verify()} autoFocus />
             </div>
-            <button onClick={verify} disabled={busy} className="btn-primary w-full">
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />} Entrar
-            </button>
+            <Button onClick={verify} loading={busy} className="w-full">{!busy && <CheckCircle size={16} />} Entrar</Button>
           </>
         )}
       </div>
@@ -217,54 +217,54 @@ function Account({ name, slug }: { name?: string; slug: string }) {
   return (
     <div className="space-y-6">
       {/* Perfil */}
-      <div className="card flex items-center gap-4 animate-slide-up">
-        <div className="w-14 h-14 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xl font-bold flex-shrink-0">
+      <div className="ds-card flex items-center gap-4 animate-slide-up">
+        <div className="ds-icon-chip ds-icon-chip-accent font-bold flex-shrink-0" style={{ width: 56, height: 56, borderRadius: '50%', fontSize: 'var(--text-xl)' }}>
           {(me?.name || name || '?')[0]?.toUpperCase()}
         </div>
         <div className="min-w-0">
-          <p className="font-bold text-content text-lg truncate">{me?.name || name || 'Cliente'}</p>
-          <p className="text-sm text-muted">{me?.phone}</p>
+          <p className="ds-text-primary font-bold truncate" style={{ fontSize: 'var(--text-lg)' }}>{me?.name || name || 'Cliente'}</p>
+          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{me?.phone}</p>
         </div>
         <div className="ml-auto text-right flex-shrink-0">
-          <div className="flex items-center gap-1 text-accent font-bold"><Star size={15} /> {me?.loyaltyPoints ?? 0}</div>
-          <p className="text-xs text-subtle">{me?.totalVisits ?? 0} visitas</p>
+          <div className="ds-text-accent flex items-center gap-1 font-bold"><Star size={15} /> {me?.loyaltyPoints ?? 0}</div>
+          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{me?.totalVisits ?? 0} visitas</p>
         </div>
       </div>
 
       {/* Agendamentos */}
       <div>
-        <h2 className="text-sm font-semibold text-muted mb-3 px-1">Meus agendamentos</h2>
+        <h2 className="ds-text-secondary font-semibold mb-3 px-1" style={{ fontSize: 'var(--text-sm)' }}>Meus agendamentos</h2>
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="card flex items-center gap-4">
-                <div className="skeleton w-14 h-12 flex-shrink-0" />
-                <div className="flex-1 space-y-2.5"><div className="skeleton h-4 w-1/2" /><div className="skeleton h-3 w-1/3" /></div>
-                <div className="skeleton h-6 w-16 rounded-full flex-shrink-0" />
+              <div key={i} className="ds-card flex items-center gap-4">
+                <div className="ds-shimmer w-14 h-12 flex-shrink-0" style={{ borderRadius: 'var(--radius-md)' }} />
+                <div className="flex-1 space-y-2.5"><div className="ds-shimmer h-4 w-1/2" style={{ borderRadius: 'var(--radius-sm)' }} /><div className="ds-shimmer h-3 w-1/3" style={{ borderRadius: 'var(--radius-sm)' }} /></div>
+                <div className="ds-shimmer h-6 w-16 flex-shrink-0" style={{ borderRadius: 'var(--radius-full)' }} />
               </div>
             ))}
           </div>
         ) : !appts?.length ? (
-          <div className="card text-center py-10 animate-fade-in">
-            <Calendar size={36} className="mx-auto text-subtle mb-3" />
-            <p className="text-muted text-sm">Você ainda não tem agendamentos.</p>
-            <Link to={`/b/${slug}`} className="btn-primary mt-5 inline-flex"><Calendar size={15} /> Agendar agora</Link>
+          <div className="ds-card text-center py-10 animate-fade-in">
+            <Calendar size={36} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
+            <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Você ainda não tem agendamentos.</p>
+            <Link to={`/b/${slug}`}><Button className="mt-5"><Calendar size={15} /> Agendar agora</Button></Link>
           </div>
         ) : (
           <div className="space-y-3">
             {appts.map((a, i) => (
-              <div key={a.id} style={{ animationDelay: `${i * 50}ms` }} className="card flex items-center gap-4 animate-slide-up transition-colors hover:border-accent/40">
+              <div key={a.id} style={{ animationDelay: `${i * 50}ms` }} className="ds-card ds-card-interactive flex items-center gap-4 animate-slide-up">
                 <div className="text-center w-14 flex-shrink-0">
-                  <p className="text-xs text-subtle capitalize">{format(parseISO(a.date), 'MMM', { locale: ptBR })}</p>
-                  <p className="text-xl font-bold text-content leading-none">{format(parseISO(a.date), 'dd')}</p>
+                  <p className="ds-text-disabled capitalize" style={{ fontSize: 'var(--text-xs)' }}>{format(parseISO(a.date), 'MMM', { locale: ptBR })}</p>
+                  <p className="ds-text-primary font-bold leading-none" style={{ fontSize: 'var(--text-xl)' }}>{format(parseISO(a.date), 'dd')}</p>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-content truncate">{a.service}</p>
-                  <p className="text-sm text-muted">{a.barber} · {a.startTime?.slice(0, 5)}</p>
+                  <p className="ds-text-primary font-semibold truncate">{a.service}</p>
+                  <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{a.barber} · {a.startTime?.slice(0, 5)}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <span className={statusBadge[a.status] ?? 'badge-pending'}>{statusLabel[a.status] ?? a.status}</span>
-                  <p className="text-sm font-semibold text-content mt-1.5">{fmt(a.finalPrice)}</p>
+                  <Badge variant={statusVariant[a.status] ?? 'warning'}>{statusLabel[a.status] ?? a.status}</Badge>
+                  <p className="ds-text-primary font-semibold mt-1.5" style={{ fontSize: 'var(--text-sm)' }}>{fmt(a.finalPrice)}</p>
                 </div>
               </div>
             ))}

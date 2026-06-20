@@ -39,17 +39,26 @@ export interface TenantColors {
   accentColor?: string
 }
 
+const toHex = ([r, g, b]: [number, number, number]) =>
+  '#' + [r, g, b].map(c => Math.round(c).toString(16).padStart(2, '0')).join('')
+
 export function applyTenantTheme(c: TenantColors) {
   const root = document.documentElement
   const isLight = root.getAttribute('data-theme') === 'light'
 
   const brand = hexToRgb(c.secondaryColor)
   if (brand) {
+    // Sistema antigo (Tailwind rgb(var(--x) / alpha)) — mantido para telas não migradas.
     root.style.setProperty('--accent', triplet(brand))
     // hover: escurece no tema claro, clareia no escuro
     root.style.setProperty('--accent-hover', triplet(shift(brand, isLight ? -0.12 : 0.15)))
     // contraste automático: texto preto sobre acentos claros, branco sobre escuros
     root.style.setProperty('--accent-fg', luminance(brand) > 0.5 ? '16 16 18' : '255 255 255')
+
+    // Sistema novo (tokens.css) — hex puro, consumido direto via var(--tenant-primary).
+    root.style.setProperty('--tenant-primary', toHex(brand))
+    root.style.setProperty('--tenant-primary-hover', toHex(shift(brand, 0.15)))
+    root.style.setProperty('--tenant-primary-soft', `rgba(${brand.join(',')},0.10)`)
   }
 
   // Cor do topo (capa) da página pública — exposta p/ quem quiser consumir.
@@ -58,6 +67,7 @@ export function applyTenantTheme(c: TenantColors) {
 
 export function resetTenantTheme() {
   const root = document.documentElement
-  ;['--accent', '--accent-hover', '--accent-fg', '--tenant-hero']
+  ;['--accent', '--accent-hover', '--accent-fg', '--tenant-hero',
+    '--tenant-primary', '--tenant-primary-hover', '--tenant-primary-soft']
     .forEach(v => root.style.removeProperty(v))
 }

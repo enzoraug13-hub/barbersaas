@@ -1,0 +1,208 @@
+/* ============================================================
+   Componentes base do novo design system. Namespace "ds-" para
+   não colidir com as classes antigas (.btn-primary, .card, .input…)
+   enquanto as telas são migradas uma por uma.
+   ============================================================ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .ds-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--bg-elevated) 0%,
+      var(--border-default) 50%,
+      var(--bg-elevated) 100%
+    );
+    background-size: 200% 100%;
+    animation: ds-shimmer 1.5s infinite;
+  }
+  @keyframes ds-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .ds-spin {
+    animation: ds-spin 0.6s linear infinite;
+  }
+  @keyframes ds-spin {
+    to { transform: rotate(360deg); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-shimmer { background: var(--bg-elevated); }
+}
+
+/* ---------------- Button ---------------- */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out, box-shadow 150ms ease-out;
+  position: relative;
+}
+.ds-btn:active:not(:disabled) { transform: scale(0.97); }
+.ds-btn:focus-visible { outline: none; box-shadow: var(--shadow-accent); }
+.ds-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ds-btn-primary {
+  background: var(--tenant-primary);
+  color: var(--bg-base);
+}
+.ds-btn-primary:hover:not(:disabled) { background: var(--tenant-primary-hover); transform: translateY(-1px); }
+
+.ds-btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.ds-btn-ghost:hover:not(:disabled) { background: var(--bg-elevated); transform: translateY(-1px); }
+
+.ds-btn-danger {
+  background: var(--color-error);
+  color: var(--text-primary);
+}
+.ds-btn-danger:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+
+.ds-btn-label { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ds-btn-loading .ds-btn-label { opacity: 0; }
+.ds-btn-spinner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+}
+
+/* ---------------- Input ---------------- */
+.ds-field { display: flex; flex-direction: column; gap: var(--space-2); }
+.ds-label { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-sm); color: var(--text-secondary); }
+.ds-input {
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.ds-input::placeholder { color: var(--text-disabled); }
+.ds-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--shadow-accent); }
+.ds-input-error { border-color: var(--color-error); }
+.ds-input-error:focus { border-color: var(--color-error); box-shadow: 0 0 0 3px rgba(224,92,92,0.25); }
+.ds-error-text { font-size: var(--text-xs); color: var(--color-error); }
+
+/* ---------------- Card ---------------- */
+.ds-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+}
+.ds-card-interactive {
+  cursor: pointer;
+  transition: border-color 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.ds-card-interactive:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* ---------------- Badge ---------------- */
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: var(--text-xs);
+}
+.ds-badge-default { background: var(--bg-elevated); color: var(--text-secondary); }
+.ds-badge-accent { background: var(--accent-soft); color: var(--accent); }
+.ds-badge-success { background: rgba(76,175,125,0.12); color: var(--color-success); }
+.ds-badge-error { background: rgba(224,92,92,0.12); color: var(--color-error); }
+.ds-badge-warning { background: rgba(224,160,48,0.12); color: var(--color-warning); }
+.ds-badge-info { background: rgba(91,155,213,0.12); color: var(--color-info); }
+
+/* ---------------- EmptyState ---------------- */
+.ds-empty-state { text-align: center; padding: var(--space-12) var(--space-6); }
+.ds-empty-icon { color: var(--text-secondary); margin: 0 auto var(--space-3); display: flex; justify-content: center; }
+.ds-empty-title { font-family: var(--font-display); font-size: var(--text-lg); color: var(--text-primary); }
+.ds-empty-desc { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--space-1); }
+.ds-empty-action { margin-top: var(--space-6); display: flex; justify-content: center; }
+
+/* ---------------- Page header / texto utilitário ---------------- */
+.ds-page-title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-2xl); color: var(--text-primary); }
+.ds-page-sub { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--text-secondary); margin-top: 2px; }
+.ds-section-title { font-family: var(--font-ui); font-weight: 600; font-size: var(--text-base); color: var(--text-primary); }
+.ds-text-primary { color: var(--text-primary); }
+.ds-text-secondary { color: var(--text-secondary); }
+.ds-text-disabled { color: var(--text-disabled); }
+.ds-text-accent { color: var(--accent); }
+.ds-divider { border-color: var(--border-subtle); }
+
+/* ---------------- Ícone em "chip" (KPIs, listas) ---------------- */
+.ds-icon-chip {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ds-icon-chip-accent  { background: var(--accent-soft); color: var(--accent); }
+.ds-icon-chip-success { background: rgba(76,175,125,0.12); color: var(--color-success); }
+.ds-icon-chip-error   { background: rgba(224,92,92,0.12); color: var(--color-error); }
+.ds-icon-chip-warning { background: rgba(224,160,48,0.12); color: var(--color-warning); }
+.ds-icon-chip-info    { background: rgba(91,155,213,0.12); color: var(--color-info); }
+
+/* ---------------- Barra de progresso ---------------- */
+.ds-progress-track { background: var(--bg-elevated); border-radius: var(--radius-full); height: 6px; flex: 1; }
+.ds-progress-fill { background: var(--tenant-primary); border-radius: var(--radius-full); height: 6px; }
+
+/* ---------------- Tabela ---------------- */
+.ds-table-wrap { background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.ds-table { width: 100%; font-size: var(--text-sm); font-family: var(--font-ui); }
+.ds-table thead tr { border-bottom: 1px solid var(--border-subtle); }
+.ds-table th { text-align: left; color: var(--text-secondary); font-weight: 500; padding: var(--space-4) var(--space-6); }
+.ds-table tbody tr { border-bottom: 1px solid var(--border-subtle); transition: background-color 150ms ease-out; }
+.ds-table tbody tr:last-child { border-bottom: none; }
+.ds-table tbody tr:hover { background: var(--bg-elevated); }
+.ds-table td { padding: var(--space-4) var(--space-6); color: var(--text-primary); }
+
+/* ---------------- Modal ---------------- */
+.ds-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.ds-modal-panel {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 28rem;
+  padding: var(--space-6);
+}
+.ds-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.ds-modal-title { font-family: var(--font-display); font-size: var(--text-lg); color: var(--text-primary); }
+.ds-modal-close { color: var(--text-secondary); background: none; border: none; cursor: pointer; line-height: 0; }
+.ds-modal-close:hover { color: var(--text-primary); }

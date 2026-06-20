@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Loader2 } from 'lucide-react'
+import { Scissors } from 'lucide-react'
 import { useRegister } from '../../features/auth/authApi'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import toast from 'react-hot-toast'
 
 export default function RegisterPage() {
@@ -26,50 +28,47 @@ export default function RegisterPage() {
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   return (
-    <div className="min-h-screen bg-app flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mb-4">
-            <Scissors size={28} className="text-accentFg" />
+          <div className="w-14 h-14 flex items-center justify-center mb-4" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
+            <Scissors size={28} style={{ color: 'var(--bg-base)' }} />
           </div>
-          <h1 className="text-2xl font-bold text-content">Criar sua Barbearia</h1>
-          <p className="text-muted text-sm mt-1">14 dias grátis, sem cartão de crédito</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>Criar sua Barbearia</h1>
+          <p className="ds-page-sub">14 dias grátis, sem cartão de crédito</p>
         </div>
 
-        <div className="card">
+        <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">Nome da Barbearia</label>
-              <input className="input" placeholder="Barbearia do João" value={form.businessName} onChange={set('businessName')} required />
+            <div className="ds-field">
+              <label className="ds-label">Nome da Barbearia</label>
+              <input className="ds-input" placeholder="Barbearia do João" value={form.businessName} onChange={set('businessName')} required />
             </div>
-            <div>
-              <label className="label">Seu nome</label>
-              <input className="input" placeholder="João Silva" value={form.ownerName} onChange={set('ownerName')} required />
+            <div className="ds-field">
+              <label className="ds-label">Seu nome</label>
+              <input className="ds-input" placeholder="João Silva" value={form.ownerName} onChange={set('ownerName')} required />
             </div>
-            <div>
-              <label className="label">E-mail</label>
-              <input type="email" className="input" placeholder="joao@email.com" value={form.email} onChange={set('email')} required />
+            <div className="ds-field">
+              <label className="ds-label">E-mail</label>
+              <input type="email" className="ds-input" placeholder="joao@email.com" value={form.email} onChange={set('email')} required />
             </div>
-            <div>
-              <label className="label">WhatsApp</label>
-              <input className="input" placeholder="+5511999999999" value={form.phone} onChange={set('phone')} required />
+            <div className="ds-field">
+              <label className="ds-label">WhatsApp</label>
+              <input className="ds-input" placeholder="+5511999999999" value={form.phone} onChange={set('phone')} required />
             </div>
-            <div>
-              <label className="label">Senha</label>
-              <input type="password" className="input" placeholder="Mínimo 8 caracteres" value={form.password} onChange={set('password')} minLength={8} required />
+            <div className="ds-field">
+              <label className="ds-label">Senha</label>
+              <input type="password" className="ds-input" placeholder="Mínimo 8 caracteres" value={form.password} onChange={set('password')} minLength={8} required />
             </div>
 
-            <button type="submit" disabled={register.isPending} className="btn-primary w-full mt-2">
-              {register.isPending ? <Loader2 size={18} className="animate-spin" /> : null}
-              {register.isPending ? 'Criando...' : 'Criar barbearia grátis'}
-            </button>
+            <Button type="submit" className="w-full mt-2" loading={register.isPending}>{register.isPending ? 'Criando...' : 'Criar barbearia grátis'}</Button>
           </form>
 
-          <p className="text-center text-sm text-subtle mt-4">
+          <p className="ds-text-disabled text-center mt-4" style={{ fontSize: 'var(--text-sm)' }}>
             Já tem conta?{' '}
-            <Link to="/login" className="text-accent hover:text-accent font-medium">Entrar</Link>
+            <Link to="/login" className="ds-text-accent font-medium hover:underline">Entrar</Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   )

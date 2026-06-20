@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Plus, Loader2, Trash2, Clock, DollarSign, Edit2, X, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, Clock, DollarSign, Edit2, Eye, EyeOff } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
 import { useServices, useCreateService, useUpdateService, useDeleteService } from '../../features/services/servicesApi'
 import type { Service } from '../../types'
 import toast from 'react-hot-toast'
@@ -67,44 +70,42 @@ export default function ServicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-content">Serviços</h2>
-        <button onClick={openCreate} className="btn-primary">
-          <Plus size={18} /> Novo Serviço
-        </button>
+        <h2 className="ds-page-title">Serviços</h2>
+        <Button onClick={openCreate}><Plus size={18} /> Novo Serviço</Button>
       </div>
 
       {isLoading ? (
         <ListSkeleton rows={3} />
       ) : !services?.length ? (
         <EmptyState icon={Clock} title="Nenhum serviço cadastrado"
-          action={<button onClick={openCreate} className="btn-primary">Cadastrar primeiro serviço</button>} />
+          action={<Button onClick={openCreate}>Cadastrar primeiro serviço</Button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {services.map((s, i) => (
-            <div key={s.id} style={{ animationDelay: `${i * 45}ms` }} className="card group hover:border-accent/40 transition-all animate-slide-up">
+            <Card key={s.id} style={{ animationDelay: `${i * 45}ms` }} className="group animate-slide-up">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-3 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
                   <div className="min-w-0">
-                    <p className="font-semibold text-content truncate">{s.name}</p>
-                    {s.description && <p className="text-xs text-subtle mt-0.5 line-clamp-1">{s.description}</p>}
+                    <p className="ds-text-primary font-semibold truncate">{s.name}</p>
+                    {s.description && <p className="ds-text-disabled mt-0.5 line-clamp-1" style={{ fontSize: 'var(--text-xs)' }}>{s.description}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-                  <button onClick={() => openEdit(s)} className="text-muted hover:text-content p-1" title="Editar">
+                  <button onClick={() => openEdit(s)} className="p-1" style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }} title="Editar">
                     <Edit2 size={15} />
                   </button>
-                  <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 p-1" title="Excluir">
+                  <button onClick={() => handleDelete(s.id)} className="p-1" style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer' }} title="Excluir">
                     <Trash2 size={15} />
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
-                <div className="flex items-center gap-1.5 text-muted text-sm">
+              <div className="flex items-center gap-4 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-1.5" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
                   <Clock size={14} />
                   {s.durationMinutes} min
                 </div>
-                <div className="flex items-center gap-1.5 text-accent font-semibold text-sm">
+                <div className="ds-text-accent flex items-center gap-1.5 font-semibold" style={{ fontSize: 'var(--text-sm)' }}>
                   <DollarSign size={14} />
                   R$ {s.price.toFixed(2)}
                 </div>
@@ -112,65 +113,55 @@ export default function ServicesPage() {
                   onClick={() => togglePublic(s)}
                   disabled={update.isPending}
                   title={s.showInPublicPage ? 'Visível para clientes — clique para ocultar' : 'Oculto dos clientes — clique para exibir'}
-                  className={`flex items-center gap-1 text-xs ml-auto rounded-lg px-2 py-1 transition-colors disabled:opacity-50 ${
-                    s.showInPublicPage
-                      ? 'text-success hover:bg-success/10'
-                      : 'text-subtle hover:bg-surfaceHover hover:text-content'
-                  }`}>
+                  className="flex items-center gap-1 ml-auto disabled:opacity-50"
+                  style={{
+                    fontSize: 'var(--text-xs)', borderRadius: 'var(--radius-md)', padding: '4px var(--space-2)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: s.showInPublicPage ? 'var(--color-success)' : 'var(--text-disabled)',
+                  }}>
                   {s.showInPublicPage ? <><Eye size={13} /> Visível</> : <><EyeOff size={13} /> Oculto</>}
                 </button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Modal criar/editar */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-content">{editing ? 'Editar Serviço' : 'Novo Serviço'}</h3>
-              <button onClick={() => setShowForm(false)} className="text-muted hover:text-content"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="label">Nome</label>
-                <input className="input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required />
-              </div>
-              <div>
-                <label className="label">Descrição</label>
-                <input className="input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Duração (min)</label>
-                  <input type="number" className="input" value={form.durationMinutes} onChange={e => setForm(f => ({...f, durationMinutes: +e.target.value}))} min={5} required />
-                </div>
-                <div>
-                  <label className="label">Preço (R$)</label>
-                  <input type="number" step="0.01" className="input" value={form.price} onChange={e => setForm(f => ({...f, price: +e.target.value}))} min={0} required />
-                </div>
-              </div>
-              <div>
-                <label className="label">Cor</label>
-                <input type="color" className="w-full h-10 rounded-xl bg-surfaceHover border border-border cursor-pointer" value={form.colorHex} onChange={e => setForm(f => ({...f, colorHex: e.target.value}))} />
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="public" checked={form.showInPublicPage} onChange={e => setForm(f => ({...f, showInPublicPage: e.target.checked}))} className="w-4 h-4 accent-accent" />
-                <label htmlFor="public" className="text-sm text-muted">Exibir na página pública</label>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-ghost flex-1">Cancelar</button>
-                <button type="submit" disabled={create.isPending || update.isPending} className="btn-primary flex-1">
-                  {(create.isPending || update.isPending) && <Loader2 size={16} className="animate-spin" />}
-                  {editing ? 'Salvar' : 'Criar'}
-                </button>
-              </div>
-            </form>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Editar Serviço' : 'Novo Serviço'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="ds-field">
+            <label className="ds-label">Nome</label>
+            <input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required />
           </div>
-        </div>
-      )}
+          <div className="ds-field">
+            <label className="ds-label">Descrição</label>
+            <input className="ds-input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="ds-field">
+              <label className="ds-label">Duração (min)</label>
+              <input type="number" className="ds-input" value={form.durationMinutes} onChange={e => setForm(f => ({...f, durationMinutes: +e.target.value}))} min={5} required />
+            </div>
+            <div className="ds-field">
+              <label className="ds-label">Preço (R$)</label>
+              <input type="number" step="0.01" className="ds-input" value={form.price} onChange={e => setForm(f => ({...f, price: +e.target.value}))} min={0} required />
+            </div>
+          </div>
+          <div className="ds-field">
+            <label className="ds-label">Cor</label>
+            <input type="color" className="w-full cursor-pointer" style={{ height: 40, borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }} value={form.colorHex} onChange={e => setForm(f => ({...f, colorHex: e.target.value}))} />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="public" checked={form.showInPublicPage} onChange={e => setForm(f => ({...f, showInPublicPage: e.target.checked}))} className="w-4 h-4" style={{ accentColor: 'var(--accent)' }} />
+            <label htmlFor="public" className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Exibir na página pública</label>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button type="submit" className="flex-1" loading={create.isPending || update.isPending}>{editing ? 'Salvar' : 'Criar'}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

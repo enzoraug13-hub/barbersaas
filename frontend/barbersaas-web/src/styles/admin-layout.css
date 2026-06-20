@@ -1,0 +1,80 @@
+.ds-sidebar {
+  background: var(--bg-base);
+  border-right: 1px solid var(--border-subtle);
+}
+.ds-sidebar-logo {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ds-sidebar-logo-mark {
+  background: var(--tenant-primary);
+}
+.ds-sidebar-logo-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
+
+.ds-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-left: 2px solid transparent;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.ds-nav-item:hover { background: var(--accent-soft); color: var(--text-primary); }
+.ds-nav-item-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.ds-sidebar-footer { border-top: 1px solid var(--border-subtle); }
+.ds-avatar {
+  background: var(--tenant-primary);
+  color: var(--bg-base);
+  font-weight: 700;
+}
+.ds-user-name { color: var(--text-primary); font-size: var(--text-sm); font-weight: 500; }
+.ds-user-role { color: var(--text-disabled); font-size: var(--text-xs); text-transform: capitalize; }
+
+.ds-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.ds-logout-btn:hover { background: rgba(224,92,92,0.12); color: var(--color-error); }
+
+.ds-topbar {
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ds-topbar-title { color: var(--text-secondary); font-size: var(--text-sm); font-weight: 500; }
+.ds-icon-btn {
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.ds-icon-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+.ds-main-content { background: var(--bg-base); }
