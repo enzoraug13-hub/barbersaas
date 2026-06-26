@@ -14,8 +14,6 @@ function hexToRgb(hex?: string): [number, number, number] | null {
   ]
 }
 
-const triplet = (rgb: [number, number, number]) => rgb.join(' ')
-
 // Luminância relativa (0–1) para decidir texto preto/branco sobre o acento.
 function luminance([r, g, b]: [number, number, number]): number {
   const f = (c: number) => {
@@ -48,16 +46,26 @@ export function applyTenantTheme(c: TenantColors) {
 
   const brand = hexToRgb(c.secondaryColor)
   if (brand) {
-    // Sistema antigo (Tailwind rgb(var(--x) / alpha)) — mantido para telas não migradas.
-    root.style.setProperty('--accent', triplet(brand))
+    const hex = toHex(brand)
     // hover: escurece no tema claro, clareia no escuro
-    root.style.setProperty('--accent-hover', triplet(shift(brand, isLight ? -0.12 : 0.15)))
-    // contraste automático: texto preto sobre acentos claros, branco sobre escuros
-    root.style.setProperty('--accent-fg', luminance(brand) > 0.5 ? '16 16 18' : '255 255 255')
+    const hoverHex = toHex(shift(brand, isLight ? -0.12 : 0.15))
 
-    // Sistema novo (tokens.css) — hex puro, consumido direto via var(--tenant-primary).
-    root.style.setProperty('--tenant-primary', toHex(brand))
-    root.style.setProperty('--tenant-primary-hover', toHex(shift(brand, 0.15)))
+    // --accent é consumido DIRETO como cor (var(--accent)) em todo o app —
+    // gráficos (recharts fill/stroke), abas ativas, botões, badges. Precisa
+    // ser sempre um valor de cor CSS válido (hex), nunca um triplet RGB nu
+    // (que só funcionaria dentro de rgb(var(--accent) / alpha), padrão que
+    // este app não usa — escrever o triplet aqui quebrava tudo que lê
+    // var(--accent) direto, deixando gráficos e abas pretos).
+    root.style.setProperty('--accent', hex)
+    root.style.setProperty('--accent-hover', hoverHex)
+    root.style.setProperty('--accent-soft', `rgba(${brand.join(',')},0.10)`)
+    root.style.setProperty('--accent-focus', `rgba(${brand.join(',')},0.25)`)
+    // contraste automático: texto preto sobre acentos claros, branco sobre escuros
+    root.style.setProperty('--accent-fg', luminance(brand) > 0.5 ? '#101012' : '#ffffff')
+
+    // Alias do sistema novo (tokens.css) — mesmo valor, nome semântico.
+    root.style.setProperty('--tenant-primary', hex)
+    root.style.setProperty('--tenant-primary-hover', hoverHex)
     root.style.setProperty('--tenant-primary-soft', `rgba(${brand.join(',')},0.10)`)
   }
 
@@ -67,7 +75,7 @@ export function applyTenantTheme(c: TenantColors) {
 
 export function resetTenantTheme() {
   const root = document.documentElement
-  ;['--accent', '--accent-hover', '--accent-fg', '--tenant-hero',
+  ;['--accent', '--accent-hover', '--accent-soft', '--accent-focus', '--accent-fg', '--tenant-hero',
     '--tenant-primary', '--tenant-primary-hover', '--tenant-primary-soft']
     .forEach(v => root.style.removeProperty(v))
 }

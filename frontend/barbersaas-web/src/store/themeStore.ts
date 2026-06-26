@@ -1,23 +1,18 @@
 import { create } from 'zustand'
 
 export type Theme = 'dark' | 'light'
-const KEY = 'barbersaas-theme'
 
-function getInitial(): Theme {
-  const saved = localStorage.getItem(KEY)
-  if (saved === 'light' || saved === 'dark') return saved
-  // respeita preferência do SO na primeira visita
-  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+// Tema claro temporariamente desativado: várias superfícies do app (cards,
+// sidebar, inputs) ainda têm cor fixa em vez de token, então o claro fica
+// ilegível (texto escuro sobre fundo que não clareia). Os tokens de
+// :root[data-theme="light"] em tokens.css continuam no código pra retomar
+// isso depois — até lá, o app fica fixo no escuro: data-theme nunca é
+// setado, mesmo que algo chame setTheme/toggle.
+function applyTheme(_t: Theme) {
+  document.documentElement.removeAttribute('data-theme')
 }
 
-function applyTheme(t: Theme) {
-  const el = document.documentElement
-  if (t === 'light') el.setAttribute('data-theme', 'light')
-  else el.removeAttribute('data-theme') // dark é o padrão (sem atributo)
-}
-
-// Aplica imediatamente no import (antes do render) para evitar flash.
-const initial = getInitial()
+const initial: Theme = 'dark'
 applyTheme(initial)
 
 interface ThemeState {
@@ -26,8 +21,8 @@ interface ThemeState {
   toggle: () => void
 }
 
-export const useThemeStore = create<ThemeState>((set, get) => ({
+export const useThemeStore = create<ThemeState>((set) => ({
   theme: initial,
-  setTheme: (t) => { localStorage.setItem(KEY, t); applyTheme(t); set({ theme: t }) },
-  toggle: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
+  setTheme: () => { applyTheme('dark'); set({ theme: 'dark' }) },
+  toggle: () => { applyTheme('dark'); set({ theme: 'dark' }) },
 }))

@@ -1,7 +1,8 @@
-using BarberSaaS.Application.Appointments.Commands.CreateAppointment;
+using BarberSaaS.Application.Appointments.Commands.ReserveSlot;
 using BarberSaaS.Application.Appointments.Queries.GetAvailableSlots;
 using BarberSaaS.Application.Common.DTOs;
 using BarberSaaS.Application.Common.Interfaces;
+using BarberSaaS.Application.Settings.Queries;
 using BarberSaaS.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -50,7 +51,8 @@ public class PublicController : ControllerBase
             InstagramUrl = tenant.Settings?.InstagramUrl,
             WhatsAppNumber = tenant.Settings?.WhatsAppNumber,
             Address      = tenant.Settings?.Address,
-            City         = tenant.Settings?.City
+            City         = tenant.Settings?.City,
+            BusinessHours = GetSettingsHandler.ParseBusinessHours(tenant.Settings?.BusinessHoursJson)
         }));
     }
 
@@ -90,31 +92,20 @@ public class PublicController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<SlotDto>>.Ok(result));
     }
 
-    [HttpPost("{slug}/appointments")]
+    [HttpPost("{slug}/reserve")]
     [EnableRateLimiting("booking")]
-    public async Task<IActionResult> CreateAppointment(string slug, [FromBody] PublicBookingRequest request, CancellationToken ct)
+    public async Task<IActionResult> ReserveSlot(string slug, [FromBody] ReserveSlotRequest request, CancellationToken ct)
     {
         var (tenant, error) = await ResolveTenantAsync(slug, ct);
         if (error != null) return error;
         if (tenant!.Settings?.AllowOnlineBooking == false)
             return BadRequest(ApiResponse<object>.Fail("Agendamento online desabilitado."));
 
-        var command = new CreateAppointmentCommand(
-            tenant.Id, request.BarberId, request.ServiceId,
-            request.ClientName, request.ClientPhone, request.ClientEmail,
-            request.Date, request.StartTime, request.Notes);
-
+        var command = new ReserveSlotCommand(tenant.Id, request.BarberId, request.ServiceId, request.Date, request.StartTime);
         var result = await _mediator.Send(command, ct);
-        return Ok(ApiResponse<AppointmentResultDto>.Ok(result, "Agendamento realizado com sucesso!"));
+        return Ok(ApiResponse<ReserveSlotResultDto>.Ok(result));
     }
+
 }
 
-public record PublicBookingRequest(
-    Guid BarberId,
-    Guid ServiceId,
-    string ClientName,
-    string ClientPhone,
-    string? ClientEmail,
-    DateOnly Date,
-    TimeOnly StartTime,
-    string? Notes);
+public record ReserveSlotRequest(Guid BarberId, Guid ServiceId, DateOnly Date, TimeOnly StartTime);

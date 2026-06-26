@@ -22,6 +22,17 @@ export const useCreateGoal = () => {
   })
 }
 
+export const useUpdateGoal = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; name: string; description?: string; targetAmount: number; targetDate?: string }) => {
+      const res = await api.put(`/goals/${id}`, data)
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+  })
+}
+
 export const useContributeGoal = () => {
   const qc = useQueryClient()
   return useMutation({

@@ -35,7 +35,7 @@ export const useClientAuthStore = create<ClientAuthState>()(
       updateProfile: (patch) => set((s) => {
         if (!s.client) return s
         const client = { ...s.client, ...patch }
-        const profileComplete = !!client.name && !!client.cpf
+        const profileComplete = !!client.name?.trim() && !!client.cpf?.trim()
         return { client, profileComplete }
       }),
       logout: () => set({ token: null, client: null, profileComplete: false, slug: null }),
@@ -43,3 +43,32 @@ export const useClientAuthStore = create<ClientAuthState>()(
     { name: 'barbersaas-client-auth' }
   )
 )
+
+/**
+ * Fonte única de verdade pra "o cliente está logado": nunca tratar
+ * "tem token" como "tem conta" — token é só a sessão; profileComplete é
+ * o cadastro (nome+CPF). Telas não devem ler token/profileComplete do
+ * store na mão pra decidir o que renderizar, sempre por aqui.
+ *
+ * @param freshProfileComplete - quando uma tela já buscou o perfil mais
+ * recente da API (ex.: ClientAccountPage com GET /client/me), passa o
+ * valor calculado a partir dele aqui pra evitar mostrar a área logada
+ * com um profileComplete desatualizado do localStorage por um frame.
+ */
+export function useClientSession(freshProfileComplete?: boolean) {
+  const { token, client, profileComplete: storeProfileComplete, slug, setAuth, updateProfile, logout } = useClientAuthStore()
+  const hasToken = !!token
+  const profileComplete = freshProfileComplete ?? storeProfileComplete
+
+  return {
+    hasToken,
+    profileComplete,
+    loggedIn: hasToken && profileComplete,
+    needsProfile: hasToken && !profileComplete,
+    client,
+    slug,
+    setAuth,
+    updateProfile,
+    logout,
+  }
+}

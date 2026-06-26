@@ -34,6 +34,7 @@ public class ExceptionMiddleware
         {
             ValidationException ve          => (HttpStatusCode.BadRequest, ve.Errors.Select(e => e.ErrorMessage)),
             ClientBlockedException cbe      => (HttpStatusCode.Forbidden, new[] { cbe.Message }.AsEnumerable()),
+            ClientProfileIncompleteException pie => (HttpStatusCode.Forbidden, new[] { pie.Message }.AsEnumerable()),
             DomainException de              => (HttpStatusCode.BadRequest, new[] { de.Message }.AsEnumerable()),
             UnauthorizedAccessException ue  => (HttpStatusCode.Unauthorized, new[] { ue.Message }.AsEnumerable()),
             _                               => (HttpStatusCode.InternalServerError, new[] { "Erro interno do servidor." }.AsEnumerable())

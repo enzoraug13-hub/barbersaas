@@ -10,6 +10,7 @@ using BarberSaaS.Infrastructure.ExternalServices.GoogleCalendar;
 using BarberSaaS.Infrastructure.Identity;
 using BarberSaaS.Infrastructure.Persistence;
 using BarberSaaS.Infrastructure.Persistence.Repositories;
+using BarberSaaS.Infrastructure.Reservations;
 using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IBarberRepository,      BarberRepository>();
         services.AddScoped<IClientRepository,      ClientRepository>();
         services.AddScoped<IServiceRepository,     ServiceRepository>();
+        services.AddScoped<IBarberServiceRepository, BarberServiceRepository>();
         services.AddScoped<IFinancialRepository,   FinancialRepository>();
         services.AddScoped<IGoalRepository,        GoalRepository>();
         services.AddScoped<IProductRepository,     ProductRepository>();
@@ -87,10 +89,19 @@ public static class DependencyInjection
         {
             services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
             services.AddScoped<ICacheService, RedisCacheService>();
+            services.AddSingleton<ISlotReservationService, RedisSlotReservationService>();
+            services.AddSingleton<IOtpChallengeService, RedisOtpChallengeService>();
         }
         else
         {
             services.AddScoped<ICacheService, NoOpCacheService>();
+            // Dev sem Redis configurado: fallback em memória só pra reservas (ver
+            // comentário em InMemorySlotReservationService.cs). Configure
+            // ConnectionStrings:Redis em appsettings.Development.json se quiser
+            // testar com Redis de verdade (docker run -p 6379:6379 redis, depois
+            // "Redis": "localhost:6379").
+            services.AddSingleton<ISlotReservationService, InMemorySlotReservationService>();
+            services.AddSingleton<IOtpChallengeService, InMemoryOtpChallengeService>();
         }
 
         // Hangfire — usa InMemory em dev (SQLite) ou SQL Server em prod

@@ -41,3 +41,9 @@ public class ClientBlockedException : DomainException
     public ClientBlockedException()
         : base("Sua conta está bloqueada. Entre em contato com a barbearia para mais informações.") { }
 }
+
+public class ClientProfileIncompleteException : DomainException
+{
+    public ClientProfileIncompleteException()
+        : base("Complete seu cadastro (nome e CPF) antes de continuar.") { }
+}

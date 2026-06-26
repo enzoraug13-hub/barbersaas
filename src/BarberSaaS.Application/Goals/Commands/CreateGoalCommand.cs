@@ -11,9 +11,20 @@ public record GoalDto(Guid Id, string Name, string? Description, decimal TargetA
 
 public record AddContributionCommand(Guid TenantId, Guid GoalId, decimal Amount, Guid UserId, string? Notes) : IRequest<GoalDto>;
 
+public record UpdateGoalCommand(Guid TenantId, Guid GoalId, string Name, string? Description, decimal TargetAmount, DateOnly? TargetDate, string? ImageUrl) : IRequest<GoalDto>;
+
 public class CreateGoalValidator : AbstractValidator<CreateGoalCommand>
 {
     public CreateGoalValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.TargetAmount).GreaterThan(0);
+    }
+}
+
+public class UpdateGoalValidator : AbstractValidator<UpdateGoalCommand>
+{
+    public UpdateGoalValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.TargetAmount).GreaterThan(0);
@@ -52,8 +63,34 @@ public class AddContributionHandler : IRequestHandler<AddContributionCommand, Go
     {
         var goal = await _goals.GetByIdAsync(request.GoalId, ct)
             ?? throw new BarberSaaS.Domain.Exceptions.EntityNotFoundException("Meta", request.GoalId);
-        goal.AddContribution(request.Amount, request.UserId, request.Notes);
-        await _goals.UpdateAsync(goal, ct);
+        // GetByIdAsync rastreia a Goal; AddContribution altera CurrentAmount/Status e devolve
+        // a contribuição nova, que é persistida via Add() explícito (INSERT). Ver comentário
+        // em GoalRepository.AddContributionAsync sobre por que Update()/navegação não servem.
+        var contribution = goal.AddContribution(request.Amount, request.UserId, request.Notes);
+        await _goals.AddContributionAsync(contribution, ct);
         return new GoalDto(goal.Id, goal.Name, goal.Description, goal.TargetAmount, goal.CurrentAmount, goal.PercentageComplete, goal.RemainingAmount, goal.TargetDate, goal.Status.ToString(), goal.IsCompleted);
     }
+}
+
+public class UpdateGoalHandler : IRequestHandler<UpdateGoalCommand, GoalDto>
+{
+    private readonly IGoalRepository _goals;
+    public UpdateGoalHandler(IGoalRepository goals) => _goals = goals;
+
+    public async Task<GoalDto> Handle(UpdateGoalCommand request, CancellationToken ct)
+    {
+        var goal = await _goals.GetByIdAsync(request.GoalId, ct);
+        if (goal is null || goal.TenantId != request.TenantId)
+            throw new BarberSaaS.Domain.Exceptions.EntityNotFoundException("Meta", request.GoalId);
+
+        goal.Name         = request.Name;
+        goal.Description  = request.Description;
+        goal.TargetAmount = request.TargetAmount;
+        goal.TargetDate    = request.TargetDate;
+        goal.ImageUrl      = request.ImageUrl;
+        await _goals.UpdateAsync(goal, ct);
+        return MapDto(goal);
+    }
+
+    private static GoalDto MapDto(Goal g) => new(g.Id, g.Name, g.Description, g.TargetAmount, g.CurrentAmount, g.PercentageComplete, g.RemainingAmount, g.TargetDate, g.Status.ToString(), g.IsCompleted);
 }

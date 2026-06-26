@@ -15,6 +15,8 @@ export interface Barber {
   showInPublicPage: boolean
   displayOrder: number
   googleCalendarId?: string
+  commissionType: number
+  commissionValue: number
 }
 
 export interface Service {
@@ -59,6 +61,7 @@ export interface Slot {
   start: string
   end: string
   label: string
+  available: boolean
 }
 
 export interface DashboardData {
@@ -75,6 +78,8 @@ export interface DashboardData {
   dailyRevenue: { date: string; revenue: number; expense: number; appointments: number }[]
 }
 
+export interface BusinessHour { dayOfWeek: number; isOpen: boolean; openTime: string | null; closeTime: string | null }
+
 export interface TenantPublicInfo {
   tenantId: string
   businessName: string
@@ -89,6 +94,7 @@ export interface TenantPublicInfo {
   whatsAppNumber?: string
   address?: string
   city?: string
+  businessHours?: BusinessHour[]
 }
 
 export interface Goal {

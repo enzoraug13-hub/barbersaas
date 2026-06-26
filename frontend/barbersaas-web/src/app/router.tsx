@@ -9,6 +9,7 @@ import DashboardPage from '../pages/admin/DashboardPage'
 import AgendaPage   from '../pages/admin/AgendaPage'
 import ClientsPage  from '../pages/admin/ClientsPage'
 import BarbersPage  from '../pages/admin/BarbersPage'
+import BarberProfilePage from '../pages/admin/BarberProfilePage'
 import ServicesPage from '../pages/admin/ServicesPage'
 import FinancialPage from '../pages/admin/FinancialPage'
 import GoalsPage    from '../pages/admin/GoalsPage'
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
   { path: '/admin/agenda',       element: <AdminPage><AgendaPage /></AdminPage> },
   { path: '/admin/clientes',     element: <AdminPage><ClientsPage /></AdminPage> },
   { path: '/admin/barbeiros',    element: <AdminPage><BarbersPage /></AdminPage> },
+  { path: '/admin/barbeiros/:id', element: <AdminPage><BarberProfilePage /></AdminPage> },
   { path: '/admin/servicos',     element: <AdminPage><ServicesPage /></AdminPage> },
   { path: '/admin/financeiro',   element: <AdminPage><FinancialPage /></AdminPage> },
   { path: '/admin/metas',        element: <AdminPage><GoalsPage /></AdminPage> },

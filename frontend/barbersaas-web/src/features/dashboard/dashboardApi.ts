@@ -14,3 +14,30 @@ export const useDashboard = (start?: string, end?: string) =>
     },
     staleTime: 5 * 60 * 1000,
   })
+
+export interface MonthlyRevenue { month: string; revenue: number; expense: number }
+
+export const useMonthlyRevenue = (months = 6) =>
+  useQuery({
+    queryKey: ['dashboard-monthly', months],
+    queryFn: async () => (await api.get('/dashboard/monthly', { params: { months } })).data.data as MonthlyRevenue[],
+    staleTime: 5 * 60 * 1000,
+  })
+
+export interface BarberPerformance {
+  id: string; name: string; photoUrl?: string; isActive: boolean
+  totalAppointments: number; revenue: number; occupancyRate: number
+  weeklyAppointments: number[]
+}
+
+export const useBarberPerformance = (start?: string, end?: string) =>
+  useQuery({
+    queryKey: ['dashboard-by-barber', start, end],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (start) params.start = start
+      if (end) params.end = end
+      return (await api.get('/dashboard/by-barber', { params })).data.data as BarberPerformance[]
+    },
+    staleTime: 5 * 60 * 1000,
+  })

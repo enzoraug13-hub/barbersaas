@@ -31,5 +31,9 @@ public class TenantSettings : BaseEntity
     public bool SendReminderSms { get; set; } = true;
     public int ReminderHoursBefore { get; set; } = 24;
 
+    // Horário de funcionamento da barbearia (diferente do WorkSchedule por
+    // barbeiro) — JSON com até 7 entradas, uma por dia da semana.
+    public string? BusinessHoursJson { get; set; }
+
     public Tenant? Tenant { get; set; }
 }

@@ -6,7 +6,7 @@ namespace BarberSaaS.Infrastructure.Domain;
 
 public class SlotGeneratorService : ISlotGeneratorService
 {
-    public IReadOnlyList<TimeSlot> GenerateAvailableSlots(
+    public IReadOnlyList<TimeSlot> GenerateDaySlots(
         WorkSchedule schedule,
         IEnumerable<Appointment> existingAppointments,
         IEnumerable<DayOff> daysOff,
@@ -42,26 +42,28 @@ public class SlotGeneratorService : ISlotGeneratorService
                 var slotStart = cursor;
                 var slotEnd   = cursor.Add(duration);
 
-                // Past check
+                // Horário já passado: oculto da grade (não interessa ao cliente).
                 var slotDateTime = date.ToDateTime(slotStart, DateTimeKind.Utc);
                 if (slotDateTime <= now) { cursor = cursor.Add(interval); continue; }
 
-                // Break collision
+                // Pausa do barbeiro: oculta da grade.
                 bool collidesBreak = shift.Breaks.Any(b =>
                     slotStart < b.EndTime && slotEnd > b.StartTime);
+                if (collidesBreak) { cursor = cursor.Add(interval); continue; }
 
-                // Appointment collision
+                // Folga parcial: oculta da grade.
+                bool collidesPartial = dayOffList.Any(d =>
+                    !d.IsFullDay && d.StartTime.HasValue && d.EndTime.HasValue &&
+                    slotStart < d.EndTime && slotEnd > d.StartTime);
+                if (collidesPartial) { cursor = cursor.Add(interval); continue; }
+
+                // Agendamento: o slot PERMANECE na grade, porém marcado como ocupado
+                // (IsAvailable=false) — é o que o cliente vê riscado/borrado.
                 bool collidesAppt = apptList.Any(a =>
                     a.Status != AppointmentStatus.Cancelled &&
                     slotStart < a.EndTime && slotEnd > a.StartTime);
 
-                // Partial day off collision
-                bool collidesPartial = dayOffList.Any(d =>
-                    !d.IsFullDay && d.StartTime.HasValue && d.EndTime.HasValue &&
-                    slotStart < d.EndTime && slotEnd > d.StartTime);
-
-                if (!collidesBreak && !collidesAppt && !collidesPartial)
-                    slots.Add(new TimeSlot(slotStart, slotEnd));
+                slots.Add(new TimeSlot(slotStart, slotEnd, IsAvailable: !collidesAppt));
 
                 cursor = cursor.Add(interval);
             }

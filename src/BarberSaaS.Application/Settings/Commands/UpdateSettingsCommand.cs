@@ -1,5 +1,7 @@
 using BarberSaaS.Application.Common.Interfaces;
+using BarberSaaS.Application.Settings.Queries;
 using MediatR;
+using System.Text.Json;
 
 namespace BarberSaaS.Application.Settings.Commands;
 
@@ -10,7 +12,8 @@ public record UpdateSettingsCommand(
     string? Phone, string? Address, string? City, string? State, string? ZipCode,
     string? InstagramUrl, string? WhatsAppNumber,
     bool? AllowOnlineBooking, bool? RequireConfirmation,
-    int? SlotIntervalMinutes, int? MaxAdvanceDays) : IRequest<bool>;
+    int? SlotIntervalMinutes, int? MaxAdvanceDays,
+    IReadOnlyList<BusinessHourDto>? BusinessHours) : IRequest<bool>;
 
 public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, bool>
 {
@@ -47,6 +50,8 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, bool
         s.RequireConfirmation = request.RequireConfirmation ?? s.RequireConfirmation;
         s.SlotIntervalMinutes = request.SlotIntervalMinutes ?? s.SlotIntervalMinutes;
         s.MaxAdvanceDays      = request.MaxAdvanceDays ?? s.MaxAdvanceDays;
+        if (request.BusinessHours is { Count: 7 })
+            s.BusinessHoursJson = JsonSerializer.Serialize(request.BusinessHours);
 
         await _tenants.UpdateAsync(tenant, ct);
         await _cache.RemoveByPatternAsync($"public:{s.PublicSlug}:*");

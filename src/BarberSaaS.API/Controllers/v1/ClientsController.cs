@@ -52,6 +52,16 @@ public class ClientsController : ControllerBase
         var ok = await _mediator.Send(new UnblockClientCommand(id), ct);
         return ok ? Ok(ApiResponse<bool>.Ok(true)) : NotFound();
     }
+
+    // Migração única (Parte 3) — limpa clientes fantasma (Name vazio, sem
+    // agendamento) deixados pelo find-or-create antigo do OTP. dryRun=true
+    // (padrão) só lista os candidatos, não apaga nada.
+    [HttpPost("cleanup-ghosts")]
+    public async Task<IActionResult> CleanupGhosts([FromQuery] bool dryRun = true, CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new CleanupGhostClientsCommand(dryRun), ct);
+        return Ok(ApiResponse<CleanupGhostClientsResult>.Ok(result));
+    }
 }
 
 public record BlockClientRequest(string? Reason);

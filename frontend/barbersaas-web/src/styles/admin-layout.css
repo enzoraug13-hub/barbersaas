@@ -1,80 +1,229 @@
+/* ============ SIDEBAR ============ */
 .ds-sidebar {
-  background: var(--bg-base);
-  border-right: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, #100E0B 0%, #0C0A08 100%);
+  border-right: 1px solid #25211B;
 }
+
 .ds-sidebar-logo {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid #25211B;
 }
 .ds-sidebar-logo-mark {
-  background: var(--tenant-primary);
+  background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .ds-sidebar-logo-text {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--text-lg);
-  color: var(--text-primary);
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  color: #F5F0E8;
 }
 
+/* Label de grupo */
+.ds-nav-group-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5C5248;
+  padding: 16px 12px 6px;
+}
+
+/* Item de navegação */
 .ds-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-1);
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
+  gap: 12px;
+  height: 42px;
+  padding: 0 12px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
   font-weight: 500;
-  color: var(--text-secondary);
-  border-left: 2px solid transparent;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  color: #948877;
+  text-decoration: none;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.ds-nav-item:hover { background: var(--accent-soft); color: var(--text-primary); }
-.ds-nav-item-active {
-  background: var(--accent-soft);
+.ds-nav-item svg {
+  color: #6B6155;
+  transition: color 180ms ease, transform 180ms ease;
+  flex-shrink: 0;
+}
+.ds-nav-item:hover {
+  background: #181511;
+  color: #F5F0E8;
+  transform: translateX(3px);
+}
+.ds-nav-item:hover svg {
   color: var(--accent);
-  border-left-color: var(--accent);
+  transform: scale(1.08);
 }
 
-.ds-sidebar-footer { border-top: 1px solid var(--border-subtle); }
+/* Item ativo — segue a cor da marca do tenant (var(--accent), aplicada em
+   runtime por applyTenantTheme). O texto/ícone usam a cor sólida do acento
+   direto: o fundo continua majoritariamente escuro (gradiente com no máximo
+   14% de mistura sobre o canvas do sidebar), então acentos claros (ex.
+   amarelo) só GANHAM contraste contra o fundo escuro — o caso de risco real
+   seria um acento muito escuro, não claro. */
+.ds-nav-item-active,
+.ds-nav-item-active:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent) 0%, color-mix(in srgb, var(--accent) 4%, transparent) 100%);
+  color: var(--accent);
+  font-weight: 600;
+  transform: none;
+}
+.ds-nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.ds-nav-item-active svg {
+  color: var(--accent);
+}
+
+/* Animação de entrada */
+.ds-nav-anim {
+  opacity: 0;
+  animation: navSlideIn 320ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes navSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ============ SUBMENU (grupo expansível) ============ */
+/* Cabeçalho do grupo: é um <button>, então zera os defaults do botão e herda
+   todo o visual de .ds-nav-item. */
+.ds-nav-parent {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.ds-nav-caret {
+  color: #6B6155;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), color 180ms ease;
+}
+.ds-nav-caret-open { transform: rotate(180deg); }
+.ds-nav-parent:hover .ds-nav-caret { color: var(--accent); }
+
+/* Pai com rota ativa porém expandido: realça texto/ícone com o acento, mas
+   sem a barra lateral — a barra fica no subitem ativo. */
+.ds-nav-parent-active,
+.ds-nav-parent-active:hover { color: var(--accent); }
+.ds-nav-parent-active svg,
+.ds-nav-parent-active .ds-nav-caret { color: var(--accent); }
+
+/* Lista de subitens: colapso animado por max-height + linha-guia vertical
+   alinhada sob o ícone do pai. */
+.ds-nav-sub {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin: 0 0 2px 21px;
+  padding-left: 9px;
+  border-left: 1px solid #25211B;
+  transition: max-height 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease;
+}
+.ds-nav-sub-open {
+  max-height: 320px;
+  opacity: 1;
+}
+
+/* Subitem: um pouco mais baixo/menor que o item raiz. */
+.ds-nav-subitem {
+  height: 38px;
+  font-size: 13px;
+}
+
+/* Footer / usuário */
+.ds-sidebar-footer {
+  border-top: 1px solid #25211B;
+}
 .ds-avatar {
-  background: var(--tenant-primary);
-  color: var(--bg-base);
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+  color: var(--accent-fg);
   font-weight: 700;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent);
 }
-.ds-user-name { color: var(--text-primary); font-size: var(--text-sm); font-weight: 500; }
-.ds-user-role { color: var(--text-disabled); font-size: var(--text-xs); text-transform: capitalize; }
-
+.ds-user-name {
+  color: #F5F0E8;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ds-user-role {
+  color: #6B6155;
+  font-size: 11px;
+  text-transform: capitalize;
+}
 .ds-logout-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
   width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #948877;
   background: none;
   border: none;
   cursor: pointer;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  transition: all 180ms ease;
 }
-.ds-logout-btn:hover { background: rgba(224,92,92,0.12); color: var(--color-error); }
+.ds-logout-btn:hover {
+  background: rgba(224,92,92,0.10);
+  color: #E05C5C;
+}
+.ds-logout-btn svg { transition: color 180ms ease; }
+.ds-logout-btn:hover svg { color: #E05C5C; }
 
+/* ============ TOPBAR ============ */
 .ds-topbar {
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(16,14,11,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #25211B;
 }
-.ds-topbar-title { color: var(--text-secondary); font-size: var(--text-sm); font-weight: 500; }
+.ds-topbar-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  color: #F5F0E8;
+}
+
+/* Botão de ícone */
 .ds-icon-btn {
-  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #948877;
   background: none;
   border: none;
   cursor: pointer;
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  border-radius: 8px;
+  padding: 8px;
+  transition: all 150ms ease;
 }
-.ds-icon-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.ds-icon-btn:hover {
+  background: #181511;
+  color: #F5F0E8;
+}
 
-.ds-main-content { background: var(--bg-base); }
+/* ============ CONTEÚDO ============ */
+.ds-main-content {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--accent) 4%, transparent), transparent 60%),
+    #0C0A08;
+}

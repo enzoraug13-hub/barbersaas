@@ -52,4 +52,5 @@ public class CurrentUser : ICurrentUser
     public Guid?   TenantId        => Guid.TryParse(User?.FindFirst("tenant_id")?.Value, out var tid) ? tid : null;
     public string? IpAddress       => _http.HttpContext?.Connection.RemoteIpAddress?.ToString();
     public bool    IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
+    public string? Phone           => User?.FindFirst("phone")?.Value;
 }

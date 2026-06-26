@@ -1,3 +1,4 @@
+using BarberSaaS.Application.Common;
 using BarberSaaS.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
@@ -19,16 +20,23 @@ public class VerifyClientOtpValidator : AbstractValidator<VerifyClientOtpCommand
     }
 }
 
+// Valida contra o IOtpChallengeService (não contra Client.OtpCode — o Client
+// pode nem existir ainda). Cliente existente: segue igual a hoje. Telefone
+// novo: NÃO cria Client aqui — o token usa um Guid determinístico
+// (telefone+tenant) como "sub", e o Client só é criado de fato no
+// UpdateMyProfileCommand, quando o nome é preenchido.
 public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, ClientAuthResult>
 {
     private readonly ITenantRepository _tenants;
     private readonly IClientRepository _clients;
     private readonly IJwtService _jwt;
     private readonly IPasswordHasher _hasher;
+    private readonly IOtpChallengeService _challenges;
 
-    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, IJwtService jwt, IPasswordHasher hasher)
+    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, IJwtService jwt,
+        IPasswordHasher hasher, IOtpChallengeService challenges)
     {
-        _tenants = tenants; _clients = clients; _jwt = jwt; _hasher = hasher;
+        _tenants = tenants; _clients = clients; _jwt = jwt; _hasher = hasher; _challenges = challenges;
     }
 
     public async Task<ClientAuthResult> Handle(VerifyClientOtpCommand request, CancellationToken ct)
@@ -36,39 +44,47 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
         var tenant = await _tenants.GetBySlugAsync(request.TenantSlug, ct)
             ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Barbearia não encontrada.");
 
-        var client = await _clients.GetByPhoneAsync(request.Phone, tenant.Id, ct)
-            ?? throw new UnauthorizedAccessException("Código inválido.");
+        var challenge = await _challenges.GetAsync(tenant.Id, request.Phone, ct)
+            ?? throw new UnauthorizedAccessException("Código expirado. Solicite um novo.");
 
-        // Recheca o bloqueio aqui: o cliente pode ter sido bloqueado entre o
-        // request-otp e este verify (código já enviado, mas não deve logar).
-        if (client.IsBlocked)
-            throw new BarberSaaS.Domain.Exceptions.ClientBlockedException();
-
-        if (client.OtpCode == null || client.OtpExpiresAt == null || client.OtpExpiresAt < DateTime.UtcNow)
-            throw new UnauthorizedAccessException("Código expirado. Solicite um novo.");
-
-        // OtpCode está hasheado; compara via verificação. Try/catch protege contra
-        // hashes legados em formato antigo (tratados como código inválido).
         bool ok;
-        try { ok = _hasher.Verify(request.Code, client.OtpCode); }
+        try { ok = _hasher.Verify(request.Code, challenge.CodeHash); }
         catch { ok = false; }
         if (!ok)
             throw new UnauthorizedAccessException("Código inválido.");
 
-        // Consome o OTP e marca verificado.
-        client.OtpCode      = null;
-        client.OtpExpiresAt = null;
-        client.IsVerified   = true;
-        await _clients.UpdateAsync(client, ct);
+        await _challenges.RemoveAsync(tenant.Id, request.Phone, ct);
 
-        // Token do cliente: role="client", sub=clientId, tenant_id=tenant.Id (sem refresh token — ver AI_HANDOFF).
-        var displayName = string.IsNullOrWhiteSpace(client.Name) ? "Cliente" : client.Name;
-        var tokens = _jwt.GenerateTokens(client.Id, client.Email ?? "", displayName, "client", tenant.Id);
+        // Cliente já existe no banco — caminho idêntico ao de antes.
+        if (challenge.ExistingClientId is { } existingId)
+        {
+            var client = await _clients.GetByIdAsync(existingId, ct)
+                ?? throw new UnauthorizedAccessException("Código inválido.");
 
-        var profileComplete = !string.IsNullOrWhiteSpace(client.Name) && !string.IsNullOrWhiteSpace(client.Cpf);
+            // Recheca o bloqueio aqui: pode ter sido bloqueado entre o
+            // request-otp e este verify (código já enviado, mas não deve logar).
+            if (client.IsBlocked)
+                throw new BarberSaaS.Domain.Exceptions.ClientBlockedException();
 
-        return new ClientAuthResult(tokens.AccessToken, tokens.ExpiresAt,
-            new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Cpf, client.Email, client.LoyaltyPoints, client.TotalVisits),
-            profileComplete);
+            var displayName = string.IsNullOrWhiteSpace(client.Name) ? "Cliente" : client.Name;
+            var tokens = _jwt.GenerateTokens(client.Id, client.Email ?? "", displayName, "client", tenant.Id, client.PhoneNumber);
+            var profileComplete = !string.IsNullOrWhiteSpace(client.Name) && !string.IsNullOrWhiteSpace(client.Cpf);
+
+            return new ClientAuthResult(tokens.AccessToken, tokens.ExpiresAt,
+                new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Cpf, client.Email, client.LoyaltyPoints, client.TotalVisits),
+                profileComplete);
+        }
+
+        // Telefone novo — sem Client no banco ainda. O Id é determinístico
+        // (mesma seed sempre) pra sobreviver a "validar OTP e fechar o app":
+        // se voltar depois com o mesmo telefone, cai no mesmo Id, e quando o
+        // nome for preenchido (UpdateMyProfileCommand) o Client nasce com
+        // esse Id, sem duplicar nem perder o histórico do token já emitido.
+        var newId = DeterministicGuid.ForClientPhone(tenant.Id, request.Phone);
+        var newTokens = _jwt.GenerateTokens(newId, "", "Cliente", "client", tenant.Id, request.Phone);
+
+        return new ClientAuthResult(newTokens.AccessToken, newTokens.ExpiresAt,
+            new ClientProfileDto(newId, "", request.Phone, null, null, 0, 0),
+            ProfileComplete: false);
     }
 }

@@ -1,29 +1,27 @@
 /** @type {import('tailwindcss').Config} */
-const withAlpha = (v) => `rgb(var(${v}) / <alpha-value>)`
 
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Tokens semânticos (definidos em index.css; trocam com o tema light/dark)
-        app:          withAlpha('--bg'),
-        surface:      withAlpha('--surface'),
-        surfaceHover: withAlpha('--surface-hover'),
-        border:       withAlpha('--border'),
-        content:      withAlpha('--text'),
-        muted:        withAlpha('--text-muted'),
-        subtle:       withAlpha('--text-subtle'),
-        accent:       withAlpha('--accent'),
-        accentHover:  withAlpha('--accent-hover'),
-        accentFg:     withAlpha('--accent-fg'),
-        success:      withAlpha('--success'),
-        warning:      withAlpha('--warning'),
-        danger:       withAlpha('--danger'),
-        info:         withAlpha('--info'),
-        // Cores por barbearia (página pública)
-        primary:   'var(--color-primary)',
-        secondary: 'var(--color-secondary)',
+        // Tokens do design system novo (src/styles/tokens.css). Os nomes ficam
+        // diferentes do nome do token CSS (ex.: "app" em vez de "bgBase") porque
+        // Tailwind gera a classe como {utility}-{key} — usar a mesma palavra em
+        // bg/text/border (ex. "subtle") faria todas apontarem pro mesmo valor,
+        // mas --bg-subtle e --border-subtle são cores diferentes. Quem consome
+        // os tokens direto via var(--bg-base) etc. (a maioria do app) não é
+        // afetado; isto é só para as classes Tailwind ainda em uso (StyleGuidePage).
+        app:          'var(--bg-base)',
+        surface:      'var(--bg-subtle)',
+        surfaceHover: 'var(--bg-elevated)',
+        border:       'var(--border-subtle)',
+        content:      'var(--text-primary)',
+        muted:        'var(--text-secondary)',
+        subtle:       'var(--text-disabled)',
+        accent:       'var(--accent)',
+        accentHover:  'var(--accent-hover)',
+        accentFg:     'var(--bg-base)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -33,7 +31,7 @@ export default {
         DEFAULT: '0 2px 8px -2px rgb(0 0 0 / 0.10), 0 4px 16px -4px rgb(0 0 0 / 0.08)',
         md:   '0 4px 16px -4px rgb(0 0 0 / 0.12), 0 8px 28px -6px rgb(0 0 0 / 0.10)',
         lg:   '0 12px 32px -8px rgb(0 0 0 / 0.18), 0 20px 48px -12px rgb(0 0 0 / 0.14)',
-        glow: '0 0 0 1px rgb(var(--accent) / 0.20), 0 8px 24px -6px rgb(var(--accent) / 0.25)',
+        glow: '0 0 0 1px var(--accent-focus), 0 8px 24px -6px var(--accent-focus)',
       },
       borderRadius: {
         xl: '0.875rem',

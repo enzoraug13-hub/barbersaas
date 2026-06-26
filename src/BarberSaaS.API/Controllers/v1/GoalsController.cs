@@ -43,6 +43,15 @@ public class GoalsController : ControllerBase
         var result = await _mediator.Send(new AddContributionCommand(_tenant.Id, id, request.Amount, _user.Id, request.Notes), ct);
         return Ok(ApiResponse<GoalDto>.Ok(result));
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGoalRequest request, CancellationToken ct)
+    {
+        var cmd = new UpdateGoalCommand(_tenant.Id, id, request.Name, request.Description, request.TargetAmount, request.TargetDate, request.ImageUrl);
+        var result = await _mediator.Send(cmd, ct);
+        return Ok(ApiResponse<GoalDto>.Ok(result));
+    }
 }
 
 public record ContributeRequest(decimal Amount, string? Notes);
+public record UpdateGoalRequest(string Name, string? Description, decimal TargetAmount, DateOnly? TargetDate, string? ImageUrl);

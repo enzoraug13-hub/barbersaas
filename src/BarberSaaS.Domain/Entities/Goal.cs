@@ -21,22 +21,24 @@ public class Goal : BaseEntity
 
     public ICollection<GoalContribution> Contributions { get; set; } = new List<GoalContribution>();
 
-    public void AddContribution(decimal amount, Guid userId, string? notes = null)
+    public GoalContribution AddContribution(decimal amount, Guid userId, string? notes = null)
     {
         CurrentAmount += amount;
-        Contributions.Add(new GoalContribution
+        var contribution = new GoalContribution
         {
             TenantId = TenantId,
             GoalId   = Id,
             Amount   = amount,
             UserId   = userId,
             Notes    = notes
-        });
+        };
+        Contributions.Add(contribution);
         if (IsCompleted && Status == GoalStatus.Active)
         {
             Status      = GoalStatus.Completed;
             CompletedAt = DateTime.UtcNow;
         }
+        return contribution;
     }
 }
 

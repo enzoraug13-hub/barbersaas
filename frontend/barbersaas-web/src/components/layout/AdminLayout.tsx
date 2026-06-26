@@ -2,30 +2,78 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Calendar, Users, Scissors, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight
+  LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
+  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
 
-const nav = [
-  { to: '/admin',           label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/admin/agenda',    label: 'Agenda',       icon: Calendar },
-  { to: '/admin/clientes',  label: 'Clientes',     icon: Users },
-  { to: '/admin/barbeiros', label: 'Barbeiros',    icon: Scissors },
-  { to: '/admin/servicos',  label: 'Serviços',     icon: Scissors },
-  { to: '/admin/financeiro',label: 'Financeiro',   icon: DollarSign },
-  { to: '/admin/metas',     label: 'Metas',        icon: Target },
-  { to: '/admin/produtos',  label: 'Produtos',     icon: Package },
-  { to: '/admin/config',    label: 'Configurações',icon: Settings },
+// Um item de navegação é uma folha (link direto) ou um pai com filhos
+// (grupo expansível). Os destinos dos filhos são telas que já existem.
+type NavLeaf = { to: string; label: string; icon: LucideIcon }
+type NavParent = { label: string; icon: LucideIcon; children: NavLeaf[] }
+type NavEntry = NavLeaf | NavParent
+const isParent = (e: NavEntry): e is NavParent => 'children' in e
+
+const navGroups: { label: string | null; items: NavEntry[] }[] = [
+  { label: null, items: [
+    { to: '/admin',          label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/admin/agenda',   label: 'Agenda',     icon: Calendar },
+  ] },
+  { label: 'Gestão', items: [
+    { to: '/admin/clientes',  label: 'Clientes',  icon: Users },
+    { label: 'Equipe', icon: UsersRound, children: [
+      { to: '/admin/barbeiros', label: 'Barbeiros',        icon: Scissors },
+      { to: '/admin/servicos',  label: 'Serviços & Preços', icon: Tag },
+    ] },
+    { to: '/admin/produtos',  label: 'Produtos',  icon: Package },
+  ] },
+  { label: 'Financeiro', items: [
+    { to: '/admin/financeiro', label: 'Financeiro', icon: DollarSign },
+    { to: '/admin/metas',      label: 'Metas',       icon: Target },
+  ] },
+  { label: 'Sistema', items: [
+    { to: '/admin/config', label: 'Configurações', icon: Settings },
+  ] },
 ]
+
+// Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
+const allLeaves: NavLeaf[] = navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i])))
+
+// '/admin' casa só na rota exata; os demais casam também em sub-rotas
+// (ex.: '/admin/barbeiros/:id' destaca "Barbeiros").
+const isActive = (to: string, pathname: string) =>
+  to === '/admin' ? pathname === '/admin' : pathname === to || pathname.startsWith(to + '/')
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const location = useLocation()
   const navigate  = useNavigate()
   const { user, logout } = useAuthStore()
+
+  // Abre automaticamente o submenu que contém a rota atual (sem fechar os que
+  // o usuário abriu manualmente). Não força fechamento.
+  useEffect(() => {
+    navGroups.forEach(g => g.items.forEach(item => {
+      if (isParent(item) && item.children.some(c => isActive(c.to, location.pathname))) {
+        setOpenGroups(prev => (prev.has(item.label) ? prev : new Set(prev).add(item.label)))
+      }
+    }))
+  }, [location.pathname])
+
+  const toggleGroup = (label: string) =>
+    setOpenGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label); else next.add(label)
+      return next
+    })
+
+  const pageTitle = allLeaves
+    .filter(l => isActive(l.to, location.pathname))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.label ?? 'Painel'
 
   // Aplica as cores da barbearia ao painel inteiro
   const { data: settings } = useQuery({
@@ -50,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="ds-sidebar-logo flex items-center justify-between px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="ds-sidebar-logo-mark w-8 h-8 rounded-lg flex items-center justify-center">
-              <Scissors size={16} style={{ color: 'var(--bg-base)' }} />
+              <Scissors size={16} style={{ color: 'var(--accent-fg)' }} />
             </div>
             <span className="ds-sidebar-logo-text">BarberSaaS</span>
           </div>
@@ -61,18 +109,60 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {nav.map(({ to, label, icon: Icon }) => {
-            const active = location.pathname === to
-            return (
-              <Link key={to} to={to}
-                className={`ds-nav-item ${active ? 'ds-nav-item-active' : ''}`}
-                onClick={() => setSidebarOpen(false)}>
-                <Icon size={18} />
-                {label}
-                {active && <ChevronRight size={14} className="ml-auto" />}
-              </Link>
-            )
-          })}
+          {navGroups.map((group, gi) => (
+            <div key={group.label ?? 'root'}>
+              {group.label && <p className="ds-nav-group-label">{group.label}</p>}
+              {group.items.map((item, ii) => {
+                const index = navGroups.slice(0, gi).reduce((n, g) => n + g.items.length, 0) + ii
+
+                // Pai expansível: cabeçalho clicável + lista de subitens.
+                if (isParent(item)) {
+                  const { label, icon: Icon, children } = item
+                  const childActive = children.some(c => isActive(c.to, location.pathname))
+                  const open = openGroups.has(label)
+                  return (
+                    <div key={label}>
+                      <button type="button" onClick={() => toggleGroup(label)} aria-expanded={open}
+                        className={`ds-nav-item ds-nav-parent ds-nav-anim ${childActive && !open ? 'ds-nav-item-active' : ''} ${childActive && open ? 'ds-nav-parent-active' : ''}`}
+                        style={{ animationDelay: `${index * 30}ms` }}>
+                        <Icon size={18} />
+                        {label}
+                        <ChevronDown size={14} className={`ml-auto ds-nav-caret ${open ? 'ds-nav-caret-open' : ''}`} />
+                      </button>
+                      <div className={`ds-nav-sub ${open ? 'ds-nav-sub-open' : ''}`}>
+                        {children.map(({ to, label: clabel, icon: CIcon }) => {
+                          const active = isActive(to, location.pathname)
+                          return (
+                            <Link key={to} to={to}
+                              className={`ds-nav-item ds-nav-subitem ${active ? 'ds-nav-item-active' : ''}`}
+                              onClick={() => setSidebarOpen(false)}>
+                              <CIcon size={16} />
+                              {clabel}
+                              {active && <ChevronRight size={14} className="ml-auto" />}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // Folha: link direto (comportamento original).
+                const { to, label, icon: Icon } = item
+                const active = isActive(to, location.pathname)
+                return (
+                  <Link key={to} to={to}
+                    className={`ds-nav-item ds-nav-anim ${active ? 'ds-nav-item-active' : ''}`}
+                    style={{ animationDelay: `${index * 30}ms` }}
+                    onClick={() => setSidebarOpen(false)}>
+                    <Icon size={18} />
+                    {label}
+                    {active && <ChevronRight size={14} className="ml-auto" />}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* User */}
@@ -101,9 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={20} />
           </button>
           <div className="flex-1 lg:flex-none">
-            <h1 className="ds-topbar-title">
-              {nav.find(n => n.to === location.pathname)?.label ?? 'Painel'}
-            </h1>
+            <h1 className="ds-topbar-title">{pageTitle}</h1>
           </div>
         </header>
 

@@ -1,4 +1,6 @@
 using BarberSaaS.Application.Common.Interfaces;
+using BarberSaaS.Domain.Entities;
+using BarberSaaS.Domain.Exceptions;
 using FluentValidation;
 using MediatR;
 
@@ -47,7 +49,28 @@ public class UpdateMyProfileHandler : IRequestHandler<UpdateMyProfileCommand, bo
     public async Task<bool> Handle(UpdateMyProfileCommand request, CancellationToken ct)
     {
         var c = await _clients.GetByIdAsync(_user.Id, ct);
-        if (c is null) return false;
+
+        if (c is null)
+        {
+            // Cliente ainda não existe no banco (telefone validado por OTP, mas
+            // sem cadastro) — só nasce aqui, e só com nome preenchido. Sem nome,
+            // não cria nada (regra: nunca existe Client sem nome).
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new DomainException("Informe seu nome para concluir o cadastro.");
+            if (_user.TenantId is not { } tenantId)
+                throw new UnauthorizedAccessException("Sessão inválida.");
+
+            c = new Client { PhoneNumber = _user.Phone ?? "", Name = request.Name.Trim() };
+            c.TenantId = tenantId;
+            // Mesmo Id determinístico já usado como "sub" do JWT desde o OTP —
+            // ver DeterministicGuid/VerifyClientOtpCommand.
+            c.AssignDeterministicId(_user.Id);
+            if (!string.IsNullOrWhiteSpace(request.Cpf)) c.Cpf = new string(request.Cpf.Where(char.IsDigit).ToArray());
+            if (request.Email != null) c.Email = request.Email;
+            await _clients.AddAsync(c, ct);
+            return true;
+        }
+
         if (!string.IsNullOrWhiteSpace(request.Name)) c.Name = request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.Cpf)) c.Cpf = new string(request.Cpf.Where(char.IsDigit).ToArray());
         if (request.Email != null) c.Email = request.Email;

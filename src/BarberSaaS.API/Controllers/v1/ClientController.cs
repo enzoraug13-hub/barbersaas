@@ -1,3 +1,4 @@
+using BarberSaaS.Application.Appointments.Commands.CreateAppointment;
 using BarberSaaS.Application.ClientPortal.Commands;
 using BarberSaaS.Application.ClientPortal.Queries;
 using BarberSaaS.Application.Common.DTOs;
@@ -39,5 +40,14 @@ public class ClientController : ControllerBase
     {
         var list = await _mediator.Send(new GetMyAppointmentsQuery(), ct);
         return Ok(ApiResponse<IReadOnlyList<MyAppointmentDto>>.Ok(list));
+    }
+
+    // Confirma o agendamento reservado no fluxo público (POST /public/{slug}/reserve).
+    // Exige perfil completo (nome+CPF) — ver IRequireCompleteClientProfile.
+    [HttpPost("appointments")]
+    public async Task<IActionResult> ConfirmAppointment([FromBody] ConfirmAppointmentCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return Ok(ApiResponse<AppointmentResultDto>.Ok(result, "Agendamento realizado com sucesso!"));
     }
 }

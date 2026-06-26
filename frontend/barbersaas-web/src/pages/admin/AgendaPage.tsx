@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, addDays, subDays } from 'date-fns'
+import { format, addDays, subDays, startOfWeek, isSameDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CheckCircle, Plus, Calendar } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
@@ -37,13 +37,15 @@ const statusBadge = (s: string) => {
 
 export default function AgendaPage() {
   const [date, setDate]           = useState(new Date())
+  const [barberFilter, setBarberFilter] = useState('')
   const [selected, setSelected]   = useState<Appointment | null>(null)
   const [payMethod, setPayMethod] = useState(1)
   const [showNew, setShowNew]     = useState(false)
   const [newAppt, setNewAppt]     = useState(EMPTY_APPT)
   const dateStr = format(date, 'yyyy-MM-dd')
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(date, { weekStartsOn: 1 }), i))
 
-  const { data: appointments, isLoading } = useAppointments(dateStr)
+  const { data: appointments, isLoading } = useAppointments(dateStr, barberFilter || undefined)
   const { data: barbers }   = useBarbers()
   const { data: services }  = useServices()
   const cancel              = useCancelAppointment()
@@ -94,25 +96,45 @@ export default function AgendaPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="ds-page-title">Agenda</h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" onClick={() => setDate(d => subDays(d, 1))}><ChevronLeft size={18} /></Button>
-          <span className="ds-text-primary font-medium capitalize" style={{ fontSize: 'var(--text-sm)', padding: '0 var(--space-2)' }}>
-            {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-          </span>
-          <Button variant="ghost" onClick={() => setDate(d => addDays(d, 1))}><ChevronRight size={18} /></Button>
-          <Button variant="ghost" onClick={() => setDate(new Date())}>Hoje</Button>
-          <Button onClick={() => { setShowNew(true); setNewAppt(EMPTY_APPT) }}><Plus size={16} /> Novo</Button>
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '32px', color: 'var(--text-primary)' }}>Agenda</h2>
+          <p className="ds-text-secondary mt-1 capitalize" style={{ fontSize: '13px' }}>{format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select className="ds-input ds-agenda-filter" style={{ width: 180, background: 'var(--bg-subtle)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}
+            value={barberFilter} onChange={e => setBarberFilter(e.target.value)}>
+            <option value="">Todos os barbeiros</option>
+            {barbers?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <Button variant="ghost" style={{ color: 'var(--text-secondary)' }} onClick={() => setDate(new Date())}>Hoje</Button>
+          <Button style={{ fontWeight: 600 }} onClick={() => { setShowNew(true); setNewAppt(EMPTY_APPT) }}><Plus size={16} /> Novo</Button>
+        </div>
+      </div>
+
+      {/* Calendário semanal */}
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" onClick={() => setDate(d => subDays(d, 7))}><ChevronLeft size={16} /></Button>
+        <div className="flex-1 grid grid-cols-7 gap-2">
+          {weekDays.map(d => {
+            const active = isSameDay(d, date)
+            return (
+              <button key={d.toISOString()} onClick={() => setDate(d)} className={`ds-week-day ${active ? 'ds-week-day-active' : ''}`}>
+                <span className="ds-week-day-label capitalize">{format(d, 'EEE', { locale: ptBR })}</span>
+                <span className="ds-week-day-number">{format(d, 'dd')}</span>
+              </button>
+            )
+          })}
+        </div>
+        <Button variant="ghost" onClick={() => setDate(d => addDays(d, 7))}><ChevronRight size={16} /></Button>
       </div>
 
       {/* Lista */}
       {isLoading ? (
         <ListSkeleton />
       ) : !appointments?.length ? (
-        <EmptyState icon={Calendar} title="Nenhum agendamento para este dia"
-          action={<Button onClick={() => setShowNew(true)}><Plus size={16} /> Criar agendamento</Button>} />
+        <EmptyState icon={Calendar} title="Nenhum agendamento" hint="Clique em + Novo para criar" className="ds-empty-elegant"
+          action={<Button onClick={() => setShowNew(true)} style={{ height: 34, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)' }}><Plus size={14} /> Criar agendamento</Button>} />
       ) : (
         <div className="space-y-3">
           {appointments.map((appt, i) => (

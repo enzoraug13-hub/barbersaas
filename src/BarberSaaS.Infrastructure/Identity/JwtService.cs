@@ -13,7 +13,7 @@ public class JwtService : IJwtService
 
     public JwtService(IConfiguration config) => _config = config;
 
-    public TokenPair GenerateTokens(Guid userId, string email, string name, string role, Guid? tenantId)
+    public TokenPair GenerateTokens(Guid userId, string email, string name, string role, Guid? tenantId, string? phone = null)
     {
         var key    = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:SecretKey"]!));
         var creds  = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -28,6 +28,9 @@ public class JwtService : IJwtService
             new("role",      role),
             new("tenant_id", tenantId?.ToString() ?? string.Empty)
         };
+        // Só preenchido pra cliente novo (Client ainda não existe no banco) —
+        // ver ICurrentUser.Phone / UpdateMyProfileCommand.
+        if (!string.IsNullOrEmpty(phone)) claims.Add(new Claim("phone", phone));
 
         var token = new JwtSecurityToken(
             issuer:             _config["Jwt:Issuer"],

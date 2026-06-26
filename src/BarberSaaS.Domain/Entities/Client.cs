@@ -11,10 +11,6 @@ public class Client : BaseEntity
     public DateOnly? BirthDate { get; set; }
     public string? PhotoUrl { get; set; }
 
-    public string? OtpCode { get; set; }
-    public DateTime? OtpExpiresAt { get; set; }
-    public bool IsVerified { get; set; } = false;
-
     public int LoyaltyPoints { get; set; } = 0;
     public decimal WalletBalance { get; set; } = 0;
 
@@ -26,4 +22,9 @@ public class Client : BaseEntity
     public Tenant? Tenant { get; set; }
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     public LoyaltyWallet? LoyaltyWallet { get; set; }
+
+    // Usado só na criação tardia do cliente (ver UpdateMyProfileCommand): o Id
+    // precisa ser o mesmo Guid determinístico (telefone+tenant) já usado como
+    // "sub" do JWT desde a verificação do OTP, antes do cliente existir no banco.
+    public void AssignDeterministicId(Guid id) => Id = id;
 }

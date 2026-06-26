@@ -29,4 +29,21 @@ public class DashboardController : ControllerBase
         var result = await _mediator.Send(new GetDashboardQuery(_tenant.Id, s, e), ct);
         return Ok(ApiResponse<DashboardDto>.Ok(result));
     }
+
+    [HttpGet("monthly")]
+    public async Task<IActionResult> GetMonthly([FromQuery] int months, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetMonthlyRevenueQuery(_tenant.Id, months <= 0 ? 6 : months), ct);
+        return Ok(ApiResponse<IReadOnlyList<MonthlyRevenueDto>>.Ok(result));
+    }
+
+    [HttpGet("by-barber")]
+    public async Task<IActionResult> GetByBarber([FromQuery] DateOnly? start, [FromQuery] DateOnly? end, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var s     = start ?? today.AddDays(-6);
+        var e     = end   ?? today;
+        var result = await _mediator.Send(new GetBarberPerformanceQuery(_tenant.Id, s, e), ct);
+        return Ok(ApiResponse<IReadOnlyList<BarberPerformanceDto>>.Ok(result));
+    }
 }

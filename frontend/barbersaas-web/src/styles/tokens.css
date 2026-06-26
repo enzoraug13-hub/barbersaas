@@ -16,6 +16,10 @@
   --accent-hover: #DDB95A;
   --accent-soft: rgba(201,168,76,0.10);
   --accent-focus: rgba(201,168,76,0.25);
+  /* Texto/ícone sobre o acento — NUNCA usar --bg-base aqui: --bg-base inverte
+     de polaridade entre os temas (escuro≈preto, claro≈branco) mas o acento
+     não acompanha essa inversão, então o texto ficava ilegível no claro. */
+  --accent-fg: #16120A;
 
   /* Tenant (sobrescreve accent por barbearia — vem do banco) */
   --tenant-primary: var(--accent);
@@ -29,8 +33,10 @@
   --color-info: #5B9BD5;
 
   /* Tipografia */
-  --font-display: 'Playfair Display', Georgia, serif;
+  --font-display: 'Sora', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
+  /* Serifada elegante — usada em títulos de marca (ex.: nome da barbearia) */
+  --font-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
 
   --text-xs: 11px;
   --text-sm: 13px;
@@ -63,4 +69,36 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
   --shadow-accent: 0 0 0 3px var(--accent-focus);
+}
+
+/* Tema claro — INATIVO. Decisão: o app fica fixo no escuro por ora
+   (themeStore.ts nunca seta data-theme="light", não há mais botão de
+   toggle), porque várias superfícies (sidebar, cards, inputs, botão
+   secundário em admin-layout.css/components.css) ainda têm cor fixa em
+   vez de token e ficam ilegíveis no claro. Este bloco fica aqui pronto
+   pra quando isso for resolvido de verdade — não removido, só inerte
+   enquanto nada seta o atributo abaixo.
+   --tenant-primary/-hover/-soft e --shadow-accent não são redeclarados
+   aqui: são var(--accent...) e resolvem pro valor já sobrescrito acima
+   (cascade), tanto no padrão quanto no override por tenant. */
+:root[data-theme="light"] {
+  --bg-base: #FAF7F0;
+  --bg-subtle: #FFFFFF;
+  --bg-elevated: #F1EAD9;
+  --border-subtle: #E6DBC2;
+  --border-default: #D8C9A3;
+
+  --text-primary: #221C13;
+  --text-secondary: #6B5F4D;
+  --text-disabled: #A89880;
+
+  --accent: #B08F2E;
+  --accent-hover: #9A7C27;
+  --accent-soft: rgba(176,143,46,0.12);
+  --accent-focus: rgba(176,143,46,0.28);
+  --accent-fg: #16120A;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.14);
 }

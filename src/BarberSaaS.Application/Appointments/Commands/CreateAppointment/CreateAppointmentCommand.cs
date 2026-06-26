@@ -47,6 +47,7 @@ public class CreateAppointmentHandler : IRequestHandler<CreateAppointmentCommand
     private readonly IClientRepository _clients;
     private readonly IServiceRepository _services;
     private readonly IBarberRepository _barbers;
+    private readonly IBarberServiceRepository _barberServices;
     private readonly IAppointmentRepositoryFull _appointments;
     private readonly INotificationDispatcher _notifications;
     private readonly IGoogleCalendarService _googleCalendar;
@@ -56,11 +57,13 @@ public class CreateAppointmentHandler : IRequestHandler<CreateAppointmentCommand
 
     public CreateAppointmentHandler(
         IClientRepository clients, IServiceRepository services, IBarberRepository barbers,
+        IBarberServiceRepository barberServices,
         IAppointmentRepositoryFull appointments, INotificationDispatcher notifications,
         IGoogleCalendarService googleCalendar, ITenantRepository tenants,
         ICacheService cache, IMediator mediator)
     {
         _clients = clients; _services = services; _barbers = barbers;
+        _barberServices = barberServices;
         _appointments = appointments; _notifications = notifications;
         _googleCalendar = googleCalendar; _tenants = tenants;
         _cache = cache; _mediator = mediator;
@@ -107,9 +110,15 @@ public class CreateAppointmentHandler : IRequestHandler<CreateAppointmentCommand
             await _clients.UpdateAsync(client, ct);
         }
 
+        // Preço efetivo: preço do barbeiro p/ o serviço (BarberService.CustomPrice),
+        // com fallback pro preço base do serviço quando não há vínculo/preço próprio.
+        var customPrice    = await _barberServices.GetCustomPriceAsync(
+            request.TenantId, request.BarberId, request.ServiceId, ct);
+        var effectivePrice = customPrice ?? service.Price;
+
         var appointment = Appointment.Create(
             request.TenantId, request.BarberId, client.Id, request.ServiceId,
-            request.Date, request.StartTime, endTime, service.Price);
+            request.Date, request.StartTime, endTime, effectivePrice);
 
         appointment.Notes = request.Notes;
         await _appointments.AddAsync(appointment, ct);
@@ -128,7 +137,7 @@ public class CreateAppointmentHandler : IRequestHandler<CreateAppointmentCommand
 
                 var calDto = new GoogleCalendarEventDto(
                     appointment.Id, request.TenantId, barber.GoogleCalendarId,
-                    client.Name, client.PhoneNumber, service.Name, service.Price,
+                    client.Name, client.PhoneNumber, service.Name, effectivePrice,
                     service.DurationMinutes, startDt, endDt,
                     "America/Sao_Paulo", tenant?.Settings?.BusinessName ?? "Barbearia",
                     barber.GoogleCalendarColor);

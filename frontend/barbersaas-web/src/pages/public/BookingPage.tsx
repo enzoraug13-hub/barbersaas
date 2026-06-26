@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User } from 'lucide-react'
+import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User, MapPin, Calendar as CalendarIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '../../lib/api'
 import { usePublicBarbers } from '../../features/barbers/barbersApi'
 import { usePublicServices } from '../../features/services/servicesApi'
-import { useAvailableSlots, useCreateAppointment } from '../../features/appointments/appointmentsApi'
+import { useAvailableSlots, useReserveSlot, useConfirmClientAppointment } from '../../features/appointments/appointmentsApi'
 import { applyTenantTheme } from '../../lib/theme-tenant'
-import { useClientAuthStore } from '../../store/clientAuthStore'
+import { useClientSession, type ClientProfile } from '../../store/clientAuthStore'
+import { PhoneOtpStep } from '../../components/client/PhoneOtpStep'
+import { CompleteProfileStep } from '../../components/client/CompleteProfileStep'
 import { Button } from '../../components/ui/Button'
-import { PhoneField, COUNTRIES } from '../../components/ui/PhoneField'
-import { onlyDigits, isValidBRPhone } from '../../lib/masks'
 import type { TenantPublicInfo, Barber, Service } from '../../types'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
-type Step = 'barber' | 'service' | 'date' | 'slots' | 'client' | 'confirm' | 'done'
+type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phone' | 'profile' | 'done'
+const MAIN_STEPS: Step[] = ['service', 'barber', 'date', 'slots', 'confirm']
+const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 /* ---- Estados de carregamento (skeleton com shimmer) ---- */
 const ListSkeleton = ({ rows = 3 }: { rows?: number }) => (
@@ -54,30 +56,18 @@ const BackButton = ({ onClick }: { onClick: () => void }) => (
 
 export default function BookingPage() {
   const { slug } = useParams<{ slug: string }>()
-  const [step, setStep]         = useState<Step>('barber')
+  const [step, setStep]         = useState<Step>('home')
   const [barber, setBarber]     = useState<Barber | null>(null)
   const [service, setService]   = useState<Service | null>(null)
   const [date, setDate]         = useState('')
   const [slot, setSlot]         = useState('')
-  // client.phone guarda só os dígitos do número (sem +55) — o prefixo é fixo no PhoneField.
-  const [client, setClient]     = useState({ name: '', phone: '', email: '' })
+  const [reservation, setReservation] = useState<{ id: string; expiresAtUtc: string } | null>(null)
   const [result, setResult]     = useState<any>(null)
-  const [phoneError, setPhoneError] = useState<string | null>(null)
 
-  // Cliente já logado nesta barbearia (via OTP) — pula a etapa de dados pessoais,
-  // já que nome/telefone/e-mail já estão na conta.
-  const clientAuth = useClientAuthStore()
-  const loggedIn = clientAuth.slug === slug && !!clientAuth.token && !!clientAuth.client && clientAuth.profileComplete
-
-  useEffect(() => {
-    if (loggedIn && clientAuth.client) {
-      setClient({
-        name: clientAuth.client.name,
-        phone: onlyDigits(clientAuth.client.phone).replace(/^55/, ''),
-        email: clientAuth.client.email ?? '',
-      })
-    }
-  }, [loggedIn, clientAuth.client])
+  // loggedIn aqui SEMPRE exige cadastro completo (useClientSession) — token
+  // sozinho nunca conta como logado.
+  const session = useClientSession()
+  const loggedIn = session.slug === slug && session.loggedIn
 
   const { data: info } = useQuery<TenantPublicInfo>({
     queryKey: ['public-info', slug],
@@ -93,34 +83,60 @@ export default function BookingPage() {
   const { data: barbers,  isLoading: loadBarbers }  = usePublicBarbers(slug!)
   const { data: services, isLoading: loadServices } = usePublicServices(slug!)
   const { data: slots,    isLoading: loadSlots }    = useAvailableSlots(slug!, barber?.id ?? '', service?.id ?? '', date)
-  const createAppt = useCreateAppointment(slug!)
+  const reserveSlot = useReserveSlot(slug!)
+  const confirmAppointment = useConfirmClientAppointment()
 
   const nextDates = Array.from({ length: 14 }, (_, i) => {
     const d = addDays(new Date(), i + 1)
     return { value: format(d, 'yyyy-MM-dd'), label: format(d, "EEE, dd MMM", { locale: ptBR }) }
   })
 
-  const handleBook = async () => {
+  // Único ponto que grava o agendamento no banco — chamado só depois do OTP
+  // confirmado (ou direto, se o cliente já estava logado com perfil completo).
+  const finalizeBooking = async (reservationId: string) => {
     try {
-      const res = await createAppt.mutateAsync({
-        barberId: barber!.id, serviceId: service!.id,
-        clientName: client.name, clientPhone: `${COUNTRIES[0].dial}${client.phone}`, clientEmail: client.email || undefined,
-        date, startTime: slot
-      })
-      setResult(res); setStep('done')
+      const res = await confirmAppointment.mutateAsync({ reservationId })
+      setResult(res)
+      setReservation(null)
+      setStep('done')
     } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao agendar.')
+      toast.error(err?.response?.data?.errors?.[0] ?? 'Não foi possível confirmar. Escolha o horário de novo.')
+      setReservation(null)
+      setStep('slots')
     }
   }
 
-  const back = () => {
-    const steps: Step[] = loggedIn
-      ? ['barber','service','date','slots','confirm']
-      : ['barber','service','date','slots','client','confirm']
-    const i = steps.indexOf(step as any)
-    if (i > 0) setStep(steps[i - 1])
+  const handleConfirmClick = async () => {
+    try {
+      const res = await reserveSlot.mutateAsync({ barberId: barber!.id, serviceId: service!.id, date, startTime: slot })
+      setReservation({ id: res.reservationId, expiresAtUtc: res.expiresAtUtc })
+      if (loggedIn) await finalizeBooking(res.reservationId)
+      else setStep('phone')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.errors?.[0] ?? 'Esse horário acabou de ser reservado por outra pessoa.')
+      setStep('slots')
+    }
   }
 
+  const onPhoneVerified = (token: string, client: ClientProfile, profileComplete: boolean) => {
+    session.setAuth(token, client, profileComplete, slug!)
+    if (profileComplete && reservation) finalizeBooking(reservation.id)
+    else setStep('profile')
+  }
+
+  const onProfileDone = (patch: Partial<ClientProfile>) => {
+    session.updateProfile(patch)
+    if (reservation) finalizeBooking(reservation.id)
+  }
+
+  const back = () => {
+    const i = MAIN_STEPS.indexOf(step as any)
+    if (i > 0) setStep(MAIN_STEPS[i - 1])
+  }
+
+  const resetAll = () => {
+    setStep('home'); setBarber(null); setService(null); setDate(''); setSlot(''); setReservation(null); setResult(null)
+  }
 
   if (!info) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
@@ -130,84 +146,102 @@ export default function BookingPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      {/* Header */}
-      <div className="relative h-48"
+      {/* Header — capa imponente que esmaece no fundo escuro da página (sem corte
+          seco) com o nome em serifada premium por cima. O card de endereço/horário
+          (abaixo, na etapa 'home') fica intocado. */}
+      <div className="relative h-72"
         style={{ background: `linear-gradient(to bottom, ${info.primaryColor || '#1a1a1a'}, var(--bg-base))` }}>
+        {info.coverImageUrl && (
+          <img src={info.coverImageUrl} alt="capa" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: 0.55 }} />
+        )}
+        {/* Degradê de emenda: transparente no topo → cor de fundo da página embaixo,
+            dissolvendo a imagem sem corte e reforçando o contraste do texto. */}
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-base) 15%, transparent) 0%, color-mix(in srgb, var(--bg-base) 28%, transparent) 50%, color-mix(in srgb, var(--bg-base) 80%, transparent) 84%, var(--bg-base) 100%)',
+        }} />
         <Link to={`/b/${slug}/conta`}
           className="absolute top-3 right-3 z-10 flex items-center gap-1.5 transition-colors"
           style={{ borderRadius: 'var(--radius-full)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: '6px var(--space-3)', fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff' }}>
           <User size={14} /> Minha conta
         </Link>
-        {info.coverImageUrl && (
-          <img src={info.coverImageUrl} alt="capa" className="absolute inset-0 w-full h-full object-cover opacity-40" />
-        )}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           {info.logoUrl ? (
-            <img src={info.logoUrl} alt="logo" className="w-16 h-16 object-cover mb-2" style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)' }} />
+            <img src={info.logoUrl} alt="logo" className="w-20 h-20 object-cover mb-3" style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }} />
           ) : (
-            <div className="w-16 h-16 flex items-center justify-center mb-2" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
-              <Scissors size={28} style={{ color: 'var(--bg-base)' }} />
+            <div className="w-20 h-20 flex items-center justify-center mb-3" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
+              <Scissors size={34} style={{ color: 'var(--bg-base)' }} />
             </div>
           )}
-          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-2xl)', color: 'var(--text-primary)' }}>{info.businessName}</h1>
-          {info.city && <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{info.city}</p>}
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 'clamp(var(--text-3xl), 7vw, var(--text-4xl))', lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--text-primary)', textShadow: '0 2px 16px rgba(0,0,0,0.55)' }}>{info.businessName}</h1>
+          {info.city && <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)', textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>{info.city}</p>}
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Progress — stepper visual */}
-        {step !== 'done' && (
+        {/* Progress — só nas etapas principais (não aparece na tela inicial nem no checkout) */}
+        {MAIN_STEPS.includes(step) && (
           <div className="flex items-center gap-1 mb-6">
-            {(loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm'] as Step[]).map((s) => (
+            {MAIN_STEPS.map((s) => (
               <div key={s} className="h-1 flex-1 transition-all" style={{
                 borderRadius: 'var(--radius-full)',
-                background: (loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm']).indexOf(step) >=
-                  (loggedIn ? ['barber','service','date','slots','confirm'] : ['barber','service','date','slots','client','confirm']).indexOf(s)
-                  ? 'var(--tenant-primary)' : 'var(--bg-elevated)',
+                background: MAIN_STEPS.indexOf(step) >= MAIN_STEPS.indexOf(s) ? 'var(--tenant-primary)' : 'var(--bg-elevated)',
               }} />
             ))}
           </div>
         )}
 
         <div key={step} className="animate-fade-in">
-        {/* Step: Barbeiro */}
-        {step === 'barber' && (
-          <div>
-            <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o profissional</h2>
-            {loadBarbers ? <ListSkeleton />
-            : !barbers?.length ? <EmptyState icon={User} text="Nenhum profissional disponível no momento." />
-            : (
-              <div className="space-y-3">
-                {barbers.map((b, i) => (
-                  <button key={b.id} onClick={() => { setBarber(b); setStep('service') }}
-                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
-                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
-                    {b.photoUrl
-                      ? <img src={b.photoUrl} alt={b.name} className="w-12 h-12 rounded-full object-cover" />
-                      : <div className="ds-icon-chip ds-icon-chip-accent font-bold" style={{ width: 48, height: 48, borderRadius: '50%' }}>{b.name[0]}</div>
-                    }
-                    <div>
-                      <p className="ds-text-primary font-semibold">{b.name}</p>
-                      {b.bio && <p className="ds-text-secondary mt-0.5 line-clamp-1" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
-                    </div>
-                  </button>
-                ))}
+        {/* Tela inicial — logo, nome, cores, horário, endereço */}
+        {step === 'home' && (
+          <div className="space-y-4">
+            {info.description && <p className="ds-text-secondary text-center" style={{ fontSize: 'var(--text-sm)' }}>{info.description}</p>}
+
+            {info.address && (
+              <div className="ds-card flex items-start gap-3">
+                <MapPin size={18} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--accent)' }} />
+                <div>
+                  <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{info.address}</p>
+                  {info.city && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{info.city}</p>}
+                </div>
               </div>
             )}
+
+            {info.businessHours && info.businessHours.length > 0 && (
+              <div className="ds-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock size={16} style={{ color: 'var(--accent)' }} />
+                  <h3 className="ds-section-title" style={{ fontSize: 'var(--text-sm)' }}>Horário de funcionamento</h3>
+                </div>
+                <div className="space-y-1.5">
+                  {info.businessHours.map(h => (
+                    <div key={h.dayOfWeek} className="flex items-center justify-between" style={{ fontSize: 'var(--text-sm)' }}>
+                      <span className="ds-text-secondary">{weekdayNames[h.dayOfWeek]}</span>
+                      <span className={h.isOpen ? 'ds-text-primary font-medium' : 'ds-text-disabled'}>
+                        {h.isOpen ? `${h.openTime} – ${h.closeTime}` : 'Fechado'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button onClick={() => setStep('service')} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
+              <CalendarIcon size={18} /> Agendar
+            </Button>
           </div>
         )}
 
-        {/* Step: Serviço */}
+        {/* Serviço */}
         {step === 'service' && (
           <div>
-            <BackButton onClick={back} />
+            <BackButton onClick={() => setStep('home')} />
             <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o serviço</h2>
             {loadServices ? <ListSkeleton />
             : !services?.length ? <EmptyState icon={Scissors} text="Nenhum serviço disponível no momento." />
             : (
               <div className="space-y-3">
                 {services.map((s, i) => (
-                  <button key={s.id} onClick={() => { setService(s); setStep('date') }}
+                  <button key={s.id} onClick={() => { setService(s); setStep('barber') }}
                     style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
                     className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
                     <div className="w-3 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
@@ -226,7 +260,35 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* Step: Data */}
+        {/* Barbeiro */}
+        {step === 'barber' && (
+          <div>
+            <BackButton onClick={back} />
+            <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o profissional</h2>
+            {loadBarbers ? <ListSkeleton />
+            : !barbers?.length ? <EmptyState icon={User} text="Nenhum profissional disponível no momento." />
+            : (
+              <div className="space-y-3">
+                {barbers.map((b, i) => (
+                  <button key={b.id} onClick={() => { setBarber(b); setStep('date') }}
+                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
+                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
+                    {b.photoUrl
+                      ? <img src={b.photoUrl} alt={b.name} className="w-12 h-12 rounded-full object-cover" />
+                      : <div className="ds-icon-chip ds-icon-chip-accent font-bold" style={{ width: 48, height: 48, borderRadius: '50%' }}>{b.name[0]}</div>
+                    }
+                    <div>
+                      <p className="ds-text-primary font-semibold">{b.name}</p>
+                      {b.bio && <p className="ds-text-secondary mt-0.5 line-clamp-1" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Data */}
         {step === 'date' && (
           <div>
             <BackButton onClick={back} />
@@ -247,7 +309,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* Step: Horários */}
+        {/* Horários */}
         {step === 'slots' && (
           <div>
             <BackButton onClick={back} />
@@ -256,60 +318,48 @@ export default function BookingPage() {
             : !slots?.length ? <EmptyState icon={Clock} text="Nenhum horário disponível neste dia. Tente outra data." />
             : (
               <div className="grid grid-cols-3 gap-2">
-                {slots.map((s, i) => (
-                  <button key={s.start} onClick={() => { setSlot(s.start); setStep(loggedIn ? 'confirm' : 'client') }}
-                    style={{
-                      animationDelay: `${i * 20}ms`, minHeight: 44,
-                      borderColor: slot === s.start ? 'var(--accent)' : undefined,
-                      background: slot === s.start ? 'var(--accent-soft)' : undefined,
-                      color: slot === s.start ? 'var(--accent)' : 'var(--text-primary)',
-                    }}
-                    className="ds-card ds-card-interactive text-center font-medium animate-slide-up" >
-                    <span style={{ fontSize: 'var(--text-sm)' }}>{s.label}</span>
-                  </button>
-                ))}
+                {slots.map((s, i) => {
+                  const taken    = s.available === false   // ocupado: tem agendamento/reserva
+                  const selected = slot === s.start
+                  return (
+                    <button key={s.start} type="button"
+                      // aria-disabled (em vez de `disabled`) mantém o cursor not-allowed
+                      // visível; o onChange/onClick é neutralizado pra não deixar selecionar.
+                      aria-disabled={taken || undefined}
+                      title={taken ? 'Horário ocupado' : undefined}
+                      onClick={taken ? undefined : () => { setSlot(s.start); setStep('confirm') }}
+                      style={{
+                        animationDelay: `${i * 20}ms`, minHeight: 44,
+                        borderColor: selected ? 'var(--accent)' : undefined,
+                        background: selected ? 'var(--accent-soft)' : undefined,
+                        color: taken ? 'var(--text-disabled)' : selected ? 'var(--accent)' : 'var(--text-primary)',
+                        cursor: taken ? 'not-allowed' : 'pointer',
+                        opacity: taken ? 0.4 : undefined,                 // esmaecido
+                        filter: taken ? 'blur(0.8px)' : undefined,        // borrado
+                        textDecoration: taken ? 'line-through' : undefined, // risco em cima
+                      }}
+                      className={`ds-card text-center font-medium animate-slide-up${taken ? '' : ' ds-card-interactive'}`}>
+                      <span style={{ fontSize: 'var(--text-sm)' }}>{s.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* Step: Dados do cliente */}
-        {step === 'client' && (
-          <div>
-            <BackButton onClick={back} />
-            <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Seus dados</h2>
-            <div className="ds-card space-y-4">
-              <div className="ds-field"><label className="ds-label">Nome completo</label><input className="ds-input" placeholder="João Silva" value={client.name} onChange={e => setClient(c => ({...c, name: e.target.value}))} required /></div>
-              <PhoneField label="WhatsApp" value={client.phone}
-                onChange={digits => setClient(c => ({ ...c, phone: digits }))}
-                error={phoneError ?? undefined} />
-              <div className="ds-field"><label className="ds-label">E-mail (opcional)</label><input type="email" className="ds-input" placeholder="joao@email.com" value={client.email} onChange={e => setClient(c => ({...c, email: e.target.value}))} /></div>
-              <Button
-                onClick={() => {
-                  if (!client.name.trim()) { toast.error('Informe seu nome completo.'); return }
-                  if (!isValidBRPhone(client.phone)) { setPhoneError('Telefone inválido. Informe DDD + número.'); return }
-                  setPhoneError(null)
-                  setStep('confirm')
-                }}
-                className="w-full">Continuar</Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step: Confirmação */}
+        {/* Resumo + Confirmar (aqui dispara a reserva — nada gravado antes disso) */}
         {step === 'confirm' && (
           <div>
             <BackButton onClick={back} />
             <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Confirme seu agendamento</h2>
             <div className="ds-card space-y-3 mb-4">
               {[
-                { label: 'Profissional', value: barber?.name },
                 { label: 'Serviço',      value: service?.name },
+                { label: 'Profissional', value: barber?.name },
                 { label: 'Data',         value: date },
                 { label: 'Horário',      value: slot },
                 { label: 'Valor',        value: `R$ ${service?.price.toFixed(2)}` },
-                { label: 'Nome',         value: client.name },
-                { label: 'Telefone',     value: `${COUNTRIES[0].dial} ${client.phone}` },
               ].map(r => (
                 <div key={r.label} className="flex justify-between py-1.5 last:border-0" style={{ fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <span className="ds-text-secondary">{r.label}</span>
@@ -317,13 +367,33 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            <Button onClick={handleBook} loading={createAppt.isPending} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
-              {createAppt.isPending ? 'Agendando...' : 'Confirmar Agendamento'}
+            {!loggedIn && (
+              <p className="ds-text-disabled text-center mb-4" style={{ fontSize: 'var(--text-xs)' }}>
+                No próximo passo vamos confirmar seu telefone por SMS.
+              </p>
+            )}
+            <Button onClick={handleConfirmClick} loading={reserveSlot.isPending || confirmAppointment.isPending} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
+              {reserveSlot.isPending ? 'Reservando...' : confirmAppointment.isPending ? 'Confirmando...' : 'Confirmar Agendamento'}
             </Button>
           </div>
         )}
 
-        {/* Step: Concluído */}
+        {/* Telefone/OTP — reserva já existe (10min), aqui só autentica o cliente */}
+        {step === 'phone' && (
+          <PhoneOtpStep slug={slug!} businessName={info.businessName} logoUrl={info.logoUrl} businessPhone={info.phone}
+            expiresAtUtc={reservation?.expiresAtUtc}
+            phoneSubtitle="Confirme seu telefone para garantir o horário."
+            onVerified={onPhoneVerified} />
+        )}
+
+        {/* Cadastro (só se telefone novo) */}
+        {step === 'profile' && session.client && (
+          <CompleteProfileStep client={session.client} logoUrl={info.logoUrl} businessName={info.businessName}
+            subtitle="Só falta completar seu cadastro pra confirmar o agendamento."
+            onDone={onProfileDone} />
+        )}
+
+        {/* Concluído */}
         {step === 'done' && (
           <div className="text-center py-8">
             <div className="relative w-20 h-20 mx-auto mb-4">
@@ -341,7 +411,7 @@ export default function BookingPage() {
                 <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Data: <span className="ds-text-primary">{result.date} às {result.startTime}</span></p>
               </div>
             )}
-            <Button variant="ghost" onClick={() => { setStep('barber'); setBarber(null); setService(null); setDate(''); setSlot(''); setClient({ name: '', phone: '', email: '' }) }}>
+            <Button variant="ghost" onClick={resetAll}>
               Novo agendamento
             </Button>
           </div>

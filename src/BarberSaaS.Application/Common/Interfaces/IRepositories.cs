@@ -35,6 +35,31 @@ public interface IServiceRepository : IBaseRepository<Service>
     Task<IReadOnlyList<Service>> GetPublicByTenantAsync(Guid tenantId, CancellationToken ct = default);
 }
 
+public interface IBarberServiceRepository
+{
+    // Preço do barbeiro para o serviço, ou null quando (a) não há vínculo BarberService
+    // ou (b) há vínculo mas CustomPrice é null — ambos os casos caem no fallback
+    // service.Price no handler. O tenantId é passado explicitamente (defesa-em-profundidade):
+    // BarberService não herda BaseEntity, então NÃO tem o filtro global de tenant — e no
+    // fluxo público o filtro fica off de qualquer forma. Ver IGoalRepository para a regra
+    // de FirstOrDefaultAsync/filtros globais.
+    Task<decimal?> GetCustomPriceAsync(Guid tenantId, Guid barberId, Guid serviceId, CancellationToken ct = default);
+
+    // Vínculos explícitos do barbeiro (só as linhas que existem). O GET/lote cruza isso
+    // com a lista de serviços do tenant para montar isOffered/effectivePrice.
+    Task<IReadOnlyList<BarberService>> GetByBarberAsync(Guid tenantId, Guid barberId, CancellationToken ct = default);
+
+    // Upsert unitário. Segue a lição das Metas: checa existência (rastreada) e decide
+    // entre mutar (UPDATE) e Add (INSERT) — NUNCA DbSet.Update() cego numa PK pré-preenchida.
+    Task UpsertAsync(Guid tenantId, Guid barberId, Guid serviceId, decimal? customPrice, CancellationToken ct = default);
+
+    // Desvincula. Retorna false se não havia linha (idempotente).
+    Task<bool> RemoveAsync(Guid tenantId, Guid barberId, Guid serviceId, CancellationToken ct = default);
+
+    // Substitui o conjunto inteiro do barbeiro (add + update + remove) numa única transação.
+    Task ReplaceSetAsync(Guid tenantId, Guid barberId, IReadOnlyList<(Guid ServiceId, decimal? CustomPrice)> items, CancellationToken ct = default);
+}
+
 public interface IFinancialRepository : IBaseRepository<FinancialTransaction>
 {
     Task<IReadOnlyList<FinancialTransaction>> GetByPeriodAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
@@ -45,6 +70,13 @@ public interface IFinancialRepository : IBaseRepository<FinancialTransaction>
 public interface IGoalRepository : IBaseRepository<Goal>
 {
     Task<IReadOnlyList<Goal>> GetActiveByTenantAsync(Guid tenantId, CancellationToken ct = default);
+
+    // Persiste uma nova contribuição (INSERT) junto com a alteração de CurrentAmount/Status
+    // da meta rastreada (UPDATE), num único SaveChanges. Add() explícito é necessário porque
+    // a contribuição nasce com Id (Guid) preenchido no construtor; ao adicioná-la só pela
+    // navegação Goal.Contributions, o change tracker a marcaria como Modified -> UPDATE numa
+    // linha inexistente -> DbUpdateConcurrencyException. DbSet.Add a marca como Added.
+    Task AddContributionAsync(GoalContribution contribution, CancellationToken ct = default);
 }
 
 public interface IProductRepository : IBaseRepository<Product>

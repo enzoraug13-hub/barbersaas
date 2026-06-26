@@ -1,4 +1,6 @@
+using BarberSaaS.Application.Barbers.Queries;
 using BarberSaaS.Application.Dashboard.Queries;
+using BarberSaaS.Domain.Entities;
 using BarberSaaS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -91,5 +93,129 @@ public class DashboardRepository : IDashboardRepository
             total > 0 ? Math.Round((decimal)cancelledCount / total * 100, 2) : 0,
             topServices,
             dailyRevenue);
+    }
+
+    public async Task<IReadOnlyList<MonthlyRevenueDto>> GetMonthlyRevenueAsync(Guid tenantId, int months, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-(months - 1));
+        var start = firstMonth;
+        var end = today;
+
+        var transactions = await _db.FinancialTransactions
+            .AsNoTracking()
+            .Where(t => t.TenantId == tenantId && !t.IsDeleted
+                     && t.TransactionDate >= start && t.TransactionDate <= end)
+            .Select(t => new { t.Type, t.Amount, t.TransactionDate })
+            .ToListAsync(ct);
+
+        var byMonth = transactions
+            .GroupBy(t => new DateOnly(t.TransactionDate.Year, t.TransactionDate.Month, 1))
+            .ToDictionary(g => g.Key, g => (
+                Revenue: g.Where(t => t.Type == TransactionType.Revenue).Sum(t => t.Amount),
+                Expense: g.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)));
+
+        var result = new List<MonthlyRevenueDto>();
+        for (var m = firstMonth; m <= today; m = m.AddMonths(1))
+        {
+            var (revenue, expense) = byMonth.TryGetValue(m, out var v) ? v : (0m, 0m);
+            result.Add(new MonthlyRevenueDto(m.ToString("yyyy-MM"), revenue, expense));
+        }
+        return result;
+    }
+
+    // Série mensal de UM barbeiro: faturamento (FinalPrice dos concluídos) + nº de atendimentos.
+    // Mesmo padrão SQLite-safe do GetMonthlyRevenueAsync: consulta plana + agrupamento em memória
+    // (sem CROSS APPLY). Preenche todos os meses do intervalo, mesmo os zerados.
+    public async Task<IReadOnlyList<BarberMonthlyPointDto>> GetBarberMonthlySeriesAsync(Guid tenantId, Guid barberId, int months, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-(months - 1));
+
+        var appts = await _db.Appointments
+            .AsNoTracking()
+            .Where(a => a.TenantId == tenantId && !a.IsDeleted && a.BarberId == barberId
+                     && a.Date >= firstMonth && a.Date <= today
+                     && a.Status == AppointmentStatus.Completed)
+            .Select(a => new { a.Date, a.FinalPrice })
+            .ToListAsync(ct);
+
+        var byMonth = appts
+            .GroupBy(a => new DateOnly(a.Date.Year, a.Date.Month, 1))
+            .ToDictionary(g => g.Key, g => (Revenue: g.Sum(a => a.FinalPrice), Count: g.Count()));
+
+        var result = new List<BarberMonthlyPointDto>();
+        for (var m = firstMonth; m <= today; m = m.AddMonths(1))
+        {
+            var (revenue, count) = byMonth.TryGetValue(m, out var v) ? v : (0m, 0);
+            result.Add(new BarberMonthlyPointDto(m.ToString("yyyy-MM"), revenue, count));
+        }
+        return result;
+    }
+
+    // Índice 0 = segunda, 6 = domingo. DayOfWeek do .NET é 0=domingo..6=sábado.
+    private static int MondayFirstIndex(DayOfWeek d) => ((int)d + 6) % 7;
+
+    public async Task<IReadOnlyList<BarberPerformanceDto>> GetBarberPerformanceAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default)
+    {
+        var barbers = await _db.Barbers
+            .AsNoTracking()
+            .Where(b => b.TenantId == tenantId && !b.IsDeleted)
+            .OrderBy(b => b.DisplayOrder)
+            .Select(b => new { b.Id, b.Name, b.PhotoUrl, b.IsActive })
+            .ToListAsync(ct);
+
+        if (barbers.Count == 0) return Array.Empty<BarberPerformanceDto>();
+
+        var barberIds = barbers.Select(b => b.Id).ToList();
+
+        var appointments = await _db.Appointments
+            .AsNoTracking()
+            .Where(a => a.TenantId == tenantId && !a.IsDeleted && barberIds.Contains(a.BarberId)
+                     && a.Date >= start && a.Date <= end && a.Status != AppointmentStatus.Cancelled)
+            .Select(a => new { a.BarberId, a.Date, a.StartTime, a.EndTime, a.FinalPrice, a.Status })
+            .ToListAsync(ct);
+
+        // Consulta direta no DbSet de WorkShifts (join simples), em vez de
+        // SelectMany sobre a navegação WorkSchedule.WorkShifts: esse padrão gera
+        // CROSS APPLY no SQL translation do EF Core, que o provider do SQLite
+        // não suporta (suportado no SQL Server) — quebrava só em dev.
+        var shifts = await _db.WorkShifts
+            .AsNoTracking()
+            .Where(s => s.IsActive && s.WorkSchedule!.IsActive && barberIds.Contains(s.WorkSchedule!.BarberId))
+            .Select(s => new { s.WorkSchedule!.BarberId, s.DayOfWeek, s.StartTime, s.EndTime })
+            .ToListAsync(ct);
+
+        var daysOff = await _db.DaysOff
+            .AsNoTracking()
+            .Where(d => barberIds.Contains(d.BarberId) && d.Date >= start && d.Date <= end && d.IsFullDay)
+            .Select(d => new { d.BarberId, d.Date })
+            .ToListAsync(ct);
+
+        return barbers.Select(b =>
+        {
+            var bAppts = appointments.Where(a => a.BarberId == b.Id).ToList();
+            var revenue = bAppts.Where(a => a.Status == AppointmentStatus.Completed).Sum(a => a.FinalPrice);
+
+            var weekly = new int[7];
+            foreach (var a in bAppts) weekly[MondayFirstIndex(a.Date.DayOfWeek)]++;
+
+            var bShifts = shifts.Where(s => s.BarberId == b.Id).ToList();
+            var bDaysOff = daysOff.Where(d => d.BarberId == b.Id).Select(d => d.Date).ToHashSet();
+
+            decimal capacityMinutes = 0;
+            for (var day = start; day <= end; day = day.AddDays(1))
+            {
+                if (bDaysOff.Contains(day)) continue;
+                capacityMinutes += bShifts
+                    .Where(s => s.DayOfWeek == day.DayOfWeek)
+                    .Sum(s => (decimal)(s.EndTime - s.StartTime).TotalMinutes);
+            }
+            var bookedMinutes = bAppts.Sum(a => (decimal)(a.EndTime - a.StartTime).TotalMinutes);
+            var occupancy = capacityMinutes > 0 ? Math.Round(Math.Min(100, bookedMinutes / capacityMinutes * 100), 1) : 0;
+
+            return new BarberPerformanceDto(b.Id, b.Name, b.PhotoUrl, b.IsActive, bAppts.Count, revenue, occupancy, weekly);
+        })
+        .ToList();
     }
 }

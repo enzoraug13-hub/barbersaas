@@ -2,7 +2,7 @@ namespace BarberSaaS.Application.Common.Interfaces;
 
 public interface IJwtService
 {
-    TokenPair GenerateTokens(Guid userId, string email, string name, string role, Guid? tenantId);
+    TokenPair GenerateTokens(Guid userId, string email, string name, string role, Guid? tenantId, string? phone = null);
     Guid? ValidateToken(string token);
 }
 

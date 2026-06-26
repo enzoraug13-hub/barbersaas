@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Plus, Loader2, User, Clock, ToggleLeft, ToggleRight, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Loader2, User, Clock, ToggleLeft, ToggleRight, X, Pencil, ChevronRight } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
+import { EditBarberModal } from '../../components/admin/EditBarberModal'
 import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
@@ -102,11 +104,13 @@ function ScheduleModal({ barber, onClose }: { barber: Barber; onClose: () => voi
 }
 
 export default function BarbersPage() {
+  const navigate = useNavigate()
   const { data: barbers, isLoading } = useBarbers()
   const create = useCreateBarber()
   const toggle = useToggleBarber()
   const [showForm, setShowForm] = useState(false)
   const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null)
+  const [editBarber, setEditBarber] = useState<Barber | null>(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, googleCalendarId: '' })
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -138,7 +142,9 @@ export default function BarbersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {barbers.map((b, i) => (
             <Card key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="animate-slide-up">
-              <div className="flex items-center gap-4">
+              <div role="button" tabIndex={0} onClick={() => navigate(`/admin/barbeiros/${b.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/admin/barbeiros/${b.id}`) }}
+                className="flex items-center gap-4 group" style={{ cursor: 'pointer' }}>
                 {b.photoUrl ? (
                   <img src={b.photoUrl} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
                 ) : (
@@ -147,11 +153,11 @@ export default function BarbersPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="ds-text-primary font-semibold truncate">{b.name}</p>
+                  <p className="ds-text-primary font-semibold truncate group-hover:ds-text-accent transition-colors">{b.name}</p>
                   {b.phone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{b.phone}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <button
-                      onClick={() => toggle.mutate(b.id)}
+                      onClick={(e) => { e.stopPropagation(); toggle.mutate(b.id) }}
                       className="flex items-center gap-1 font-medium"
                       style={{ fontSize: 'var(--text-xs)', color: b.isActive ? 'var(--color-success)' : 'var(--text-disabled)', background: 'none', border: 'none', cursor: 'pointer' }}>
                       {b.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
@@ -159,11 +165,15 @@ export default function BarbersPage() {
                     </button>
                   </div>
                 </div>
+                <ChevronRight size={18} className="flex-shrink-0 ds-text-disabled group-hover:ds-text-accent transition-colors" />
               </div>
 
               {b.bio && <p className="ds-text-disabled mt-3 line-clamp-2" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
 
               <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <Button variant="ghost" className="flex-1" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setEditBarber(b)}>
+                  <Pencil size={14} /> Editar
+                </Button>
                 <Button variant="ghost" className="flex-1" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setScheduleBarber(b)}>
                   <Clock size={14} /> Horários
                 </Button>
@@ -201,6 +211,11 @@ export default function BarbersPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal editar barbeiro */}
+      {editBarber && (
+        <EditBarberModal barber={editBarber} onClose={() => setEditBarber(null)} />
+      )}
 
       {/* Modal de horários */}
       {scheduleBarber && (

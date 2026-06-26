@@ -13,17 +13,26 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
     <title>BarberSaaS</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
+    <script type="module">
+      // Só registra em produção — em dev o "cache first" do sw.js servia
+      // chunks antigos do Vite depois de cada restart/troca de dependência,
+      // causando o "duas cópias de React" (useContext/useCallback em null).
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {})
-        })
+        if (import.meta.env.PROD) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {})
+          })
+        } else {
+          // Limpa qualquer SW/cache de sessões anteriores em dev.
+          navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))
+          if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
+        }
       }
     </script>
   </body>

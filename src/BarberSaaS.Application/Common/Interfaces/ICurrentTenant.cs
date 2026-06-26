@@ -16,6 +16,11 @@ public interface ICurrentUser
     Guid? TenantId { get; }
     string? IpAddress { get; }
     bool IsAuthenticated { get; }
+
+    // Só preenchido em tokens de cliente (role=client) — usado quando o
+    // Client ainda não existe no banco (telefone validado por OTP, cadastro
+    // ainda não completado). Ver UpdateMyProfileCommand/GetMyProfileQuery.
+    string? Phone { get; }
 }
 
 public interface IDateTimeProvider

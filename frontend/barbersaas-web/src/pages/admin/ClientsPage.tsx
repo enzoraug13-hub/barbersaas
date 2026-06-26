@@ -95,10 +95,10 @@ export default function ClientsPage() {
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="ds-avatar flex items-center justify-center flex-shrink-0" style={{ width: 32, height: 32, borderRadius: '50%', fontSize: 'var(--text-sm)' }}>
-                          {c.name[0].toUpperCase()}
+                          {(c.name?.[0] ?? '?').toUpperCase()}
                         </div>
                         <div>
-                          <p className="ds-text-primary font-medium">{c.name}</p>
+                          <p className="ds-text-primary font-medium">{c.name?.trim() || 'Sem nome'}</p>
                           {c.email && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{c.email}</p>}
                           <p className="ds-text-disabled sm:hidden" style={{ fontSize: 'var(--text-xs)' }}>{c.phoneNumber}</p>
                         </div>
@@ -159,7 +159,7 @@ export default function ClientsPage() {
       <Modal isOpen={!!blockTarget} onClose={() => setBlock(null)} title="Bloquear Cliente">
         {blockTarget && (
           <>
-            <p className="ds-text-accent font-medium mb-4">{blockTarget.name}</p>
+            <p className="ds-text-accent font-medium mb-4">{blockTarget.name?.trim() || 'Sem nome'}</p>
             <form onSubmit={handleBlock} className="space-y-4">
               <div className="ds-field"><label className="ds-label">Motivo</label><input className="ds-input" value={blockReason} onChange={e => setBlockReason(e.target.value)} required autoFocus /></div>
               <div className="flex gap-3">

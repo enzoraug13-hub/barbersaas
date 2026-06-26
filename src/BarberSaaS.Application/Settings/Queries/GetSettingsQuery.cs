@@ -1,9 +1,13 @@
 using BarberSaaS.Application.Common.Interfaces;
 using MediatR;
+using System.Text.Json;
 
 namespace BarberSaaS.Application.Settings.Queries;
 
 public record GetSettingsQuery : IRequest<SettingsDto?>;
+
+// DayOfWeek: 0=domingo..6=sábado (igual ao System.DayOfWeek do .NET).
+public record BusinessHourDto(int DayOfWeek, bool IsOpen, string? OpenTime, string? CloseTime);
 
 // DTO tipado da configuração da barbearia (antes era objeto anônimo no controller).
 public record SettingsDto(
@@ -14,7 +18,8 @@ public record SettingsDto(
     string? Address, string? City, string? State, string? ZipCode,
     int SlotIntervalMinutes, int MaxAdvanceDays, int MinNoticeMinutes,
     bool AllowOnlineBooking, bool RequireConfirmation,
-    string PublicSlug);
+    string PublicSlug,
+    IReadOnlyList<BusinessHourDto> BusinessHours);
 
 public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, SettingsDto?>
 {
@@ -39,6 +44,24 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, SettingsDto?
             s.Address, s.City, s.State, s.ZipCode,
             s.SlotIntervalMinutes, s.MaxAdvanceDays, s.MinNoticeMinutes,
             s.AllowOnlineBooking, s.RequireConfirmation,
-            s.PublicSlug);
+            s.PublicSlug,
+            ParseBusinessHours(s.BusinessHoursJson));
+    }
+
+    public static IReadOnlyList<BusinessHourDto> ParseBusinessHours(string? json)
+    {
+        if (!string.IsNullOrWhiteSpace(json))
+        {
+            try
+            {
+                var parsed = JsonSerializer.Deserialize<List<BusinessHourDto>>(json);
+                if (parsed is { Count: 7 }) return parsed;
+            }
+            catch (JsonException) { /* dados antigos/corrompidos: cai pro padrão abaixo */ }
+        }
+        // Padrão: seg-sáb 09:00-19:00, domingo fechado.
+        return Enumerable.Range(0, 7)
+            .Select(d => new BusinessHourDto(d, d != 0, "09:00", "19:00"))
+            .ToList();
     }
 }

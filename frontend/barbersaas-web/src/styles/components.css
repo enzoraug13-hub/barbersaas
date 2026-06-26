@@ -32,7 +32,7 @@
   .ds-shimmer { background: var(--bg-elevated); }
 }
 
-/* ---------------- Button ---------------- */
+/* ---------------- Button (estrutura base + variantes não-premium) ---------------- */
 .ds-btn {
   display: inline-flex;
   align-items: center;
@@ -52,12 +52,6 @@
 .ds-btn:active:not(:disabled) { transform: scale(0.97); }
 .ds-btn:focus-visible { outline: none; box-shadow: var(--shadow-accent); }
 .ds-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.ds-btn-primary {
-  background: var(--tenant-primary);
-  color: var(--bg-base);
-}
-.ds-btn-primary:hover:not(:disabled) { background: var(--tenant-primary-hover); transform: translateY(-1px); }
 
 .ds-btn-ghost {
   background: transparent;
@@ -83,25 +77,99 @@
   border-radius: var(--radius-full);
 }
 
+/* ============ BOTÕES — estilo premium ============ */
+.btn-primary,
+.ds-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent-fg);
+  background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 100%);
+  border: 1px solid var(--accent-hover);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent),
+              inset 0 1px 0 rgba(255,255,255,0.25);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-primary:hover,
+.ds-btn-primary:hover {
+  background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 100%);
+  filter: brightness(1.08);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent),
+              inset 0 1px 0 rgba(255,255,255,0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active,
+.ds-btn-primary:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Botão secundário / ghost */
+.btn-secondary,
+.ds-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #E8DFD0;
+  background: #1A1713;
+  border: 1px solid #2E2A24;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-secondary:hover,
+.ds-btn-secondary:hover {
+  background: #242019;
+  border-color: #3D3830;
+  transform: translateY(-1px);
+}
+
 /* ---------------- Input ---------------- */
 .ds-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .ds-label { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-sm); color: var(--text-secondary); }
-.ds-input {
-  height: 40px;
-  padding: 0 var(--space-3);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-  font-size: var(--text-base);
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
-}
-.ds-input::placeholder { color: var(--text-disabled); }
-.ds-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--shadow-accent); }
-.ds-input-error { border-color: var(--color-error); }
-.ds-input-error:focus { border-color: var(--color-error); box-shadow: 0 0 0 3px rgba(224,92,92,0.25); }
 .ds-error-text { font-size: var(--text-xs); color: var(--color-error); }
+
+/* ============ INPUT — estilo premium ============ */
+.input,
+.ds-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #F5F0E8;
+  background: #16130F;
+  border: 1px solid #2E2A24;
+  transition: all 180ms ease;
+}
+.input::placeholder,
+.ds-input::placeholder { color: #5C5248; }
+.input:focus,
+.ds-input:focus {
+  outline: none;
+  background: #1A1713;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.ds-input-error {
+  border-color: #E05C5C !important;
+}
 
 /* ---------------- Telefone (prefixo de país + número) ---------------- */
 .ds-phone-group { display: flex; }
@@ -132,21 +200,22 @@
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
-/* ---------------- Card ---------------- */
+/* ============ CARD — profundidade sutil ============ */
+.card,
 .ds-card {
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: var(--space-6);
+  background: linear-gradient(180deg, #1A1713 0%, #161310 100%);
+  border: 1px solid #25211B;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.15);
 }
 .ds-card-interactive {
+  transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  transition: border-color 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
 }
 .ds-card-interactive:hover {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
   transform: translateY(-2px);
 }
 
@@ -173,6 +242,9 @@
 .ds-empty-title { font-family: var(--font-display); font-size: var(--text-lg); color: var(--text-primary); }
 .ds-empty-desc { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--space-1); }
 .ds-empty-action { margin-top: var(--space-6); display: flex; justify-content: center; }
+.ds-empty-elegant .ds-empty-icon { color: var(--border-subtle); }
+.ds-empty-elegant .ds-empty-title { font-size: 18px; }
+.ds-empty-elegant .ds-empty-desc { color: var(--text-disabled); }
 
 /* ---------------- Page header / texto utilitário ---------------- */
 .ds-page-title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-2xl); color: var(--text-primary); }
@@ -211,6 +283,31 @@
 .ds-table tbody tr:hover { background: var(--bg-elevated); }
 .ds-table td { padding: var(--space-4) var(--space-6); color: var(--text-primary); }
 
+/* ---------------- Calendário semanal (Agenda) ---------------- */
+.ds-week-day {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2);
+  gap: 2px;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease, background-color 150ms ease;
+}
+.ds-week-day:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); transform: translateY(-2px); }
+.ds-week-day-label { font-family: var(--font-ui); font-size: 11px; color: var(--text-disabled); text-transform: uppercase; }
+.ds-week-day-number { font-family: var(--font-ui); font-size: 22px; font-weight: 600; color: var(--text-secondary); }
+.ds-week-day-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.ds-week-day-active .ds-week-day-label { font-weight: 600; color: var(--accent); }
+.ds-week-day-active .ds-week-day-number { font-family: var(--font-display); font-size: 24px; color: var(--accent); }
+
+.ds-agenda-filter:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+
 /* ---------------- Modal ---------------- */
 .ds-modal-backdrop {
   position: fixed;
@@ -235,3 +332,62 @@
 .ds-modal-title { font-family: var(--font-display); font-size: var(--text-lg); color: var(--text-primary); }
 .ds-modal-close { color: var(--text-secondary); background: none; border: none; cursor: pointer; line-height: 0; }
 .ds-modal-close:hover { color: var(--text-primary); }
+
+/* ============ CONFIG / SECTION CARDS ============ */
+.ds-section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Ícone das seções com mais presença */
+.ds-icon-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+.ds-icon-chip-accent {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-hover) 18%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
+  color: var(--accent-hover);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ds-hoverable-field {
+  transition: border-color 180ms ease;
+}
+.ds-hoverable-field:hover {
+  border-color: var(--border-default);
+}
+
+/* ============ CONFIG — sub-sidebar de abas ============ */
+.ds-config-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.ds-config-tab svg { color: var(--text-disabled); flex-shrink: 0; transition: color 150ms ease; }
+.ds-config-tab:hover { background: var(--bg-elevated); }
+.ds-config-tab-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.ds-config-tab-active svg { color: var(--accent); }

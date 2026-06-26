@@ -26,7 +26,9 @@ public record BarberDto(
     bool IsActive,
     bool ShowInPublicPage,
     string? GoogleCalendarId,
-    int DisplayOrder);
+    int DisplayOrder,
+    int CommissionType,
+    decimal CommissionValue);
 
 public class CreateBarberValidator : AbstractValidator<CreateBarberCommand>
 {
@@ -90,6 +92,6 @@ public class CreateBarberHandler : IRequestHandler<CreateBarberCommand, BarberDt
 
         await _barbers.AddAsync(barber, ct);
 
-        return new BarberDto(barber.Id, barber.Name, barber.PhotoUrl, barber.Bio, barber.Phone, barber.IsActive, barber.ShowInPublicPage, barber.GoogleCalendarId, barber.DisplayOrder);
+        return new BarberDto(barber.Id, barber.Name, barber.PhotoUrl, barber.Bio, barber.Phone, barber.IsActive, barber.ShowInPublicPage, barber.GoogleCalendarId, barber.DisplayOrder, (int)barber.CommissionType, barber.CommissionValue);
     }
 }

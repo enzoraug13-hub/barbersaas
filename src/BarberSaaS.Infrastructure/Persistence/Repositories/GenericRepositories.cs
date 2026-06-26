@@ -96,6 +96,97 @@ public class GoalRepository : BaseRepository<Goal>, IGoalRepository
         => await _set.AsNoTracking().Include(g => g.Contributions)
             .Where(g => g.TenantId == tenantId && g.Status == GoalStatus.Active)
             .ToListAsync(ct);
+
+    // Add() explícito marca a contribuição como Added (-> INSERT). Se ela fosse anexada
+    // só pela navegação Goal.Contributions, o change tracker a marcaria como Modified
+    // (porque nasce com Id Guid preenchido no construtor) -> UPDATE numa linha inexistente
+    // -> "0 rows affected" -> DbUpdateConcurrencyException (o 500 do Contribuir).
+    // A Goal já está rastreada (CurrentAmount/Status alterados), então o mesmo SaveChanges
+    // persiste o UPDATE da meta e o INSERT da contribuição numa única transação.
+    public async Task AddContributionAsync(GoalContribution contribution, CancellationToken ct = default)
+    {
+        _db.Set<GoalContribution>().Add(contribution);
+        await _db.SaveChangesAsync(ct);
+    }
+}
+
+public class BarberServiceRepository : IBarberServiceRepository
+{
+    private readonly AppDbContext _db;
+    public BarberServiceRepository(AppDbContext db) => _db = db;
+
+    public async Task<decimal?> GetCustomPriceAsync(Guid tenantId, Guid barberId, Guid serviceId, CancellationToken ct = default)
+        => await _db.Set<BarberService>()
+            // bs.TenantId == tenantId é a defesa explícita: BarberService não tem filtro
+            // global de tenant e no fluxo público o filtro fica off. A PK (BarberId,ServiceId)
+            // já é única por tenant, mas reforçamos para impedir leitura cross-tenant.
+            .Where(bs => bs.TenantId == tenantId && bs.BarberId == barberId && bs.ServiceId == serviceId)
+            // Projeta decimal?: "sem linha" e "linha com CustomPrice null" colapsam em null -> fallback.
+            .Select(bs => bs.CustomPrice)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<BarberService>> GetByBarberAsync(Guid tenantId, Guid barberId, CancellationToken ct = default)
+        => await _db.Set<BarberService>().AsNoTracking()
+            .Where(bs => bs.TenantId == tenantId && bs.BarberId == barberId)
+            .ToListAsync(ct);
+
+    public async Task UpsertAsync(Guid tenantId, Guid barberId, Guid serviceId, decimal? customPrice, CancellationToken ct = default)
+    {
+        // Lição das Metas: a PK (BarberId,ServiceId) já vem preenchida, então um
+        // DbSet.Update() cego marcaria a linha como Modified -> UPDATE numa linha que
+        // pode não existir -> DbUpdateConcurrencyException. Por isso: checa existência
+        // (rastreada) e decide entre mutar (UPDATE) e Add (INSERT).
+        var existing = await _db.Set<BarberService>()
+            .FirstOrDefaultAsync(bs => bs.TenantId == tenantId && bs.BarberId == barberId && bs.ServiceId == serviceId, ct);
+        if (existing is null)
+            _db.Set<BarberService>().Add(new BarberService
+            {
+                TenantId = tenantId, BarberId = barberId, ServiceId = serviceId, CustomPrice = customPrice
+            });
+        else
+            existing.CustomPrice = customPrice; // rastreada -> Modified -> UPDATE
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> RemoveAsync(Guid tenantId, Guid barberId, Guid serviceId, CancellationToken ct = default)
+    {
+        var existing = await _db.Set<BarberService>()
+            .FirstOrDefaultAsync(bs => bs.TenantId == tenantId && bs.BarberId == barberId && bs.ServiceId == serviceId, ct);
+        if (existing is null) return false;
+        _db.Set<BarberService>().Remove(existing);
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task ReplaceSetAsync(Guid tenantId, Guid barberId, IReadOnlyList<(Guid ServiceId, decimal? CustomPrice)> items, CancellationToken ct = default)
+    {
+        // Carrega os vínculos atuais RASTREADOS (sem AsNoTracking): vamos mutar/remover.
+        var existing = await _db.Set<BarberService>()
+            .Where(bs => bs.TenantId == tenantId && bs.BarberId == barberId)
+            .ToListAsync(ct);
+        var byService = existing.ToDictionary(bs => bs.ServiceId);
+        var wanted    = items.Select(i => i.ServiceId).ToHashSet();
+
+        // Remove os que saíram do conjunto desejado.
+        foreach (var bs in existing)
+            if (!wanted.Contains(bs.ServiceId))
+                _db.Set<BarberService>().Remove(bs);
+
+        // Add (INSERT) os novos; mutação rastreada (UPDATE) os já existentes.
+        foreach (var (serviceId, customPrice) in items)
+        {
+            if (byService.TryGetValue(serviceId, out var bs))
+                bs.CustomPrice = customPrice;       // Modified -> UPDATE
+            else
+                _db.Set<BarberService>().Add(new BarberService
+                {
+                    TenantId = tenantId, BarberId = barberId, ServiceId = serviceId, CustomPrice = customPrice
+                });
+        }
+
+        // add + update + remove numa única transação.
+        await _db.SaveChangesAsync(ct);
+    }
 }
 
 public class ProductRepository : BaseRepository<Product>, IProductRepository

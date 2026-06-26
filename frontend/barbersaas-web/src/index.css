@@ -1,76 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   DESIGN TOKENS — valores em canais RGB (para suporte a opacidade
-   do Tailwind: rgb(var(--token) / <alpha>)). Tema dark é o padrão.
-   ============================================================ */
-:root {
-  /* Superfícies / texto (DARK) — preto-azulado profundo, editorial */
-  --bg:            8 9 12;       /* #08090c */
-  --surface:       16 17 21;     /* #101115 */
-  --surface-hover: 23 24 30;     /* #17181e */
-  --border:        32 34 42;     /* #20222a */
-  --text:          248 248 250;  /* #f8f8fa */
-  --text-muted:    156 158 168;  /* #9c9ea8 */
-  --text-subtle:   104 106 118;  /* #686a76 */
-
-  /* Marca / acento (dourado premium de barbearia) */
-  --accent:        202 168 92;   /* #caa85c */
-  --accent-hover:  218 188 120;  /* #dabc78 */
-  --accent-fg:     12 12 14;     /* texto sobre o acento */
-
-  /* Semânticos */
-  --success: 46 200 132;
-  --warning: 245 184 60;
-  --danger:  244 96 96;
-  --info:    96 160 250;
-
-  /* Cores por barbearia (página pública sobrescreve em runtime) */
-  --color-primary:   #1a1a1a;
-  --color-secondary: #c9a84c;
-  --color-accent:    #ffffff;
-
-  color-scheme: dark;
-}
-
-:root[data-theme='light'] {
-  --bg:            250 250 252;  /* #fafafc */
-  --surface:       255 255 255;  /* #ffffff */
-  --surface-hover: 245 246 248;  /* #f5f6f8 */
-  --border:        226 228 233;  /* #e2e4e9 */
-  --text:          24 24 28;     /* #18181c */
-  --text-muted:    84 86 96;     /* #545660 */
-  --text-subtle:   132 134 144;  /* #848690 */
-
-  --accent:        166 124 38;   /* #a67c26 — dourado mais escuro p/ contraste no claro */
-  --accent-hover:  142 104 28;
-  --accent-fg:     255 255 255;
-
-  --success: 21 158 96;
-  --warning: 191 128 8;
-  --danger:  214 45 45;
-  --info:    37 99 235;
-
-  color-scheme: light;
-}
-
 @layer base {
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { -webkit-tap-highlight-color: transparent; }
+  html { -webkit-tap-highlight-color: transparent; background: var(--bg-base); color-scheme: dark; }
+  html[data-theme="light"] { color-scheme: light; }
   body {
-    @apply bg-app text-content;
-    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   #root { min-height: 100vh; min-height: 100dvh; }
   /* Transição suave ao alternar tema */
   body, .card, .input, aside, header { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
-  :focus-visible { outline: 2px solid rgb(var(--accent) / 0.6); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
 
   /* Acessibilidade: respeita quem pediu menos movimento (SO/navegador). */
   @media (prefers-reduced-motion: reduce) {
@@ -85,52 +31,67 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-accent text-accentFg font-semibold px-5 py-2.5 rounded-xl shadow-sm
-           hover:bg-accentHover active:scale-[0.98] transition-all duration-150 text-sm
+    @apply inline-flex items-center justify-center gap-2 font-semibold px-5 py-2.5 rounded-xl shadow-sm
+           active:scale-[0.98] transition-all duration-150 text-sm
            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+    background: var(--accent);
+    color: var(--accent-fg);
   }
+  .btn-primary:hover { background: var(--accent-hover); }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 border border-accent/60 text-accent font-semibold px-5 py-2.5 rounded-xl
-           hover:bg-accent hover:text-accentFg active:scale-[0.98] transition-all duration-150 text-sm;
+    @apply inline-flex items-center justify-center gap-2 font-semibold px-5 py-2.5 rounded-xl
+           active:scale-[0.98] transition-all duration-150 text-sm;
+    border: 1px solid var(--accent);
+    color: var(--accent);
   }
+  .btn-secondary:hover { background: var(--accent); color: var(--accent-fg); }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 text-muted font-medium px-4 py-2 rounded-xl
-           hover:bg-surfaceHover hover:text-content transition-all duration-150 text-sm;
+    @apply inline-flex items-center justify-center gap-2 font-medium px-4 py-2 rounded-xl
+           transition-all duration-150 text-sm;
+    color: var(--text-secondary);
   }
+  .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 bg-danger text-white font-semibold px-5 py-2.5 rounded-xl
+    @apply inline-flex items-center justify-center gap-2 font-semibold px-5 py-2.5 rounded-xl
            hover:opacity-90 active:scale-[0.98] transition-all duration-150 text-sm;
+    background: var(--color-error);
+    color: var(--text-primary);
   }
   .card {
-    @apply bg-surface border border-border rounded-2xl p-6 shadow-sm;
+    @apply rounded-2xl p-6 shadow-sm;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
   }
   .input {
-    @apply w-full bg-surfaceHover border border-border text-content rounded-xl px-4 py-2.5 text-sm
-           placeholder-subtle transition-all duration-150
-           focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/70;
+    @apply w-full rounded-xl px-4 py-2.5 text-sm transition-all duration-150 focus:outline-none;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
   }
-  .label { @apply block text-sm font-medium text-muted mb-1.5; }
+  .input::placeholder { color: var(--text-disabled); }
+  .input:focus { border-color: var(--accent); box-shadow: var(--shadow-accent); }
+  .label { @apply block text-sm font-medium mb-1.5; color: var(--text-secondary); }
 
-  .badge-pending   { @apply inline-flex items-center bg-warning/15 text-warning text-xs font-medium px-2.5 py-1 rounded-full; }
-  .badge-confirmed { @apply inline-flex items-center bg-info/15 text-info text-xs font-medium px-2.5 py-1 rounded-full; }
-  .badge-completed { @apply inline-flex items-center bg-success/15 text-success text-xs font-medium px-2.5 py-1 rounded-full; }
-  .badge-cancelled { @apply inline-flex items-center bg-danger/15 text-danger text-xs font-medium px-2.5 py-1 rounded-full; }
+  .badge-pending   { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(224,160,48,0.15); color: var(--color-warning); }
+  .badge-confirmed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(91,155,213,0.15); color: var(--color-info); }
+  .badge-completed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(76,175,125,0.15); color: var(--color-success); }
+  .badge-cancelled { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(224,92,92,0.15); color: var(--color-error); }
   .kpi-card { @apply card flex flex-col gap-1; }
 
   /* Card selecionável (fluxo do cliente): profundidade sutil + micro-interação. */
   .card-tap {
-    @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-accent/50
-           active:scale-[0.99] active:translate-y-0 cursor-pointer
-           focus-visible:border-accent/70;
+    @apply transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md
+           active:scale-[0.99] active:translate-y-0 cursor-pointer;
   }
+  .card-tap:hover, .card-tap:focus-visible { border-color: var(--accent); }
 
   /* Skeleton com shimmer (estado de carregamento). */
-  .skeleton { @apply relative overflow-hidden bg-surfaceHover rounded-xl; }
+  .skeleton { @apply relative overflow-hidden rounded-xl; background: var(--bg-elevated); }
   .skeleton::after {
     content: '';
     position: absolute; inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgb(var(--text) / 0.06), transparent);
+    background: linear-gradient(90deg, transparent, var(--accent-focus), transparent);
     animation: shimmer 1.5s infinite;
   }
 }
@@ -139,5 +100,5 @@
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgb(var(--text-subtle)); }
+::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-disabled); }

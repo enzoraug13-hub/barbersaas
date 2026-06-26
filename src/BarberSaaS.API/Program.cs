@@ -28,6 +28,16 @@ builder.Services.AddControllers().AddJsonOptions(opt =>
     opt.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 
+// Fail-fast: sem Redis em produção, tanto a reserva de slot quanto o desafio
+// de OTP (telefone+código antes de existir Client no banco) caem no fallback
+// em memória, que não é compartilhado entre instâncias — duas instâncias
+// aceitariam reserva do mesmo horário (overbooking) ou perderiam o código OTP
+// se o load balancer trocar de instância entre request-otp e verify-otp, sem
+// nenhum erro visível. Em dev o fallback em memória é esperado.
+if (builder.Environment.IsProduction() && string.IsNullOrEmpty(builder.Configuration.GetConnectionString("Redis")))
+    throw new InvalidOperationException(
+        "Redis é obrigatório em produção para reserva de slots e OTP — configure ConnectionStrings__Redis.");
+
 // Infrastructure (EF, Repos, Hangfire, Redis, etc.)
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -36,6 +46,9 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(BarberSaaS.Application.Auth.Commands.LoginCommand).Assembly);
     cfg.AddOpenBehavior(typeof(BarberSaaS.Application.Common.Behaviors.ValidationBehavior<,>));
+    // Pronto pra uso, mas nenhum Command/Query implementa IRequireCompleteClientProfile
+    // ainda — ver comentário em RequireCompleteClientProfileBehavior.cs.
+    cfg.AddOpenBehavior(typeof(BarberSaaS.Application.Common.Behaviors.RequireCompleteClientProfileBehavior<,>));
 });
 
 // FluentValidation

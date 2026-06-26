@@ -43,5 +43,6 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public Guid? TenantId => null;
         public string? IpAddress => null;
         public bool IsAuthenticated => false;
+        public string? Phone => null;
     }
 }
