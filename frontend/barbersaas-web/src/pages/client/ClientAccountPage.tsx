@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, LogOut, Calendar, Star } from 'lucide-react'
 import { publicApi } from '../../lib/api'
 import { clientApi } from '../../lib/clientApi'
@@ -28,7 +28,8 @@ export default function ClientAccountPage() {
   // Primeira leitura: só pra saber se há sessão e poder habilitar a busca
   // do perfil fresco abaixo. A decisão de UI usa a segunda leitura (com
   // override), nunca esta.
-  const { hasToken } = useClientSession()
+  const { hasToken, client } = useClientSession()
+  const queryClient = useQueryClient()
 
   const { data: info } = useQuery({
     queryKey: ['public-info', slug],
@@ -40,8 +41,11 @@ export default function ClientAccountPage() {
   // Fonte de verdade é a API, não o que ficou em cache no localStorage de
   // sessões antigas — um client salvo antes do campo cpf existir, por
   // exemplo, ficaria preso em "perfil incompleto" pra sempre.
+  // A queryKey inclui o id do cliente (claim sub): sem isso a chave era estática
+  // ['client-me'] e o perfil de uma sessão anterior (número A) vazava em cache pra
+  // o próximo login (número B) — abria a conta do A. Escopar por id isola cada cliente.
   const { data: freshProfile, isLoading: loadingProfile } = useQuery({
-    queryKey: ['client-me'],
+    queryKey: ['client-me', client?.id],
     queryFn: async () => (await clientApi.get('/client/me')).data.data,
     enabled: hasToken,
   })
@@ -59,10 +63,19 @@ export default function ClientAccountPage() {
     if (freshProfile) session.updateProfile(freshProfile)
   }, [freshProfile])
 
+  // Logout SEMPRE limpa o cache do React Query do cliente (perfil + agendamentos):
+  // o store Zustand zera sozinho, mas as queries cacheadas sobreviveriam e poderiam
+  // ser servidas pro próximo cliente. removeQueries por prefixo cobre todos os ids.
+  const clearClientCache = () => {
+    queryClient.removeQueries({ queryKey: ['client-me'] })
+    queryClient.removeQueries({ queryKey: ['client-appointments'] })
+  }
+  const handleLogout = () => { clearClientCache(); session.logout() }
+
   // Quem tem token mas não terminou o cadastro nunca deve "vazar" pro
   // resto do site como se tivesse conta — sair da tela de completar
   // perfil (Voltar/trocar de rota) descarta a sessão incompleta.
-  const exitIfIncomplete = () => { if (session.needsProfile) session.logout() }
+  const exitIfIncomplete = () => { if (session.needsProfile) handleLogout() }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
@@ -71,7 +84,7 @@ export default function ClientAccountPage() {
           <ChevronLeft size={16} /> {info?.businessName ?? 'Voltar'}
         </Link>
         {session.hasToken && (
-          <button onClick={session.logout} className="flex items-center gap-1.5 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button onClick={handleLogout} className="flex items-center gap-1.5 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}>
             <LogOut size={15} /> Sair
           </button>
         )}
@@ -89,20 +102,22 @@ export default function ClientAccountPage() {
         {session.needsProfile && !loadingProfile && session.client && (
           <CompleteProfileStep client={session.client} logoUrl={info?.logoUrl} businessName={info?.businessName} onDone={session.updateProfile} />
         )}
-        {session.loggedIn && !loadingProfile && <Account name={session.client?.name} slug={slug!} />}
+        {session.loggedIn && !loadingProfile && <Account name={session.client?.name} slug={slug!} clientId={session.client?.id} />}
       </main>
     </div>
   )
 }
 
 /* ================= Conta logada ================= */
-function Account({ name, slug }: { name?: string; slug: string }) {
+function Account({ name, slug, clientId }: { name?: string; slug: string; clientId?: string }) {
+  // Mesmas chaves escopadas por id do componente pai — evita servir o perfil/
+  // agendamentos de um cliente anterior pro cliente atual.
   const { data: me } = useQuery({
-    queryKey: ['client-me'],
+    queryKey: ['client-me', clientId],
     queryFn: async () => (await clientApi.get('/client/me')).data.data,
   })
   const { data: appts, isLoading } = useQuery({
-    queryKey: ['client-appointments'],
+    queryKey: ['client-appointments', clientId],
     queryFn: async () => (await clientApi.get('/client/appointments')).data.data as any[],
   })
 
