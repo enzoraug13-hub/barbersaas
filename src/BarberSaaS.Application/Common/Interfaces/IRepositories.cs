@@ -69,7 +69,9 @@ public interface IFinancialRepository : IBaseRepository<FinancialTransaction>
 
 public interface IGoalRepository : IBaseRepository<Goal>
 {
-    Task<IReadOnlyList<Goal>> GetActiveByTenantAsync(Guid tenantId, CancellationToken ct = default);
+    // Traz TODAS as metas do tenant (ativas e concluídas) — a tela de Metas filtra por aba
+    // (Ativas | Concluídas | Todas). Meta concluída não some do banco: só muda Status p/ Completed.
+    Task<IReadOnlyList<Goal>> GetAllByTenantAsync(Guid tenantId, CancellationToken ct = default);
 
     // Persiste uma nova contribuição (INSERT) junto com a alteração de CurrentAmount/Status
     // da meta rastreada (UPDATE), num único SaveChanges. Add() explícito é necessário porque

@@ -92,9 +92,12 @@ public class GoalRepository : BaseRepository<Goal>, IGoalRepository
 {
     public GoalRepository(AppDbContext db) : base(db) { }
 
-    public async Task<IReadOnlyList<Goal>> GetActiveByTenantAsync(Guid tenantId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Goal>> GetAllByTenantAsync(Guid tenantId, CancellationToken ct = default)
         => await _set.AsNoTracking().Include(g => g.Contributions)
-            .Where(g => g.TenantId == tenantId && g.Status == GoalStatus.Active)
+            .Where(g => g.TenantId == tenantId)
+            // Ativas primeiro; dentro de cada grupo, as mais recentes no topo.
+            .OrderByDescending(g => g.Status == GoalStatus.Active)
+            .ThenByDescending(g => g.UpdatedAt)
             .ToListAsync(ct);
 
     // Add() explícito marca a contribuição como Added (-> INSERT). Se ela fosse anexada

@@ -25,7 +25,7 @@ public class GoalsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        var list = await _goals.GetActiveByTenantAsync(_tenant.Id, ct);
+        var list = await _goals.GetAllByTenantAsync(_tenant.Id, ct);
         return Ok(ApiResponse<object>.Ok(list.Select(g => new GoalDto(g.Id, g.Name, g.Description, g.TargetAmount, g.CurrentAmount, g.PercentageComplete, g.RemainingAmount, g.TargetDate, g.Status.ToString(), g.IsCompleted))));
     }
 
