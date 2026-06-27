@@ -17,7 +17,7 @@ public record SettingsDto(
     string? Phone, string? WhatsAppNumber, string? InstagramUrl,
     string? Address, string? City, string? State, string? ZipCode,
     int SlotIntervalMinutes, int MaxAdvanceDays, int MinNoticeMinutes,
-    bool AllowOnlineBooking, bool RequireConfirmation,
+    bool AllowOnlineBooking, bool RequireConfirmation, bool CustomPriceEnabled,
     string PublicSlug,
     IReadOnlyList<BusinessHourDto> BusinessHours);
 
@@ -43,7 +43,7 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, SettingsDto?
             s.Phone, s.WhatsAppNumber, s.InstagramUrl,
             s.Address, s.City, s.State, s.ZipCode,
             s.SlotIntervalMinutes, s.MaxAdvanceDays, s.MinNoticeMinutes,
-            s.AllowOnlineBooking, s.RequireConfirmation,
+            s.AllowOnlineBooking, s.RequireConfirmation, s.CustomPriceEnabled,
             s.PublicSlug,
             ParseBusinessHours(s.BusinessHoursJson));
     }

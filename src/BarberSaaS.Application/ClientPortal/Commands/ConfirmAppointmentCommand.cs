@@ -88,8 +88,13 @@ public class ConfirmAppointmentHandler : IRequestHandler<ConfirmAppointmentComma
         }
 
         // Preço efetivo: preço do barbeiro p/ o serviço, com fallback pro preço base.
-        var customPrice    = await _barberServices.GetCustomPriceAsync(
-            reservation.TenantId, reservation.BarberId, reservation.ServiceId, ct);
+        // Só aplica o preço do barbeiro quando o tenant habilitou "preço por barbeiro" —
+        // assim o que é cobrado bate com o que a vitrine pública mostrou. Toggle off => preço base.
+        var tenant = await _tenants.GetWithSettingsAsync(reservation.TenantId, ct);
+        var customPrice = tenant?.Settings?.CustomPriceEnabled == true
+            ? await _barberServices.GetCustomPriceAsync(
+                reservation.TenantId, reservation.BarberId, reservation.ServiceId, ct)
+            : null;
         var effectivePrice = customPrice ?? service.Price;
 
         var appointment = Appointment.Create(
@@ -105,7 +110,6 @@ public class ConfirmAppointmentHandler : IRequestHandler<ConfirmAppointmentComma
         {
             try
             {
-                var tenant = await _tenants.GetWithSettingsAsync(reservation.TenantId, ct);
                 var startDt = new DateTimeOffset(reservation.Date.Year, reservation.Date.Month, reservation.Date.Day,
                     reservation.StartTime.Hour, reservation.StartTime.Minute, 0, TimeSpan.FromHours(-3));
                 var endDt = startDt.AddMinutes(service.DurationMinutes);

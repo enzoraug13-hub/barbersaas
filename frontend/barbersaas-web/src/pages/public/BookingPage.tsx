@@ -17,7 +17,7 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
 type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phone' | 'profile' | 'done'
-const MAIN_STEPS: Step[] = ['service', 'barber', 'date', 'slots', 'confirm']
+const MAIN_STEPS: Step[] = ['barber', 'service', 'date', 'slots', 'confirm']
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 /* ---- Estados de carregamento (skeleton com shimmer) ---- */
@@ -81,7 +81,9 @@ export default function BookingPage() {
   }, [info])
 
   const { data: barbers,  isLoading: loadBarbers }  = usePublicBarbers(slug!)
-  const { data: services, isLoading: loadServices } = usePublicServices(slug!)
+  // barbeiro é escolhido antes do serviço: passamos o id pra vir o preço daquele barbeiro
+  // quando o tenant tem "preço por barbeiro" ligado (effectivePrice).
+  const { data: services, isLoading: loadServices } = usePublicServices(slug!, barber?.id)
   const { data: slots,    isLoading: loadSlots }    = useAvailableSlots(slug!, barber?.id ?? '', service?.id ?? '', date)
   const reserveSlot = useReserveSlot(slug!)
   const confirmAppointment = useConfirmClientAppointment()
@@ -225,52 +227,23 @@ export default function BookingPage() {
               </div>
             )}
 
-            <Button onClick={() => setStep('service')} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
+            <Button onClick={() => setStep('barber')} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
               <CalendarIcon size={18} /> Agendar
             </Button>
           </div>
         )}
 
-        {/* Serviço */}
-        {step === 'service' && (
-          <div>
-            <BackButton onClick={() => setStep('home')} />
-            <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o serviço</h2>
-            {loadServices ? <ListSkeleton />
-            : !services?.length ? <EmptyState icon={Scissors} text="Nenhum serviço disponível no momento." />
-            : (
-              <div className="space-y-3">
-                {services.map((s, i) => (
-                  <button key={s.id} onClick={() => { setService(s); setStep('barber') }}
-                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
-                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
-                    <div className="w-3 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
-                    <div className="flex-1">
-                      <p className="ds-text-primary font-semibold">{s.name}</p>
-                      {s.description && <p className="ds-text-secondary mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{s.description}</p>}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="ds-text-accent flex items-center gap-1 font-semibold" style={{ fontSize: 'var(--text-sm)' }}><DollarSign size={13} />R$ {s.price.toFixed(2)}</div>
-                      <div className="ds-text-disabled flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-xs)' }}><Clock size={11} />{s.durationMinutes} min</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Barbeiro */}
+        {/* Barbeiro (1ª etapa: escolher antes do serviço pra já aplicar o preço do barbeiro) */}
         {step === 'barber' && (
           <div>
-            <BackButton onClick={back} />
+            <BackButton onClick={() => setStep('home')} />
             <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o profissional</h2>
             {loadBarbers ? <ListSkeleton />
             : !barbers?.length ? <EmptyState icon={User} text="Nenhum profissional disponível no momento." />
             : (
               <div className="space-y-3">
                 {barbers.map((b, i) => (
-                  <button key={b.id} onClick={() => { setBarber(b); setStep('date') }}
+                  <button key={b.id} onClick={() => { setBarber(b); setStep('service') }}
                     style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
                     className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
                     {b.photoUrl
@@ -280,6 +253,35 @@ export default function BookingPage() {
                     <div>
                       <p className="ds-text-primary font-semibold">{b.name}</p>
                       {b.bio && <p className="ds-text-secondary mt-0.5 line-clamp-1" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Serviço (2ª etapa: preço já vem do barbeiro escolhido quando o tenant habilitou) */}
+        {step === 'service' && (
+          <div>
+            <BackButton onClick={back} />
+            <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha o serviço</h2>
+            {loadServices ? <ListSkeleton />
+            : !services?.length ? <EmptyState icon={Scissors} text="Nenhum serviço disponível no momento." />
+            : (
+              <div className="space-y-3">
+                {services.map((s, i) => (
+                  <button key={s.id} onClick={() => { setService(s); setStep('date') }}
+                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
+                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
+                    <div className="w-3 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
+                    <div className="flex-1">
+                      <p className="ds-text-primary font-semibold">{s.name}</p>
+                      {s.description && <p className="ds-text-secondary mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{s.description}</p>}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="ds-text-accent flex items-center gap-1 font-semibold" style={{ fontSize: 'var(--text-sm)' }}><DollarSign size={13} />R$ {(s.effectivePrice ?? s.price).toFixed(2)}</div>
+                      <div className="ds-text-disabled flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-xs)' }}><Clock size={11} />{s.durationMinutes} min</div>
                     </div>
                   </button>
                 ))}
@@ -359,7 +361,7 @@ export default function BookingPage() {
                 { label: 'Profissional', value: barber?.name },
                 { label: 'Data',         value: date },
                 { label: 'Horário',      value: slot },
-                { label: 'Valor',        value: `R$ ${service?.price.toFixed(2)}` },
+                { label: 'Valor',        value: `R$ ${(service?.effectivePrice ?? service?.price ?? 0).toFixed(2)}` },
               ].map(r => (
                 <div key={r.label} className="flex justify-between py-1.5 last:border-0" style={{ fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <span className="ds-text-secondary">{r.label}</span>

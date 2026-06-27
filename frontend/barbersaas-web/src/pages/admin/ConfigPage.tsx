@@ -17,7 +17,7 @@ interface SettingsForm {
   primaryColor?: string; secondaryColor?: string; accentColor?: string
   logoUrl?: string; coverImageUrl?: string
   slotIntervalMinutes?: number | string; maxAdvanceDays?: number | string
-  allowOnlineBooking?: boolean; requireConfirmation?: boolean
+  allowOnlineBooking?: boolean; requireConfirmation?: boolean; customPriceEnabled?: boolean
   businessHours?: BusinessHour[]
 }
 
@@ -236,6 +236,7 @@ export default function ConfigPage() {
               </div>
               <Toggle label="Permitir agendamento online" desc="Clientes podem marcar pela página pública." checked={form.allowOnlineBooking ?? true} onChange={v => setVal('allowOnlineBooking', v)} />
               <Toggle label="Exigir confirmação manual" desc="Você aprova cada agendamento antes de confirmar." checked={form.requireConfirmation ?? false} onChange={v => setVal('requireConfirmation', v)} />
+              <Toggle label="Preço por barbeiro" desc="Quando ativado, cada barbeiro pode ter seu próprio preço por serviço. O cliente verá o preço do barbeiro escolhido na hora de agendar." checked={form.customPriceEnabled ?? false} onChange={v => setVal('customPriceEnabled', v)} />
             </SectionCard>
           )}
 

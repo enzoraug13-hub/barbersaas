@@ -11,11 +11,15 @@ export const useServices = () =>
     },
   })
 
-export const usePublicServices = (slug: string) =>
+// barberId opcional: quando o tenant tem "preço por barbeiro" ligado, o backend
+// devolve effectivePrice já com o preço daquele barbeiro. Sem barberId, vem o preço base.
+export const usePublicServices = (slug: string, barberId?: string) =>
   useQuery({
-    queryKey: ['public-services', slug],
+    queryKey: ['public-services', slug, barberId ?? ''],
     queryFn: async () => {
-      const res = await publicApi.get(`/public/${slug}/services`)
+      const res = await publicApi.get(`/public/${slug}/services`, {
+        params: barberId ? { barberId } : undefined,
+      })
       return res.data.data as Service[]
     },
     enabled: !!slug,

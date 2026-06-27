@@ -11,7 +11,7 @@ public record UpdateSettingsCommand(
     string? PrimaryColor, string? SecondaryColor, string? AccentColor,
     string? Phone, string? Address, string? City, string? State, string? ZipCode,
     string? InstagramUrl, string? WhatsAppNumber,
-    bool? AllowOnlineBooking, bool? RequireConfirmation,
+    bool? AllowOnlineBooking, bool? RequireConfirmation, bool? CustomPriceEnabled,
     int? SlotIntervalMinutes, int? MaxAdvanceDays,
     IReadOnlyList<BusinessHourDto>? BusinessHours) : IRequest<bool>;
 
@@ -48,6 +48,7 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, bool
         s.WhatsAppNumber      = request.WhatsAppNumber ?? s.WhatsAppNumber;
         s.AllowOnlineBooking  = request.AllowOnlineBooking ?? s.AllowOnlineBooking;
         s.RequireConfirmation = request.RequireConfirmation ?? s.RequireConfirmation;
+        s.CustomPriceEnabled  = request.CustomPriceEnabled ?? s.CustomPriceEnabled;
         s.SlotIntervalMinutes = request.SlotIntervalMinutes ?? s.SlotIntervalMinutes;
         s.MaxAdvanceDays      = request.MaxAdvanceDays ?? s.MaxAdvanceDays;
         if (request.BusinessHours is { Count: 7 })

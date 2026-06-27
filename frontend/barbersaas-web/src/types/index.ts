@@ -25,6 +25,9 @@ export interface Service {
   description?: string
   durationMinutes: number
   price: number
+  // Preço a cobrar: igual a price, exceto quando o tenant tem "preço por barbeiro"
+  // ligado e a busca passou um barberId — aí vem o preço daquele barbeiro.
+  effectivePrice?: number
   colorHex?: string
   isActive: boolean
   showInPublicPage: boolean

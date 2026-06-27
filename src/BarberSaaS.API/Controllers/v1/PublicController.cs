@@ -70,15 +70,39 @@ public class PublicController : ControllerBase
     }
 
     [HttpGet("{slug}/services")]
-    public async Task<IActionResult> GetServices(string slug, [FromServices] IServiceRepository services, CancellationToken ct)
+    public async Task<IActionResult> GetServices(
+        string slug,
+        [FromQuery] Guid? barberId,
+        [FromServices] IServiceRepository services,
+        [FromServices] IBarberRepository barbers,
+        [FromServices] IBarberServiceRepository barberServices,
+        CancellationToken ct)
     {
         var (tenant, error) = await ResolveTenantAsync(slug, ct);
         if (error != null) return error;
 
         var list = await services.GetPublicByTenantAsync(tenant!.Id, ct);
+
+        // Preço por barbeiro: só quando o tenant habilitou E veio um barberId válido
+        // do MESMO tenant (defesa-em-profundidade — fluxo público roda sem filtro global).
+        // Sem isso, cai no preço base (permissivo, como antes).
+        Dictionary<Guid, decimal>? customByService = null;
+        if (tenant.Settings?.CustomPriceEnabled == true && barberId is { } bid && bid != Guid.Empty)
+        {
+            var barber = await barbers.GetByIdAsync(bid, ct);
+            if (barber is not null && barber.TenantId == tenant.Id)
+            {
+                var links = await barberServices.GetByBarberAsync(tenant.Id, bid, ct);
+                customByService = links
+                    .Where(l => l.CustomPrice.HasValue)
+                    .ToDictionary(l => l.ServiceId, l => l.CustomPrice!.Value);
+            }
+        }
+
         return Ok(ApiResponse<object>.Ok(list.Select(s => new
         {
-            s.Id, s.Name, s.Description, s.DurationMinutes, s.Price, s.ColorHex
+            s.Id, s.Name, s.Description, s.DurationMinutes, s.Price, s.ColorHex,
+            EffectivePrice = customByService is not null && customByService.TryGetValue(s.Id, out var cp) ? cp : s.Price
         })));
     }
 

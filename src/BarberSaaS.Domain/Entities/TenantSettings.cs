@@ -25,6 +25,11 @@ public class TenantSettings : BaseEntity
     public int MinNoticeMinutes { get; set; } = 30;
     public bool AllowOnlineBooking { get; set; } = true;
     public bool RequireConfirmation { get; set; } = false;
+
+    // Quando true, cada barbeiro pode ter preço próprio por serviço (BarberService.CustomPrice)
+    // e o cliente vê o preço do barbeiro escolhido ao agendar. Quando false, vale só Service.Price.
+    public bool CustomPriceEnabled { get; set; } = false;
+
     public string PublicSlug { get; set; } = string.Empty;
 
     public bool SendConfirmationSms { get; set; } = true;
