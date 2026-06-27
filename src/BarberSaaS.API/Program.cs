@@ -169,73 +169,13 @@ recurringJobs.AddOrUpdate<BarberSaaS.Infrastructure.BackgroundJobs.ReminderJob>(
 app.MapControllers();
 app.UseStaticFiles();
 
-// Seed inicial (somente em desenvolvimento)
-if (app.Environment.IsDevelopment())
-    await SeedAsync(app.Services);
+// Inicialização do banco no boot:
+// - Development: EnsureCreated (SQLite) + seed completo (planos + tenant/usuário demo).
+// - Produção/Staging: migrate-on-startup (cria/atualiza schema do SQL Server) + seed idempotente
+//   apenas dos planos. Detalhes e o porquê de cada ambiente usar exatamente um: DbInitializer.
+await BarberSaaS.API.DbInitializer.InitializeAsync(app);
 
 app.Run();
-
-static async Task SeedAsync(IServiceProvider services)
-{
-    using var scope = services.CreateScope();
-    var db     = scope.ServiceProvider.GetRequiredService<BarberSaaS.Infrastructure.Persistence.AppDbContext>();
-    var hasher = scope.ServiceProvider.GetRequiredService<BarberSaaS.Application.Common.Interfaces.IPasswordHasher>();
-
-    await db.Database.EnsureCreatedAsync();
-
-    if (!db.Plans.Any())
-    {
-        db.Plans.AddRange(
-            new BarberSaaS.Domain.Entities.Plan { Name = "Gratuito",     Slug = "gratuito",     MonthlyPrice = 0,   MaxBarbers = 1, MaxAppointmentsPerMonth = 50,  Features = "{\"onlineBooking\":true,\"googleCalendar\":false,\"financialControl\":false}" },
-            new BarberSaaS.Domain.Entities.Plan { Name = "Profissional", Slug = "profissional", MonthlyPrice = 97,  MaxBarbers = 5, Features = "{\"onlineBooking\":true,\"googleCalendar\":true,\"financialControl\":true}", DisplayOrder = 1 },
-            new BarberSaaS.Domain.Entities.Plan { Name = "Premium",      Slug = "premium",      MonthlyPrice = 197, MaxBarbers = 0, Features = "{\"onlineBooking\":true,\"googleCalendar\":true,\"financialControl\":true,\"loyalty\":true,\"aiInsights\":true}", DisplayOrder = 2 }
-        );
-        await db.SaveChangesAsync();
-    }
-
-    // Conta demo para desenvolvimento
-    if (!db.Tenants.Any())
-    {
-        var freePlan = db.Plans.First(p => p.Slug == "gratuito");
-        var tenant   = new BarberSaaS.Domain.Entities.Tenant { Name = "Barbearia Demo", Slug = "demo" };
-        var settings = new BarberSaaS.Domain.Entities.TenantSettings
-        {
-            TenantId     = tenant.Id,
-            BusinessName = "Barbearia Demo",
-            Phone        = "+5511999999999",
-            PublicSlug   = "demo",
-            PrimaryColor   = "#1a1a1a",
-            SecondaryColor = "#eab308",
-            AccentColor    = "#ffffff",
-            AllowOnlineBooking = true
-        };
-        tenant.Settings = settings;
-        tenant.Subscription = new BarberSaaS.Domain.Entities.Subscription
-        {
-            TenantId           = tenant.Id,
-            PlanId             = freePlan.Id,
-            Status             = BarberSaaS.Domain.Enums.SubscriptionStatus.Trial,
-            CurrentPeriodStart = DateOnly.FromDateTime(DateTime.UtcNow),
-            CurrentPeriodEnd   = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
-            TrialEndsAt        = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30))
-        };
-
-        var owner = new BarberSaaS.Domain.Entities.User
-        {
-            TenantId     = tenant.Id,
-            Name         = "Admin Demo",
-            Email        = "demo@barbersaas.com",
-            PasswordHash = hasher.Hash("demo123456"),
-            Role         = BarberSaaS.Domain.Enums.UserRole.Owner,
-            IsActive     = true,
-            EmailVerified = true
-        };
-
-        db.Tenants.Add(tenant);
-        db.Users.Add(owner);
-        await db.SaveChangesAsync();
-    }
-}
 
 // Helper implementations
 public class DateTimeProvider : BarberSaaS.Application.Common.Interfaces.IDateTimeProvider

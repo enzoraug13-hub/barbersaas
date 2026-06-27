@@ -1,0 +1,60 @@
+# ----------------------------------------------------------------------------
+# CI/CD — Build da imagem Docker da API e deploy no Azure App Service (container).
+#
+# ESTRATÉGIA ESCOLHIDA: build -> push para Azure Container Registry (ACR) -> o
+# App Service (configurado como container) recebe a nova imagem via azure/webapps-deploy.
+#
+# Por que ACR (e não "publish profile direto")? O App Service aqui roda em modo
+# CONTAINER, então o deploy precisa de uma imagem num registry — publish profile
+# (zip deploy) é para app de código, não combina com a imagem Docker da Etapa 3.
+# ACR é o registry nativo do Azure, fica na mesma assinatura/região e o App Service
+# já sabe puxar dele. Mais simples e coerente com o Dockerfile.
+#
+# SECRETS/variáveis necessários no GitHub (Settings → Secrets and variables → Actions):
+#   - AZURE_CREDENTIALS  (secret)  : JSON do service principal, gerado com:
+#         az ad sp create-for-rbac --name barbersaas-ci --role contributor \
+#           --scopes /subscriptions/<SUB_ID>/resourceGroups/<RESOURCE_GROUP> --sdk-auth
+#   - (edite os placeholders <...> em `env:` abaixo, ou mova-os para repo Variables)
+# ----------------------------------------------------------------------------
+name: Deploy API to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  ACR_NAME: <SEU_ACR>            # nome do ACR SEM o sufixo .azurecr.io (ex.: barbersaasacr)
+  IMAGE_NAME: barbersaas-api
+  AZURE_WEBAPP_NAME: <SEU_APP_SERVICE>   # ex.: barbersaas-api  (vira <nome>.azurewebsites.net)
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: ACR login
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build e push da imagem
+        run: |
+          REGISTRY=${{ env.ACR_NAME }}.azurecr.io
+          docker build \
+            -t $REGISTRY/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t $REGISTRY/${{ env.IMAGE_NAME }}:latest \
+            .
+          docker push $REGISTRY/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push $REGISTRY/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy no App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}

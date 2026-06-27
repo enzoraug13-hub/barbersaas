@@ -1,0 +1,34 @@
+# Artefatos de build (o restore/publish acontece DENTRO da imagem)
+**/bin
+**/obj
+
+# Frontend: o build do React vai pro Vercel, não entra na imagem da API
+**/node_modules
+frontend/
+
+# Banco local de dev + segredos de dev (NÃO devem ir pra imagem de produção)
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/appsettings.Development.json
+
+# Uploads locais (efêmeros)
+**/wwwroot/uploads
+
+# Git, CI e metadados de IDE
+.git
+.gitignore
+.gitattributes
+.github
+.vs
+.vscode
+.idea
+
+# Docker (não precisa dentro do contexto copiado)
+Dockerfile
+.dockerignore
+
+# Docs de rascunho / planos / prints (não vão pra imagem)
+*.md
+!README.md
+print-*.png
