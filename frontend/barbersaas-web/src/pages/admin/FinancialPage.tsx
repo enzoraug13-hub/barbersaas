@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, FileDown } from 'lucide-react'
 import { ListSkeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Card } from '../../components/ui/Card'
@@ -11,6 +11,10 @@ import { api } from '../../lib/api'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import toast from 'react-hot-toast'
 import type { FinancialTransaction } from '../../types'
+import { useDashboard, useBarberPerformance, usePaymentMethods } from '../../features/dashboard/dashboardApi'
+import { useBarbers } from '../../features/barbers/barbersApi'
+import { useSettings } from '../../features/settings/settingsApi'
+import { generateMonthlyReport } from '../../lib/pdf/monthlyReport'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -40,6 +44,33 @@ export default function FinancialPage() {
     }
   })
 
+  // Dados do relatório PDF (respeitam o período selecionado acima)
+  const { data: settings }    = useSettings()
+  const { data: dashboard }   = useDashboard(start, end)
+  const { data: barberPerf }  = useBarberPerformance(start, end)
+  const { data: barberList }  = useBarbers()
+  const { data: payments }    = usePaymentMethods(start, end)
+  const [pdfBusy, setPdfBusy] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (!settings || !dashboard) { toast.error('Aguarde os dados carregarem.'); return }
+    setPdfBusy(true)
+    try {
+      await generateMonthlyReport({
+        settings,
+        periodStart: start,
+        dashboard,
+        barbers: barberPerf ?? [],
+        barberMeta: barberList ?? [],
+        payments,
+      })
+    } catch {
+      toast.error('Não foi possível gerar o PDF.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   const create = useMutation({
     mutationFn: async () => {
       await api.post('/financial', { ...form, amount: +form.amount, dueDate: form.dueDate })
@@ -63,6 +94,9 @@ export default function FinancialPage() {
           <input type="date" className="ds-input w-auto" value={start} onChange={e => setStart(e.target.value)} />
           <span className="ds-text-disabled">→</span>
           <input type="date" className="ds-input w-auto" value={end} onChange={e => setEnd(e.target.value)} />
+          <Button variant="ghost" onClick={handleDownloadPdf} loading={pdfBusy} disabled={!settings || !dashboard}>
+            <FileDown size={18} /> Baixar relatório do mês (PDF)
+          </Button>
           <Button onClick={() => setShowForm(true)}><Plus size={18} /> Lançamento</Button>
         </div>
       </div>

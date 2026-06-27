@@ -153,6 +153,29 @@ public class DashboardRepository : IDashboardRepository
         return result;
     }
 
+    // Formas de pagamento: soma o FinalPrice dos atendimentos concluídos e pagos do
+    // período, agrupado por método. Filtra por Date (mesma semântica das outras seções
+    // baseadas em agendamento). PaymentMethod nulo é ignorado.
+    public async Task<PaymentMethodsDto> GetPaymentMethodsAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default)
+    {
+        var paid = await _db.Appointments
+            .AsNoTracking()
+            .Where(a => a.TenantId == tenantId && !a.IsDeleted
+                     && a.Status == AppointmentStatus.Completed && a.IsPaid
+                     && a.PaymentMethod != null
+                     && a.Date >= start && a.Date <= end)
+            .Select(a => new { a.PaymentMethod, a.FinalPrice })
+            .ToListAsync(ct);
+
+        decimal Sum(PaymentMethod m) => paid.Where(p => p.PaymentMethod == m).Sum(p => p.FinalPrice);
+        var cash   = Sum(PaymentMethod.Cash);
+        var pix    = Sum(PaymentMethod.Pix);
+        var credit = Sum(PaymentMethod.Credit);
+        var debit  = Sum(PaymentMethod.Debit);
+        var other  = Sum(PaymentMethod.Other);
+        return new PaymentMethodsDto(cash, pix, credit, debit, other, cash + pix + credit + debit + other);
+    }
+
     // Índice 0 = segunda, 6 = domingo. DayOfWeek do .NET é 0=domingo..6=sábado.
     private static int MondayFirstIndex(DayOfWeek d) => ((int)d + 6) % 7;
 

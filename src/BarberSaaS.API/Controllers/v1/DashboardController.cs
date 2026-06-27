@@ -46,4 +46,14 @@ public class DashboardController : ControllerBase
         var result = await _mediator.Send(new GetBarberPerformanceQuery(_tenant.Id, s, e), ct);
         return Ok(ApiResponse<IReadOnlyList<BarberPerformanceDto>>.Ok(result));
     }
+
+    [HttpGet("payment-methods")]
+    public async Task<IActionResult> GetPaymentMethods([FromQuery] DateOnly? start, [FromQuery] DateOnly? end, CancellationToken ct)
+    {
+        var today  = DateOnly.FromDateTime(DateTime.UtcNow);
+        var s      = start ?? new DateOnly(today.Year, today.Month, 1);
+        var e      = end   ?? today;
+        var result = await _mediator.Send(new GetPaymentMethodsQuery(_tenant.Id, s, e), ct);
+        return Ok(ApiResponse<PaymentMethodsDto>.Ok(result));
+    }
 }

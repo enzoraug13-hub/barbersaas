@@ -41,3 +41,19 @@ export const useBarberPerformance = (start?: string, end?: string) =>
     },
     staleTime: 5 * 60 * 1000,
   })
+
+export interface PaymentMethods {
+  cash: number; pix: number; credit: number; debit: number; other: number; total: number
+}
+
+export const usePaymentMethods = (start?: string, end?: string) =>
+  useQuery({
+    queryKey: ['dashboard-payment-methods', start, end],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (start) params.start = start
+      if (end) params.end = end
+      return (await api.get('/dashboard/payment-methods', { params })).data.data as PaymentMethods
+    },
+    staleTime: 5 * 60 * 1000,
+  })

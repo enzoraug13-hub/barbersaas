@@ -46,4 +46,5 @@ public interface IDashboardRepository
     Task<IReadOnlyList<MonthlyRevenueDto>> GetMonthlyRevenueAsync(Guid tenantId, int months, CancellationToken ct = default);
     Task<IReadOnlyList<BarberPerformanceDto>> GetBarberPerformanceAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
     Task<IReadOnlyList<Barbers.Queries.BarberMonthlyPointDto>> GetBarberMonthlySeriesAsync(Guid tenantId, Guid barberId, int months, CancellationToken ct = default);
+    Task<PaymentMethodsDto> GetPaymentMethodsAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
 }

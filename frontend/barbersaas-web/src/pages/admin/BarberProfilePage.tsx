@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign,
+  ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign, FileDown,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -9,10 +9,14 @@ import {
 } from 'recharts'
 import { format, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import toast from 'react-hot-toast'
 import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
 import { useBarber, useBarberServices, useBarberSchedule, useBarberPerformanceSeries } from '../../features/barbers/barbersApi'
 import { useBarberPerformance } from '../../features/dashboard/dashboardApi'
+import { useSettings } from '../../features/settings/settingsApi'
+import { generateBarberReport } from '../../lib/pdf/barberReport'
+import { captureNode } from '../../lib/pdf/reportKit'
 import { EditBarberModal } from '../../components/admin/EditBarberModal'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -72,7 +76,12 @@ export default function BarberProfilePage() {
   const { data: schedule, isLoading: loadingSchedule } = useBarberSchedule(id)
   const { data: series, isLoading: loadingSeries } = useBarberPerformanceSeries(id, 6)
   const { data: perfList } = useBarberPerformance(monthStart, todayStr)
+  const { data: settings } = useSettings()
   const perf = perfList?.find(p => p.id.toLowerCase() === id.toLowerCase())
+
+  // Gráfico oculto em tema CLARO, capturado em 2x para o PDF (o da tela é escuro).
+  const pdfChartRef = useRef<HTMLDivElement>(null)
+  const [pdfBusy, setPdfBusy] = useState(false)
 
   if (isLoading) {
     return (
@@ -103,12 +112,33 @@ export default function BarberProfilePage() {
   const weeklyData = weekdayLabels.map((label, idx) => ({ label, count: weekly[idx] ?? 0 }))
   const hasWeekly = weekly.some(c => c > 0)
   const ticket = perf && perf.totalAppointments > 0 ? perf.revenue / perf.totalAppointments : 0
+  const brandHex = settings?.primaryColor || '#1a1a1a'
+
+  const handleDownloadPdf = async () => {
+    if (!settings) { toast.error('Aguarde os dados carregarem.'); return }
+    setPdfBusy(true)
+    try {
+      const chart = hasSeries && pdfChartRef.current ? await captureNode(pdfChartRef.current) : null
+      await generateBarberReport({
+        settings, periodStart: monthStart, barber, perf, services: services ?? [], chart,
+      })
+    } catch {
+      toast.error('Não foi possível gerar o PDF.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => navigate('/admin/barbeiros')}><ArrowLeft size={16} /> Voltar</Button>
-        <Button onClick={() => setEditing(true)}><Pencil size={16} /> Editar</Button>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={handleDownloadPdf} loading={pdfBusy} disabled={!settings}>
+            <FileDown size={16} /> Baixar relatório do barbeiro (PDF)
+          </Button>
+          <Button onClick={() => setEditing(true)}><Pencil size={16} /> Editar</Button>
+        </div>
       </div>
 
       {/* Cabeçalho */}
@@ -270,6 +300,21 @@ export default function BarberProfilePage() {
           </ResponsiveContainer>
         )}
       </Card>
+
+      {/* Gráfico oculto em tema claro — fonte da imagem 2x do PDF (não aparece na tela) */}
+      {seriesData && (
+        <div ref={pdfChartRef} aria-hidden
+          style={{ position: 'absolute', left: -10000, top: 0, width: 760, height: 300, background: '#ffffff', padding: 12 }}>
+          <ComposedChart width={736} height={276} data={seriesData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid stroke="#e6e6ea" vertical={false} />
+            <XAxis dataKey="label" tick={{ fill: '#555555', fontSize: 12 }} axisLine={{ stroke: '#cccccc' }} tickLine={false} />
+            <YAxis yAxisId="rev" tick={{ fill: '#555555', fontSize: 11 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v: number) => fmt(v)} />
+            <YAxis yAxisId="appt" orientation="right" tick={{ fill: '#555555', fontSize: 11 }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+            <Bar yAxisId="rev" dataKey="revenue" fill={brandHex} radius={[4, 4, 0, 0]} maxBarSize={46} isAnimationActive={false} />
+            <Line yAxisId="appt" type="monotone" dataKey="appointments" stroke="#888888" strokeWidth={2} dot={{ r: 3, fill: '#888888' }} isAnimationActive={false} />
+          </ComposedChart>
+        </div>
+      )}
 
       {editing && <EditBarberModal barber={barber} onClose={() => setEditing(false)} />}
     </div>
