@@ -1,7 +1,7 @@
 # Deploy em Produção — Azure (API) + Vercel (Frontend)
 
 Guia copiável para o deploy. Backend .NET 9 em **Azure App Service (container)** + **Azure SQL** +
-**Azure Cache for Redis**; frontend React no **Vercel**. Baseado no diagnóstico do
+**Azure Managed Redis** (clustered); frontend React no **Vercel**. Baseado no diagnóstico do
 `ROADMAP-PRODUCAO.md` (env vars, bloqueadores, migrate-on-startup, Redis obrigatório).
 
 > Convenção: tudo entre `< >` é placeholder — troque pelo seu valor. Os comandos assumem **bash**
@@ -63,18 +63,28 @@ az sql server firewall-rule create -g $RG -s $SQL_SERVER \
   -n MeuIP --start-ip-address <SEU_IP> --end-ip-address <SEU_IP>
 ```
 
-## 3. Azure Cache for Redis (Basic C0) — **obrigatório**
+## 3. Azure Managed Redis (Balanced B0) — **obrigatório**
 
 > Sem `ConnectionStrings__Redis` o app **não sobe** (fail-fast no `Program.cs`). Redis sustenta a
 > reserva de slot (anti-overbooking) e o OTP do login do cliente.
 
-```bash
-az redis create -n $REDIS -g $RG -l $LOCATION --sku Basic --vm-size c0 --minimum-tls-version 1.2
+O Azure Managed Redis (que substitui o antigo Azure Cache for Redis) usa o command group
+`az redisenterprise`, endpoint no formato `<nome>.<região>.redis.azure.net` e **porta 10000**. Por
+padrão sobe com clustering policy **OSS** (cluster real) — o backend já está preparado para isso.
+Se o `redisenterprise` não existir na sua CLI, instale a extensão: `az extension add -n redisenterprise`.
 
-# Pegue a chave primária (vai na connection string com SSL, porta 6380):
-REDIS_KEY=$(az redis list-keys -n $REDIS -g $RG --query primaryKey -o tsv)
+```bash
+# SKU Balanced_B0 é o menor tier do Managed Redis. Cria o cluster + database "default".
+az redisenterprise create -n $REDIS -g $RG -l $LOCATION \
+  --sku Balanced_B0 --minimum-tls-version 1.2
+
+# Host real do cluster (<nome>.<região>.redis.azure.net) e chave primária do database "default":
+REDIS_HOST=$(az redisenterprise show -n $REDIS -g $RG --query hostName -o tsv)
+REDIS_KEY=$(az redisenterprise database list-keys --cluster-name $REDIS -g $RG --query primaryKey -o tsv)
+
+# Connection string (SSL, porta 10000, abortConnect=False para não derrubar o app se o Redis piscar no boot):
 echo "Redis connection string:"
-echo "$REDIS.redis.cache.windows.net:6380,password=$REDIS_KEY,ssl=True,abortConnect=False"
+echo "$REDIS_HOST:10000,password=$REDIS_KEY,ssl=True,abortConnect=False"
 ```
 
 ## 4. Azure Container Registry (ACR)
@@ -125,7 +135,7 @@ az webapp config appsettings set -g $RG -n $APP --settings \
   ASPNETCORE_ENVIRONMENT=Production \
   WEBSITES_PORT=8080 \
   "ConnectionStrings__Default=Server=tcp:$SQL_SERVER.database.windows.net,1433;Initial Catalog=$SQL_DB;User ID=$SQL_ADMIN;Password=$SQL_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;" \
-  "ConnectionStrings__Redis=$REDIS.redis.cache.windows.net:6380,password=$REDIS_KEY,ssl=True,abortConnect=False" \
+  "ConnectionStrings__Redis=$REDIS_HOST:10000,password=$REDIS_KEY,ssl=True,abortConnect=False" \
   "Jwt__SecretKey=$JWT_KEY" \
   Jwt__Issuer=barbersaas.com.br \
   Jwt__Audience=barbersaas-clients \
@@ -143,7 +153,7 @@ az webapp config appsettings set -g $RG -n $APP --settings \
 | `ASPNETCORE_ENVIRONMENT` | `Production` | ✅ | desliga Swagger/Hangfire dashboard/seed demo/DemoSeed |
 | `WEBSITES_PORT` | `8080` | ✅ | porta exposta pela imagem |
 | `ConnectionStrings__Default` | `Server=tcp:<srv>.database.windows.net,1433;Initial Catalog=<db>;User ID=<u>;Password=<p>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;` | ✅ | Azure SQL (Seção 2) |
-| `ConnectionStrings__Redis` | `<redis>.redis.cache.windows.net:6380,password=<key>,ssl=True,abortConnect=False` | ✅ | Redis (Seção 3) |
+| `ConnectionStrings__Redis` | `<redis>.<região>.redis.azure.net:10000,password=<key>,ssl=True,abortConnect=False` | ✅ | Redis (Seção 3) |
 | `Jwt__SecretKey` | ≥32 bytes aleatórios | ✅ | gerado acima |
 | `Jwt__Issuer` | `barbersaas.com.br` | ✅ | — |
 | `Jwt__Audience` | `barbersaas-clients` | ✅ | — |
@@ -248,9 +258,12 @@ Tiers desta receita, **Brazil South**, aproximado (preços Azure mudam — confi
 |---|---|---|---|
 | App Service Plan | B1 (Linux) | ~$13 | ~R$ 70 |
 | Azure SQL Database | Basic (5 DTU) | ~$5 | ~R$ 27 |
-| Azure Cache for Redis | Basic C0 | ~$16 | ~R$ 86 |
+| Azure Managed Redis | Balanced B0 | ~$50* | ~R$ 270* |
 | Azure Container Registry | Basic | ~$5 | ~R$ 27 |
-| **Total** | | **~$39** | **~R$ 210** |
+| **Total** | | **~$73*** | **~R$ 395*** |
+
+> \* O Managed Redis (Balanced B0) é bem mais caro que o antigo Cache for Redis Basic C0 (~$16). O
+> valor acima é aproximado — confirme o preço do Balanced B0 na sua região no Pricing Calculator.
 
 > Vercel: o plano **Hobby (grátis)** cobre o frontend. Twilio/SendGrid têm custo por uso (à parte),
 > só quando ligados.

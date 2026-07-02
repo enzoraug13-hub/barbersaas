@@ -6,14 +6,14 @@ namespace BarberSaaS.Infrastructure.Cache;
 
 public class RedisCacheService : ICacheService
 {
+    private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _db;
-    private readonly IServer   _server;
     private static readonly JsonSerializerOptions _opts = new() { PropertyNameCaseInsensitive = true };
 
     public RedisCacheService(IConnectionMultiplexer redis)
     {
-        _db     = redis.GetDatabase();
-        _server = redis.GetServer(redis.GetEndPoints().First());
+        _redis = redis;
+        _db    = redis.GetDatabase();
     }
 
     public async Task<T?> GetAsync<T>(string key) where T : class
@@ -38,7 +38,16 @@ public class RedisCacheService : ICacheService
 
     public async Task RemoveByPatternAsync(string pattern)
     {
-        await foreach (var key in _server.KeysAsync(pattern: pattern))
-            await _db.KeyDeleteAsync(key);
+        // Em cluster (Azure Managed Redis) as chaves ficam espalhadas entre shards.
+        // SCAN é por-nó, então precisa varrer TODOS os masters — varrer só o primeiro
+        // endpoint deixaria a invalidação parcial (chaves em outros shards sobrariam
+        // até expirar por TTL). Em single node isso vira um laço de uma iteração só.
+        foreach (var endpoint in _redis.GetEndPoints())
+        {
+            var server = _redis.GetServer(endpoint);
+            if (!server.IsConnected || server.IsReplica) continue;
+            await foreach (var key in server.KeysAsync(pattern: pattern))
+                await _db.KeyDeleteAsync(key);
+        }
     }
 }
