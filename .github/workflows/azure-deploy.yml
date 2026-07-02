@@ -24,9 +24,9 @@ on:
   workflow_dispatch: {}
 
 env:
-  ACR_NAME: <SEU_ACR>            # nome do ACR SEM o sufixo .azurecr.io (ex.: barbersaasacr)
+  ACR_NAME: barbersaasacrenzo01          # nome do ACR SEM o sufixo .azurecr.io (login server: barbersaasacrenzo01.azurecr.io)
   IMAGE_NAME: barbersaas-api
-  AZURE_WEBAPP_NAME: <SEU_APP_SERVICE>   # ex.: barbersaas-api  (vira <nome>.azurewebsites.net)
+  AZURE_WEBAPP_NAME: barbersaas-api-enzo01   # App Service (vira barbersaas-api-enzo01.azurewebsites.net) — precisa existir antes do deploy
 
 jobs:
   build-and-deploy:
