@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { EditBarberModal } from '../../components/admin/EditBarberModal'
 import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
+import { PhoneField } from '../../components/ui/PhoneField'
+import { toE164BR, formatPhoneBR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
 
@@ -111,15 +113,16 @@ export default function BarbersPage() {
   const [showForm, setShowForm] = useState(false)
   const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null)
   const [editBarber, setEditBarber] = useState<Barber | null>(null)
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, googleCalendarId: '' })
+  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, googleCalendarId: '' }
+  const [form, setForm] = useState(EMPTY_FORM)
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await create.mutateAsync(form)
+      await create.mutateAsync({ ...form, phone: form.phone ? toE164BR(form.phone) : undefined })
       toast.success('Barbeiro cadastrado!')
       setShowForm(false)
-      setForm({ name: '', email: '', password: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, googleCalendarId: '' })
+      setForm(EMPTY_FORM)
     } catch { toast.error('Erro ao cadastrar.') }
   }
 
@@ -154,7 +157,7 @@ export default function BarbersPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="ds-text-primary font-semibold truncate group-hover:ds-text-accent transition-colors">{b.name}</p>
-                  {b.phone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{b.phone}</p>}
+                  {b.phone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{formatPhoneBR(b.phone)}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); toggle.mutate(b.id) }}
@@ -187,9 +190,7 @@ export default function BarbersPage() {
       <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Barbeiro" panelClassName="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={set('name')} required /></div>
-          <div className="ds-field"><label className="ds-label">E-mail</label><input type="email" className="ds-input" value={form.email} onChange={set('email')} required /></div>
-          <div className="ds-field"><label className="ds-label">Senha</label><input type="password" className="ds-input" value={form.password} onChange={set('password')} minLength={8} required /></div>
-          <div className="ds-field"><label className="ds-label">Telefone</label><input className="ds-input" value={form.phone} onChange={set('phone')} /></div>
+          <PhoneField label="Telefone (opcional)" value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
           <div className="ds-field"><label className="ds-label">Bio</label><input className="ds-input" value={form.bio} onChange={set('bio')} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="ds-field">

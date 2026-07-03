@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import LoginPage    from '../pages/auth/LoginPage'
 import RegisterPage from '../pages/auth/RegisterPage'
+import ConfirmEmailPage from '../pages/auth/ConfirmEmailPage'
 import BookingPage  from '../pages/public/BookingPage'
 import ClientAccountPage from '../pages/client/ClientAccountPage'
 import StyleGuidePage from '../pages/StyleGuidePage'
@@ -33,6 +34,7 @@ function AdminPage({ children }: { children: React.ReactNode }) {
 export const router = createBrowserRouter([
   { path: '/login',    element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/confirmar-email', element: <ConfirmEmailPage /> },
   { path: '/b/:slug',       element: <BookingPage /> },
   { path: '/b/:slug/conta', element: <ClientAccountPage /> },
   { path: '/style-guide',   element: <StyleGuidePage /> },

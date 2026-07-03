@@ -6,6 +6,7 @@ namespace BarberSaaS.Application.Common.Interfaces;
 public interface IUserRepository : IBaseRepository<User>
 {
     Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<User?> GetByEmailVerifyTokenAsync(string token, CancellationToken ct = default);
     Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
 }
 

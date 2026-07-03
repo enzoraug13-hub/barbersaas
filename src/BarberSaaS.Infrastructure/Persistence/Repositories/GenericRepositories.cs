@@ -12,6 +12,10 @@ public class UserRepository : BaseRepository<User>, IUserRepository
     public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default)
         => await _set.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted, ct);
 
+    // Confirmação de e-mail é anônima (sem tenant no contexto) — precisa ignorar o filtro global.
+    public async Task<User?> GetByEmailVerifyTokenAsync(string token, CancellationToken ct = default)
+        => await _set.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.EmailVerifyToken == token && !u.IsDeleted, ct);
+
     public async Task<bool> EmailExistsAsync(string email, CancellationToken ct = default)
         => await _set.IgnoreQueryFilters().AnyAsync(u => u.Email == email && !u.IsDeleted, ct);
 }

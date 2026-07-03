@@ -6,11 +6,11 @@ using MediatR;
 
 namespace BarberSaaS.Application.Barbers.Commands;
 
+// Barbeiro não tem login próprio — é só um recurso da agenda do tenant,
+// por isso não pede e-mail/senha nem cria User.
 public record CreateBarberCommand(
     Guid TenantId,
     string Name,
-    string Email,
-    string Password,
     string? Phone,
     string? Bio,
     CommissionType CommissionType,
@@ -35,8 +35,6 @@ public class CreateBarberValidator : AbstractValidator<CreateBarberCommand>
     public CreateBarberValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.Email).NotEmpty().EmailAddress();
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
         RuleFor(x => x.CommissionValue).InclusiveBetween(0, 100);
     }
 }
@@ -44,34 +42,17 @@ public class CreateBarberValidator : AbstractValidator<CreateBarberCommand>
 public class CreateBarberHandler : IRequestHandler<CreateBarberCommand, BarberDto>
 {
     private readonly IBarberRepository _barbers;
-    private readonly IUserRepository _users;
-    private readonly IPasswordHasher _hasher;
 
-    public CreateBarberHandler(IBarberRepository barbers, IUserRepository users, IPasswordHasher hasher)
+    public CreateBarberHandler(IBarberRepository barbers)
     {
-        _barbers = barbers; _users = users; _hasher = hasher;
+        _barbers = barbers;
     }
 
     public async Task<BarberDto> Handle(CreateBarberCommand request, CancellationToken ct)
     {
-        var emailExists = await _users.EmailExistsAsync(request.Email, ct);
-        if (emailExists) throw new BarberSaaS.Domain.Exceptions.DomainException("Este e-mail já está em uso.");
-
-        var user = new User
-        {
-            TenantId     = request.TenantId,
-            Name         = request.Name,
-            Email        = request.Email,
-            PasswordHash = _hasher.Hash(request.Password),
-            Role         = UserRole.Barber,
-            IsActive     = true
-        };
-        await _users.AddAsync(user, ct);
-
         var barber = new Barber
         {
             TenantId        = request.TenantId,
-            UserId          = user.Id,
             Name            = request.Name,
             Phone           = request.Phone,
             Bio             = request.Bio,

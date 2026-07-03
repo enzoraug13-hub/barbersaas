@@ -13,6 +13,7 @@ import { PhoneOtpStep } from '../../components/client/PhoneOtpStep'
 import { CompleteProfileStep } from '../../components/client/CompleteProfileStep'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatPhoneBR } from '../../lib/masks'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -130,7 +131,7 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
         </div>
         <div className="min-w-0">
           <p className="ds-text-primary font-bold truncate" style={{ fontSize: 'var(--text-lg)' }}>{me?.name || name || 'Cliente'}</p>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{me?.phone}</p>
+          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{formatPhoneBR(me?.phone)}</p>
         </div>
         <div className="ml-auto text-right flex-shrink-0">
           <div className="ds-text-accent flex items-center gap-1 font-bold"><Star size={15} /> {me?.loyaltyPoints ?? 0}</div>

@@ -13,10 +13,11 @@ interface PhoneFieldProps {
   onChange: (digits: string) => void
   error?: string
   autoFocus?: boolean
+  required?: boolean
   onEnter?: () => void
 }
 
-export function PhoneField({ label, value, onChange, error, autoFocus, onEnter }: PhoneFieldProps) {
+export function PhoneField({ label, value, onChange, error, autoFocus, required, onEnter }: PhoneFieldProps) {
   const country = COUNTRIES[0]
 
   return (
@@ -37,6 +38,7 @@ export function PhoneField({ label, value, onChange, error, autoFocus, onEnter }
           onChange={e => onChange(onlyDigits(e.target.value).slice(0, 11))}
           onKeyDown={e => e.key === 'Enter' && onEnter?.()}
           autoFocus={autoFocus}
+          required={required}
         />
       </div>
       {error && <span className="ds-error-text">{error}</span>}

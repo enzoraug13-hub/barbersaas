@@ -20,10 +20,26 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: async (data: { businessName: string; ownerName: string; email: string; password: string; phone: string }) => {
       const res = await api.post('/auth/register', data)
-      return res.data.data
+      return res.data.data as {
+        accessToken: string | null
+        refreshToken: string | null
+        user: { id: string; name: string; email: string; role: string; tenantId: string | null }
+        requiresEmailConfirmation?: boolean
+      }
     },
     onSuccess: (data) => {
-      setAuth(data.accessToken, data.refreshToken, data.user)
+      // Com confirmação de e-mail obrigatória o backend não devolve tokens (conta pendente).
+      if (data.accessToken && data.refreshToken) {
+        setAuth(data.accessToken, data.refreshToken, data.user)
+      }
     },
   })
 }
+
+export const useConfirmEmail = () =>
+  useMutation({
+    mutationFn: async (token: string) => {
+      const res = await api.post('/auth/confirm-email', { token })
+      return res.data
+    },
+  })

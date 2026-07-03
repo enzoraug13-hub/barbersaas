@@ -31,7 +31,7 @@ export default function StyleGuidePage() {
         {/* Header */}
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-accent text-sm font-semibold">BarberSaaS</p>
+            <p className="text-accent text-sm font-semibold">Trimly</p>
             <h1 className="text-3xl font-bold tracking-tight">Design System</h1>
             <p className="text-muted mt-1">Dark-first premium · tokens · {theme}</p>
           </div>

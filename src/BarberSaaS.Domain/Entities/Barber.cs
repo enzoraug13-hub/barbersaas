@@ -5,7 +5,8 @@ namespace BarberSaaS.Domain.Entities;
 
 public class Barber : BaseEntity
 {
-    public Guid UserId { get; set; }
+    /// <summary>Opcional: barbeiro não tem login próprio (legado — barbeiros antigos podem ter um User vinculado).</summary>
+    public Guid? UserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? PhotoUrl { get; set; }
     public string? Bio { get; set; }

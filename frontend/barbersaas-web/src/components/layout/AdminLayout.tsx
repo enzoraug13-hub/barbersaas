@@ -100,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="ds-sidebar-logo-mark w-8 h-8 rounded-lg flex items-center justify-center">
               <Scissors size={16} style={{ color: 'var(--accent-fg)' }} />
             </div>
-            <span className="ds-sidebar-logo-text">BarberSaaS</span>
+            <span className="ds-sidebar-logo-text">Trimly</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="ds-icon-btn lg:hidden">
             <X size={20} />

@@ -61,7 +61,7 @@ public class NotificationProcessor
             switch (notification.Channel)
             {
                 case NotificationChannel.Email when !string.IsNullOrEmpty(notification.RecipientEmail):
-                    await _email.SendAsync(notification.RecipientEmail, notification.Subject ?? "Notificação BarberSaaS", $"<p>{notification.Body}</p>");
+                    await _email.SendAsync(notification.RecipientEmail, notification.Subject ?? "Notificação Trimly", $"<p>{notification.Body}</p>");
                     break;
                 case NotificationChannel.WhatsApp:
                     // Integração WhatsApp futura

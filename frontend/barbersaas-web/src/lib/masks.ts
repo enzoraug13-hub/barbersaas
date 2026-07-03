@@ -25,6 +25,36 @@ export function isValidBRPhone(digits: string): boolean {
   return d.length === 10 || d.length === 11
 }
 
+/** Dígitos BR (DDD+número) -> formato internacional salvo no backend (+55DDDNUMERO). */
+export function toE164BR(digits: string): string {
+  const d = onlyDigits(digits)
+  return d ? `+55${d}` : ''
+}
+
+/**
+ * Extrai os dígitos BR (DDD+número) de um valor salvo em qualquer formato antigo:
+ * "+5511999999999", "5511999999999", "(11) 99999-9999", "11999999999".
+ */
+export function brDigitsFromStored(stored?: string | null): string {
+  if (!stored) return ''
+  const d = onlyDigits(stored)
+  if (stored.trim().startsWith('+55')) return d.slice(2)
+  if (d.length >= 12 && d.startsWith('55')) return d.slice(2)
+  return d
+}
+
+/**
+ * Formata um telefone salvo para exibição: "(11) 99999-9999".
+ * Valores que não parecem número BR (ex.: +1...) voltam como estão — nunca quebra.
+ */
+export function formatPhoneBR(stored?: string | null): string {
+  if (!stored) return ''
+  if (stored.trim().startsWith('+') && !stored.trim().startsWith('+55')) return stored
+  const d = brDigitsFromStored(stored)
+  if (d.length === 10 || d.length === 11) return maskBRPhone(d)
+  return stored
+}
+
 /** CPF válido: 11 dígitos, não repetidos, com dígitos verificadores corretos. */
 export function isValidCPF(digits: string): boolean {
   const d = onlyDigits(digits)

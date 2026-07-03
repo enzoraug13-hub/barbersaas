@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { useClients, useCreateClient, useBlockClient, useUnblockClient } from '../../features/clients/clientsApi'
+import { PhoneField } from '../../components/ui/PhoneField'
+import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Client } from '../../types'
 import toast from 'react-hot-toast'
 
@@ -15,6 +17,7 @@ export default function ClientsPage() {
   const [blockTarget, setBlock]   = useState<Client | null>(null)
   const [blockReason, setBlockReason] = useState('')
   const [form, setForm]           = useState({ name: '', phone: '', email: '' })
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const { data: clients, isLoading } = useClients(search || undefined)
   const createClient  = useCreateClient()
@@ -23,8 +26,13 @@ export default function ClientsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isValidBRPhone(form.phone)) {
+      setPhoneError('Telefone inválido. Informe DDD + número.')
+      return
+    }
+    setPhoneError(null)
     try {
-      await createClient.mutateAsync({ name: form.name, phone: form.phone, email: form.email || undefined })
+      await createClient.mutateAsync({ name: form.name, phone: toE164BR(form.phone), email: form.email || undefined })
       toast.success('Cliente cadastrado!')
       setShowForm(false)
       setForm({ name: '', phone: '', email: '' })
@@ -100,12 +108,12 @@ export default function ClientsPage() {
                         <div>
                           <p className="ds-text-primary font-medium">{c.name?.trim() || 'Sem nome'}</p>
                           {c.email && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{c.email}</p>}
-                          <p className="ds-text-disabled sm:hidden" style={{ fontSize: 'var(--text-xs)' }}>{c.phoneNumber}</p>
+                          <p className="ds-text-disabled sm:hidden" style={{ fontSize: 'var(--text-xs)' }}>{formatPhoneBR(c.phoneNumber)}</p>
                         </div>
                       </div>
                     </td>
                     <td className="ds-text-secondary hidden sm:table-cell">
-                      <div className="flex items-center gap-1.5"><Phone size={13} />{c.phoneNumber}</div>
+                      <div className="flex items-center gap-1.5"><Phone size={13} />{formatPhoneBR(c.phoneNumber)}</div>
                     </td>
                     <td className="ds-text-secondary text-center hidden md:table-cell">{c.totalVisits}</td>
                     <td className="text-center hidden md:table-cell">
@@ -143,10 +151,9 @@ export default function ClientsPage() {
       <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Cliente">
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
-          <div className="ds-field">
-            <label className="ds-label">Telefone (formato internacional)</label>
-            <input className="ds-input" placeholder="+5511999999999" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} required />
-          </div>
+          <PhoneField label="Telefone" value={form.phone} required
+            onChange={d => { setForm(f => ({ ...f, phone: d })); if (phoneError) setPhoneError(null) }}
+            error={phoneError ?? undefined} />
           <div className="ds-field"><label className="ds-label">E-mail (opcional)</label><input type="email" className="ds-input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} /></div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>

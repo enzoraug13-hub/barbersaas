@@ -37,7 +37,25 @@ public class AuthController : ControllerBase
         var result = await _mediator.Send(new RefreshTokenCommand(request.RefreshToken, ip), ct);
         return Ok(ApiResponse<LoginResult>.Ok(result));
     }
+
+    [HttpPost("confirm-email")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new ConfirmEmailCommand(request.Token), ct);
+        return Ok(ApiResponse<bool>.Ok(true, "E-mail confirmado! Você já pode entrar."));
+    }
+
+    [HttpPost("resend-confirmation")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ResendConfirmation([FromBody] ResendConfirmationRequest request, CancellationToken ct)
+    {
+        await _mediator.Send(new ResendConfirmationEmailCommand(request.Email), ct);
+        return Ok(ApiResponse<bool>.Ok(true, "Se a conta existir e estiver pendente, enviamos um novo e-mail."));
+    }
 }
 
 public record LoginRequest(string Email, string Password);
 public record RefreshRequest(string RefreshToken);
+public record ConfirmEmailRequest(string Token);
+public record ResendConfirmationRequest(string Email);

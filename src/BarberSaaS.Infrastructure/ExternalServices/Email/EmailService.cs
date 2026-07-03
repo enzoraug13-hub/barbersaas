@@ -26,7 +26,7 @@ public class EmailService : IEmailService
         }
 
         var client  = new SendGridClient(apiKey);
-        var from    = new EmailAddress(_config["SendGrid:FromEmail"] ?? "noreply@barbersaas.com.br", _config["SendGrid:FromName"] ?? "BarberSaaS");
+        var from    = new EmailAddress(_config["SendGrid:FromEmail"] ?? "noreply@barbersaas.com.br", _config["SendGrid:FromName"] ?? "Trimly");
         var message = MailHelper.CreateSingleEmail(from, new EmailAddress(to), subject, null, htmlBody);
 
         var response = await client.SendEmailAsync(message, ct);

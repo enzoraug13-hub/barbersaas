@@ -23,6 +23,7 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardGridSkeleton } from '../../components/ui/Skeleton'
+import { formatPhoneBR } from '../../lib/masks'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtN = (n: number) => n.toLocaleString('pt-BR')
@@ -163,7 +164,7 @@ export default function BarberProfilePage() {
             <div className="flex items-center justify-center sm:justify-start gap-5 mt-3 flex-wrap">
               {barber.phone && (
                 <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-                  <Phone size={14} /> {barber.phone}
+                  <Phone size={14} /> {formatPhoneBR(barber.phone)}
                 </span>
               )}
               <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>

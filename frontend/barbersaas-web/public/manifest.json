@@ -1,6 +1,6 @@
 {
-  "name": "BarberSaaS",
-  "short_name": "BarberSaaS",
+  "name": "Trimly",
+  "short_name": "Trimly",
   "description": "Gestão e agendamento para barbearias",
   "start_url": "/admin",
   "display": "standalone",

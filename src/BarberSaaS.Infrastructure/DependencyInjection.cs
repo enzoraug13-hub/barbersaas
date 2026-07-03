@@ -88,6 +88,7 @@ public static class DependencyInjection
         // External Services
         services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
         services.AddScoped<IEmailService,          EmailService>();
+        services.AddSingleton<IAuthOptions, BarberSaaS.Infrastructure.ExternalServices.AuthOptions>();
 
         // SMS (login do cliente por OTP): Twilio se configurado, senão stub de log (dev).
         services.AddHttpClient();

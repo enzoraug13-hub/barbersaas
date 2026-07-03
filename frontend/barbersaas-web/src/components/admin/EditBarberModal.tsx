@@ -4,6 +4,8 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { ImageField } from '../ui/ImageField'
 import { useUpdateBarber } from '../../features/barbers/barbersApi'
+import { PhoneField } from '../ui/PhoneField'
+import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
 
@@ -15,7 +17,7 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
     name: barber.name,
     photoUrl: barber.photoUrl ?? '',
     bio: barber.bio ?? '',
-    phone: barber.phone ?? '',
+    phone: brDigitsFromStored(barber.phone),
     commissionType: barber.commissionType ?? 0,
     commissionValue: barber.commissionValue ?? 0,
     showInPublicPage: barber.showInPublicPage,
@@ -34,7 +36,7 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
           name: form.name.trim(),
           photoUrl: form.photoUrl || undefined,
           bio: form.bio.trim() || undefined,
-          phone: form.phone.trim() || undefined,
+          phone: form.phone ? toE164BR(form.phone) : undefined,
           commissionType: form.commissionType,
           commissionValue: form.commissionValue,
           showInPublicPage: form.showInPublicPage,
@@ -67,10 +69,7 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="ds-field">
-            <label className="ds-label">Telefone</label>
-            <input className="ds-input" value={form.phone} onChange={set('phone')} placeholder="(00) 00000-0000" />
-          </div>
+          <PhoneField label="Telefone" value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
           <div className="ds-field">
             <label className="ds-label">Ordem de exibição</label>
             <input type="number" min={0} className="ds-input" value={form.displayOrder} onChange={set('displayOrder')} />

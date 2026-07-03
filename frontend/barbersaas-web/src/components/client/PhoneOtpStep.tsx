@@ -5,7 +5,7 @@ import { type ClientProfile } from '../../store/clientAuthStore'
 import { Button } from '../ui/Button'
 import { PhoneField, COUNTRIES } from '../ui/PhoneField'
 import { OtpInput } from '../ui/OtpInput'
-import { isValidBRPhone } from '../../lib/masks'
+import { isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import toast from 'react-hot-toast'
 
 function apiErrorMessage(e: any, fallback: string): string {
@@ -123,7 +123,7 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
           <ShieldAlert size={36} className="mx-auto" style={{ color: 'var(--color-error)' }} />
           <p className="ds-text-primary font-semibold">Conta bloqueada</p>
           <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{blocked}</p>
-          {businessPhone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>Contato: {businessPhone}</p>}
+          {businessPhone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>Contato: {formatPhoneBR(businessPhone)}</p>}
           <Button variant="ghost" onClick={() => setBlocked(null)} className="mt-2"><ChevronLeft size={15} /> Voltar</Button>
         </div>
       </div>

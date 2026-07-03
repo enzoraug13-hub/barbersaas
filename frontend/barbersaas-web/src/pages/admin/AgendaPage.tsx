@@ -11,6 +11,8 @@ import { Modal } from '../../components/ui/Modal'
 import { useAppointments, useCancelAppointment, useCompleteAppointment, useAdminCreateAppointment } from '../../features/appointments/appointmentsApi'
 import { useBarbers } from '../../features/barbers/barbersApi'
 import { useServices } from '../../features/services/servicesApi'
+import { PhoneField } from '../../components/ui/PhoneField'
+import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Appointment } from '../../types'
 import toast from 'react-hot-toast'
 
@@ -42,6 +44,7 @@ export default function AgendaPage() {
   const [payMethod, setPayMethod] = useState(1)
   const [showNew, setShowNew]     = useState(false)
   const [newAppt, setNewAppt]     = useState(EMPTY_APPT)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const dateStr = format(date, 'yyyy-MM-dd')
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(date, { weekStartsOn: 1 }), i))
 
@@ -71,11 +74,17 @@ export default function AgendaPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isValidBRPhone(newAppt.clientPhone)) {
+      setPhoneError('Telefone inválido. Informe DDD + número.')
+      return
+    }
+    setPhoneError(null)
     try {
       await createAppt.mutateAsync({
         ...newAppt,
         date: dateStr,
         startTime: newAppt.startTime + ':00',
+        clientPhone: toE164BR(newAppt.clientPhone),
         clientEmail: newAppt.clientEmail || undefined,
         notes: newAppt.notes || undefined,
       })
@@ -151,7 +160,7 @@ export default function AgendaPage() {
                     <div>
                       <p className="ds-text-primary font-semibold">{appt.clientName}</p>
                       <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{appt.serviceName} · {appt.barberName}</p>
-                      <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{appt.clientPhone}</p>
+                      <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{formatPhoneBR(appt.clientPhone)}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       {statusBadge(appt.status)}
@@ -174,7 +183,7 @@ export default function AgendaPage() {
             <div className="space-y-2 mb-4">
               {[
                 { label: 'Cliente',  value: selected.clientName },
-                { label: 'Telefone', value: selected.clientPhone },
+                { label: 'Telefone', value: formatPhoneBR(selected.clientPhone) },
                 { label: 'Barbeiro', value: selected.barberName },
                 { label: 'Serviço',  value: selected.serviceName },
                 { label: 'Data',     value: `${selected.date} às ${selected.startTime}` },
@@ -234,10 +243,9 @@ export default function AgendaPage() {
             <input type="time" className="ds-input" value={newAppt.startTime} onChange={setNew('startTime')} required />
           </div>
           <div className="ds-field"><label className="ds-label">Nome do cliente</label><input className="ds-input" value={newAppt.clientName} onChange={setNew('clientName')} required /></div>
-          <div className="ds-field">
-            <label className="ds-label">Telefone (ex: +5511999999999)</label>
-            <input className="ds-input" placeholder="+5511999999999" value={newAppt.clientPhone} onChange={setNew('clientPhone')} required />
-          </div>
+          <PhoneField label="Telefone" value={newAppt.clientPhone} required
+            onChange={d => { setNewAppt(f => ({ ...f, clientPhone: d })); if (phoneError) setPhoneError(null) }}
+            error={phoneError ?? undefined} />
           <div className="ds-field"><label className="ds-label">E-mail (opcional)</label><input type="email" className="ds-input" value={newAppt.clientEmail} onChange={setNew('clientEmail')} /></div>
           <div className="ds-field"><label className="ds-label">Observações</label><input className="ds-input" value={newAppt.notes} onChange={setNew('notes')} /></div>
           <div className="flex gap-3 pt-2">

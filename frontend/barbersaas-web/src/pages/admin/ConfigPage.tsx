@@ -6,6 +6,8 @@ import { applyTenantTheme } from '../../lib/theme-tenant'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ImageField } from '../../components/ui/ImageField'
+import { PhoneField } from '../../components/ui/PhoneField'
+import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import toast from 'react-hot-toast'
 
 interface BusinessHour { dayOfWeek: number; isOpen: boolean; openTime: string | null; closeTime: string | null }
@@ -122,12 +124,21 @@ export default function ConfigPage() {
   })
 
   const [form, setForm] = useState<SettingsForm>({})
-  useEffect(() => { if (settings) setForm(settings) }, [settings])
+  // Telefones ficam no form como dígitos BR (DDD+número) e voltam a +55... no salvar.
+  useEffect(() => {
+    if (settings) setForm({
+      ...settings,
+      phone: brDigitsFromStored(settings.phone),
+      whatsAppNumber: brDigitsFromStored(settings.whatsAppNumber),
+    })
+  }, [settings])
   const [tab, setTab] = useState<Tab>('aparencia')
 
   const update = useMutation({
     mutationFn: () => api.put('/settings', {
       ...form,
+      phone:          form.phone ? toE164BR(form.phone) : '',
+      whatsAppNumber: form.whatsAppNumber ? toE164BR(form.whatsAppNumber) : '',
       slotIntervalMinutes: toNum(form.slotIntervalMinutes),
       maxAdvanceDays:      toNum(form.maxAdvanceDays),
     }),
@@ -216,8 +227,8 @@ export default function ConfigPage() {
               <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.businessName ?? ''} onChange={set('businessName')} /></div>
               <div className="ds-field"><label className="ds-label">Descrição</label><textarea className="ds-input resize-none" style={{ height: 80, paddingTop: 8 }} value={form.description ?? ''} onChange={set('description')} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="ds-field"><label className="ds-label">Telefone</label><input className="ds-input" value={form.phone ?? ''} onChange={set('phone')} placeholder="+5511999999999" /></div>
-                <div className="ds-field"><label className="ds-label">WhatsApp</label><input className="ds-input" value={form.whatsAppNumber ?? ''} onChange={set('whatsAppNumber')} placeholder="+5511999999999" /></div>
+                <PhoneField label="Telefone" value={form.phone ?? ''} onChange={d => setVal('phone', d)} />
+                <PhoneField label="WhatsApp" value={form.whatsAppNumber ?? ''} onChange={d => setVal('whatsAppNumber', d)} />
               </div>
               <div className="ds-field"><label className="ds-label">Instagram</label><input className="ds-input" value={form.instagramUrl ?? ''} onChange={set('instagramUrl')} placeholder="https://instagram.com/sua_barbearia" /></div>
               <div className="ds-field"><label className="ds-label">Endereço</label><input className="ds-input" value={form.address ?? ''} onChange={set('address')} /></div>

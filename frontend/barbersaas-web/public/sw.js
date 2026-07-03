@@ -1,4 +1,5 @@
-const CACHE_NAME = 'barbersaas-v1'
+// Trocar o nome invalida o cache antigo no activate (rebrand Trimly).
+const CACHE_NAME = 'trimly-v1'
 const STATIC_ASSETS = ['/', '/admin', '/login']
 
 self.addEventListener('install', (event) => {
@@ -57,7 +58,7 @@ self.addEventListener('fetch', (event) => {
 
 // Push notifications
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? { title: 'BarberSaaS', body: 'Você tem uma notificação.' }
+  const data = event.data?.json() ?? { title: 'Trimly', body: 'Você tem uma notificação.' }
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,

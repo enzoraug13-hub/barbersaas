@@ -22,6 +22,19 @@ public interface IEmailService
     Task SendAsync(string to, string subject, string htmlBody, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Opções de autenticação vindas da configuração.
+/// <c>RequireEmailConfirmation</c> (Auth:RequireEmailConfirmation, default false): enquanto o
+/// provedor de e-mail não estiver configurado em produção, deixe false — com true o cadastro
+/// fica pendente até o link de confirmação chegar por e-mail, e o login é bloqueado.
+/// <c>FrontendUrl</c> (App:FrontendUrl): base para montar os links de e-mail (ex.: https://app.vercel.app).
+/// </summary>
+public interface IAuthOptions
+{
+    bool RequireEmailConfirmation { get; }
+    string FrontendUrl { get; }
+}
+
 public interface ISmsService
 {
     /// <summary>True quando há um provedor real (ex.: Twilio) configurado.</summary>

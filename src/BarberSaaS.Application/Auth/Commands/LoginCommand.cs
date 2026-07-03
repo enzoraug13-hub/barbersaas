@@ -26,6 +26,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
     private readonly IPasswordHasher _hasher;
     private readonly IJwtService _jwt;
     private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly IAuthOptions _authOptions;
     private readonly ILogger<LoginCommandHandler> _logger;
 
     public LoginCommandHandler(
@@ -33,10 +34,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         IPasswordHasher hasher,
         IJwtService jwt,
         IRefreshTokenRepository refreshTokens,
+        IAuthOptions authOptions,
         ILogger<LoginCommandHandler> logger)
     {
         _users = users; _hasher = hasher; _jwt = jwt;
-        _refreshTokens = refreshTokens; _logger = logger;
+        _refreshTokens = refreshTokens; _authOptions = authOptions; _logger = logger;
     }
 
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken ct)
@@ -58,6 +60,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             await _users.UpdateAsync(user, ct);
             throw new UnauthorizedAccessException("Credenciais inválidas.");
         }
+
+        // Só depois da senha conferir, para não vazar se a conta existe.
+        // Contas antigas nasceram com EmailVerified=true, então ligar a flag não bloqueia ninguém já ativo.
+        if (_authOptions.RequireEmailConfirmation && !user.EmailVerified)
+            throw new UnauthorizedAccessException("Confirme seu e-mail para entrar. Verifique sua caixa de entrada (e o spam).");
 
         user.FailedLoginCount = 0;
         user.LockedUntil      = null;
