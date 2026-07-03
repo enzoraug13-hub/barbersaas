@@ -12,6 +12,7 @@ using BarberSaaS.Infrastructure.Persistence;
 using BarberSaaS.Infrastructure.Persistence.Repositories;
 using BarberSaaS.Infrastructure.Reservations;
 using Hangfire;
+using Hangfire.PostgreSql;
 using Hangfire.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,15 +25,32 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        // EF Core — detecta SQLite (dev) ou SQL Server (prod)
-        var connStr = config.GetConnectionString("Default")!;
-        var isSqlite = connStr.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase);
+        // EF Core — detecta SQLite (dev), PostgreSQL (Railway) ou SQL Server (Azure).
+        // Aceita DATABASE_URL em formato URI (Railway) — ver ConnectionStringResolver.
+        var connStr  = ConnectionStringResolver.Resolve(config);
+        var provider = ConnectionStringResolver.Detect(connStr);
+
+        // Npgsql 6+ exige DateTime com Kind=Utc para 'timestamp with time zone'. O app trata
+        // datas como naïve (mesma semântica do datetime2 do SQL Server e do SQLite), então
+        // usamos o comportamento legado: DateTime -> 'timestamp without time zone', sem
+        // exigência de Kind. Precisa ser setado antes de qualquer uso do Npgsql.
+        if (provider == DatabaseProvider.PostgreSql)
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
         services.AddDbContext<AppDbContext>(opt =>
         {
-            if (isSqlite)
-                opt.UseSqlite(connStr, sq => sq.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
-            else
-                opt.UseSqlServer(connStr, sq => sq.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+            switch (provider)
+            {
+                case DatabaseProvider.Sqlite:
+                    opt.UseSqlite(connStr, sq => sq.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                    break;
+                case DatabaseProvider.PostgreSql:
+                    opt.UseNpgsql(connStr, sq => sq.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                    break;
+                default:
+                    opt.UseSqlServer(connStr, sq => sq.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+                    break;
+            }
         });
 
         // Repositories
@@ -104,23 +122,31 @@ public static class DependencyInjection
             services.AddSingleton<IOtpChallengeService, InMemoryOtpChallengeService>();
         }
 
-        // Hangfire — usa InMemory em dev (SQLite) ou SQL Server em prod
+        // Hangfire — InMemory em dev (SQLite), PostgreSql no Railway, SqlServer no Azure
         services.AddHangfire(cfg =>
         {
             cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                .UseSimpleAssemblyNameTypeSerializer()
                .UseRecommendedSerializerSettings();
-            if (isSqlite)
-                cfg.UseInMemoryStorage();
-            else
-                cfg.UseSqlServerStorage(connStr, new SqlServerStorageOptions
-                {
-                    CommandBatchMaxTimeout     = TimeSpan.FromMinutes(5),
-                    SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-                    QueuePollInterval          = TimeSpan.Zero,
-                    UseRecommendedIsolationLevel = true,
-                    DisableGlobalLocks         = true
-                });
+            switch (provider)
+            {
+                case DatabaseProvider.Sqlite:
+                    cfg.UseInMemoryStorage();
+                    break;
+                case DatabaseProvider.PostgreSql:
+                    cfg.UsePostgreSqlStorage(o => o.UseNpgsqlConnection(connStr));
+                    break;
+                default:
+                    cfg.UseSqlServerStorage(connStr, new SqlServerStorageOptions
+                    {
+                        CommandBatchMaxTimeout     = TimeSpan.FromMinutes(5),
+                        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                        QueuePollInterval          = TimeSpan.Zero,
+                        UseRecommendedIsolationLevel = true,
+                        DisableGlobalLocks         = true
+                    });
+                    break;
+            }
         });
         services.AddHangfireServer();
 

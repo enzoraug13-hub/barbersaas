@@ -13,8 +13,9 @@ namespace BarberSaaS.API;
 ///   (planos + tenant/usuário demo).
 /// </para>
 /// <para>
-/// - <b>Produção/Staging</b>: aplica as migrations (cria/atualiza o schema do SQL Server) +
-///   seed idempotente APENAS dos planos (sem tenant demo, sem usuários de teste).
+/// - <b>Produção/Staging</b>: aplica as migrations (cria/atualiza o schema do banco de
+///   produção — PostgreSQL no Railway) + seed idempotente APENAS dos planos (sem tenant
+///   demo, sem usuários de teste).
 /// </para>
 /// <c>EnsureCreated</c> e <c>Migrate</c> são mutuamente incompatíveis (o <c>EnsureCreated</c>
 /// não registra em <c>__EFMigrationsHistory</c>, e aí o <c>Migrate</c> se recusa a aplicar) —
@@ -51,7 +52,7 @@ public static class DbInitializer
         {
             logger.LogCritical(ex,
                 "Banco: FALHA ao aplicar migrations no startup. Verifique ConnectionStrings__Default " +
-                "(servidor acessível, credenciais corretas, firewall do Azure SQL liberando 'Allow Azure services'). " +
+                "ou DATABASE_URL (servidor acessível, credenciais corretas, firewall liberado). " +
                 "A aplicação não vai subir até o banco estar acessível.");
             throw; // fail-fast visível
         }
