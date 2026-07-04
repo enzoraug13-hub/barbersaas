@@ -3,73 +3,82 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace BarberSaaS.Infrastructure.ExternalServices.GoogleCalendar;
 
+/// <summary>
+/// Escreve eventos no Google Calendar do BARBEIRO, usando o access token OAuth da
+/// conta que ele conectou (ver <see cref="GoogleOAuthService"/>; renovação automática
+/// via refresh token). Barbeiro sem credencial válida ⇒ Create retorna null e
+/// Update/Cancel viram no-op — a integração nunca derruba o fluxo de agendamento
+/// (os handlers ainda embrulham em try/catch e gravam GoogleSyncError).
+/// </summary>
 public class GoogleCalendarService : IGoogleCalendarService
 {
-    private readonly CalendarService? _calendar;
+    private readonly IGoogleOAuthService _oauth;
     private readonly ILogger<GoogleCalendarService> _logger;
-    private readonly bool _enabled;
 
-    public GoogleCalendarService(IConfiguration config, ILogger<GoogleCalendarService> logger)
+    public GoogleCalendarService(IGoogleOAuthService oauth, ILogger<GoogleCalendarService> logger)
     {
+        _oauth  = oauth;
         _logger = logger;
-        var keyPath = config["GoogleCalendar:ServiceAccountKeyPath"];
-        _enabled = !string.IsNullOrEmpty(keyPath) && File.Exists(keyPath);
-
-        if (_enabled)
-        {
-            var credential = GoogleCredential.FromFile(keyPath)
-                .CreateScoped(CalendarService.Scope.Calendar);
-            _calendar = new CalendarService(new BaseClientService.Initializer
-            {
-                HttpClientInitializer = credential,
-                ApplicationName       = "BarberSaaS"
-            });
-        }
     }
 
     public async Task<string?> CreateEventAsync(GoogleCalendarEventDto dto, CancellationToken ct = default)
     {
-        if (!_enabled || _calendar == null) return null;
+        var calendar = await CreateClientAsync(dto.BarberId, ct);
+        if (calendar == null) return null;
 
         return await ExecuteWithRetryAsync(async () =>
         {
-            var ev = BuildEvent(dto);
-            var req = _calendar.Events.Insert(ev, dto.GoogleCalendarId);
+            var ev  = BuildEvent(dto);
+            var req = calendar.Events.Insert(ev, dto.GoogleCalendarId);
             var result = await req.ExecuteAsync(ct);
             return result.Id;
         }, "CreateEvent", dto.AppointmentId);
     }
 
-    public async Task UpdateEventAsync(string calendarId, string eventId, GoogleCalendarEventDto dto, CancellationToken ct = default)
+    public async Task UpdateEventAsync(Guid barberId, string calendarId, string eventId, GoogleCalendarEventDto dto, CancellationToken ct = default)
     {
-        if (!_enabled || _calendar == null) return;
+        var calendar = await CreateClientAsync(barberId, ct);
+        if (calendar == null) return;
 
         await ExecuteWithRetryAsync(async () =>
         {
-            var ev  = BuildEvent(dto);
-            await _calendar.Events.Update(ev, calendarId, eventId).ExecuteAsync(ct);
+            var ev = BuildEvent(dto);
+            await calendar.Events.Update(ev, calendarId, eventId).ExecuteAsync(ct);
             return true;
         }, "UpdateEvent", dto.AppointmentId);
     }
 
-    public async Task CancelEventAsync(string calendarId, string eventId, string clientName, CancellationToken ct = default)
+    public async Task CancelEventAsync(Guid barberId, string calendarId, string eventId, string clientName, CancellationToken ct = default)
     {
-        if (!_enabled || _calendar == null) return;
+        var calendar = await CreateClientAsync(barberId, ct);
+        if (calendar == null) return;
 
         await ExecuteWithRetryAsync(async () =>
         {
-            var existing = await _calendar.Events.Get(calendarId, eventId).ExecuteAsync(ct);
+            var existing = await calendar.Events.Get(calendarId, eventId).ExecuteAsync(ct);
             existing.Summary  = $"[CANCELADO] — {clientName}";
             existing.ColorId  = "11"; // tomato
             existing.Description += "\n\n⚠️ Agendamento cancelado.";
-            await _calendar.Events.Update(existing, calendarId, eventId).ExecuteAsync(ct);
+            await calendar.Events.Update(existing, calendarId, eventId).ExecuteAsync(ct);
             return true;
         }, "CancelEvent", Guid.Empty);
+    }
+
+    // null quando o barbeiro não tem Google conectado (ou o token não pôde ser renovado).
+    private async Task<CalendarService?> CreateClientAsync(Guid barberId, CancellationToken ct)
+    {
+        var accessToken = await _oauth.GetValidAccessTokenAsync(barberId, ct);
+        if (accessToken == null) return null;
+
+        return new CalendarService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = GoogleCredential.FromAccessToken(accessToken),
+            ApplicationName       = "BarberSaaS"
+        });
     }
 
     private static Event BuildEvent(GoogleCalendarEventDto dto) => new()

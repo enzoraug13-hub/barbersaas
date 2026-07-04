@@ -24,6 +24,19 @@ public interface IBarberRepository : IBaseRepository<Barber>
     Task<IReadOnlyList<Barber>> GetShowInPublicPageAsync(Guid tenantId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Tokens OAuth do Google por barbeiro. NÃO estende IBaseRepository de propósito:
+/// a exclusão aqui é FÍSICA (hard delete) — token revogado/substituído não pode
+/// sobreviver como linha soft-deleted (além de conflitar com o índice único de BarberId).
+/// </summary>
+public interface IBarberGoogleCredentialRepository
+{
+    Task<BarberGoogleCredential?> GetByBarberIdAsync(Guid barberId, CancellationToken ct = default);
+    Task AddAsync(BarberGoogleCredential credential, CancellationToken ct = default);
+    Task UpdateAsync(BarberGoogleCredential credential, CancellationToken ct = default);
+    Task DeleteByBarberIdAsync(Guid barberId, CancellationToken ct = default);
+}
+
 public interface IClientRepository : IBaseRepository<Client>
 {
     Task<Client?> GetByPhoneAsync(string phone, Guid tenantId, CancellationToken ct = default);

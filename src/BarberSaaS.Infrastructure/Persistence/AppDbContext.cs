@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<User>                Users                => Set<User>();
     public DbSet<RefreshToken>        RefreshTokens        => Set<RefreshToken>();
     public DbSet<Barber>              Barbers              => Set<Barber>();
+    public DbSet<BarberGoogleCredential> BarberGoogleCredentials => Set<BarberGoogleCredential>();
     public DbSet<Client>              Clients              => Set<Client>();
     public DbSet<Service>             Services             => Set<Service>();
     public DbSet<BarberService>       BarberServices       => Set<BarberService>();

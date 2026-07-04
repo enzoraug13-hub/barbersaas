@@ -86,6 +86,9 @@ public static class DependencyInjection
         services.AddScoped<ISlotGeneratorService, SlotGeneratorService>();
 
         // External Services
+        services.AddSingleton<GoogleTokenCipher>();
+        services.AddScoped<IBarberGoogleCredentialRepository, BarberGoogleCredentialRepository>();
+        services.AddScoped<IGoogleOAuthService, GoogleOAuthService>();
         services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
         services.AddScoped<IEmailService,          EmailService>();
         services.AddSingleton<IAuthOptions, BarberSaaS.Infrastructure.ExternalServices.AuthOptions>();

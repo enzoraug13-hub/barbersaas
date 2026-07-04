@@ -18,10 +18,11 @@ public class BarbersController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ICurrentTenant _tenant;
     private readonly IBarberRepository _barbers;
+    private readonly IConfiguration _config;
 
-    public BarbersController(IMediator mediator, ICurrentTenant tenant, IBarberRepository barbers)
+    public BarbersController(IMediator mediator, ICurrentTenant tenant, IBarberRepository barbers, IConfiguration config)
     {
-        _mediator = mediator; _tenant = tenant; _barbers = barbers;
+        _mediator = mediator; _tenant = tenant; _barbers = barbers; _config = config;
     }
 
     [HttpGet]
@@ -87,6 +88,52 @@ public class BarbersController : ControllerBase
     {
         await _mediator.Send(body with { BarberId = id }, ct);
         return Ok(ApiResponse<bool>.Ok(true, "Horários atualizados."));
+    }
+
+    // --- Google Calendar (OAuth por barbeiro) ---
+
+    // Devolve a URL de consentimento em JSON (em vez de 302) porque o redirect do
+    // navegador não carrega o Bearer token — o front faz window.location.href = url.
+    [HttpGet("{id:guid}/google/connect")]
+    public async Task<IActionResult> GoogleConnect(Guid id, CancellationToken ct)
+    {
+        var url = await _mediator.Send(new GetGoogleConnectUrlQuery(_tenant.Id, id), ct);
+        return Ok(ApiResponse<object>.Ok(new { url }));
+    }
+
+    [HttpGet("{id:guid}/google/status")]
+    public async Task<IActionResult> GoogleStatus(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetGoogleStatusQuery(_tenant.Id, id), ct);
+        return Ok(ApiResponse<GoogleConnectionStatus>.Ok(result));
+    }
+
+    [HttpDelete("{id:guid}/google")]
+    public async Task<IActionResult> GoogleDisconnect(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new DisconnectGoogleCommand(_tenant.Id, id), ct);
+        return Ok(ApiResponse<bool>.Ok(true, "Google Calendar desconectado."));
+    }
+
+    // Callback do consentimento: o GOOGLE redireciona o navegador para cá, sem JWT —
+    // a autorização vem do state cifrado/assinado (tenant+barbeiro, validade 10 min).
+    // Sempre termina em redirect para o painel, com ?google=connected|error.
+    [AllowAnonymous]
+    [HttpGet("google/callback")]
+    public async Task<IActionResult> GoogleCallback(
+        [FromQuery] string? code, [FromQuery] string? state, [FromQuery] string? error, CancellationToken ct)
+    {
+        var frontendUrl = (_config["App:FrontendUrl"] ?? "").TrimEnd('/');
+
+        // error=access_denied: usuário cancelou a tela de consentimento.
+        if (!string.IsNullOrEmpty(error) || string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
+            return Redirect($"{frontendUrl}/admin/barbeiros?google=error");
+
+        var result = await _mediator.Send(new CompleteGoogleCallbackCommand(code, state), ct);
+        var target = result.BarberId != null
+            ? $"{frontendUrl}/admin/barbeiros/{result.BarberId}"
+            : $"{frontendUrl}/admin/barbeiros";
+        return Redirect($"{target}?google={(result.Success ? "connected" : "error")}");
     }
 
     // --- Serviços/preços por barbeiro (Parte B) ---

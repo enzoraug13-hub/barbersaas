@@ -113,7 +113,8 @@ export default function BarbersPage() {
   const [showForm, setShowForm] = useState(false)
   const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null)
   const [editBarber, setEditBarber] = useState<Barber | null>(null)
-  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, googleCalendarId: '' }
+  // Google Calendar não entra mais aqui: a conexão é por OAuth no perfil do barbeiro.
+  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50 }
   const [form, setForm] = useState(EMPTY_FORM)
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -205,7 +206,6 @@ export default function BarbersPage() {
               <input type="number" className="ds-input" value={form.commissionValue} onChange={set('commissionValue')} />
             </div>
           </div>
-          <div className="ds-field"><label className="ds-label">ID do Google Calendar (opcional)</label><input className="ds-input" value={form.googleCalendarId} onChange={set('googleCalendarId')} /></div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button type="submit" className="flex-1" loading={create.isPending}>Criar</Button>

@@ -108,6 +108,43 @@ export const useUpdateSchedule = (barberId: string) => {
   })
 }
 
+// --- Google Calendar (OAuth por barbeiro) ---
+
+export type GoogleStatus = { connected: boolean; email: string | null; connectedAt: string | null }
+
+export const useGoogleStatus = (barberId: string) =>
+  useQuery({
+    queryKey: ['barber-google', barberId],
+    queryFn: async () => {
+      const res = await api.get(`/barbers/${barberId}/google/status`)
+      return res.data.data as GoogleStatus
+    },
+    enabled: !!barberId,
+  })
+
+// O backend devolve a URL de consentimento em JSON (redirect direto não carrega o
+// Bearer token) — daqui navegamos o browser inteiro pro Google; a volta é o
+// callback do backend, que redireciona pra este perfil com ?google=connected|error.
+export const useConnectGoogle = (barberId: string) =>
+  useMutation({
+    mutationFn: async () => {
+      const res = await api.get(`/barbers/${barberId}/google/connect`)
+      return (res.data.data as { url: string }).url
+    },
+    onSuccess: (url) => { window.location.href = url },
+  })
+
+export const useDisconnectGoogle = (barberId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => { await api.delete(`/barbers/${barberId}/google`) },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['barber-google', barberId] })
+      qc.invalidateQueries({ queryKey: ['barber', barberId] })
+    },
+  })
+}
+
 // --- Serviços/preços por barbeiro (Parte B). A UI consome isto nas Partes C/D. ---
 
 export type BarberServiceItem = {

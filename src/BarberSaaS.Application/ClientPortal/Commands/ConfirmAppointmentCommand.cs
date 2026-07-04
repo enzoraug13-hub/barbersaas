@@ -115,7 +115,7 @@ public class ConfirmAppointmentHandler : IRequestHandler<ConfirmAppointmentComma
                 var endDt = startDt.AddMinutes(service.DurationMinutes);
 
                 var calDto = new GoogleCalendarEventDto(
-                    appointment.Id, reservation.TenantId, barber.GoogleCalendarId,
+                    appointment.Id, reservation.TenantId, barber.Id, barber.GoogleCalendarId,
                     client.Name, client.PhoneNumber, service.Name, effectivePrice,
                     service.DurationMinutes, startDt, endDt,
                     "America/Sao_Paulo", tenant?.Settings?.BusinessName ?? "Barbearia",

@@ -57,16 +57,57 @@ public interface ISmsService
     Task SendAsync(string toPhone, string message, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Escrita de eventos no Google Calendar do BARBEIRO (conta conectada via OAuth —
+/// ver <see cref="IGoogleOAuthService"/>). Nunca lança por barbeiro desconectado:
+/// sem credencial válida, Create retorna <c>null</c> e Update/Cancel viram no-op.
+/// </summary>
 public interface IGoogleCalendarService
 {
     Task<string?> CreateEventAsync(GoogleCalendarEventDto dto, CancellationToken ct = default);
-    Task UpdateEventAsync(string calendarId, string eventId, GoogleCalendarEventDto dto, CancellationToken ct = default);
-    Task CancelEventAsync(string calendarId, string eventId, string clientName, CancellationToken ct = default);
+    Task UpdateEventAsync(Guid barberId, string calendarId, string eventId, GoogleCalendarEventDto dto, CancellationToken ct = default);
+    Task CancelEventAsync(Guid barberId, string calendarId, string eventId, string clientName, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Conexão OAuth do Google Calendar por barbeiro. Implementada na Infrastructure —
+/// os tokens (cifrados) nunca saem de lá; a Application só vê URLs, status e o
+/// access token efêmero já renovado.
+/// </summary>
+public interface IGoogleOAuthService
+{
+    /// <summary>True quando Google:ClientId/ClientSecret/RedirectUri estão configurados.</summary>
+    bool IsConfigured { get; }
+
+    /// <summary>URL de consentimento do Google com state assinado (tenant+barbeiro, validade curta).</summary>
+    string BuildConnectUrl(Guid tenantId, Guid barberId);
+
+    /// <summary>
+    /// Valida o state, troca o code por tokens e persiste a credencial do barbeiro.
+    /// Nunca lança: falha vira <c>Success=false</c> (BarberId presente quando o state era válido).
+    /// </summary>
+    Task<GoogleCallbackResult> CompleteCallbackAsync(string code, string state, CancellationToken ct = default);
+
+    /// <summary>Revoga o token no Google (best-effort) e apaga a credencial (hard delete).</summary>
+    Task DisconnectAsync(Guid barberId, CancellationToken ct = default);
+
+    Task<GoogleConnectionStatus> GetStatusAsync(Guid barberId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Access token válido do barbeiro, renovando via refresh_token quando perto de
+    /// expirar. <c>null</c> = sem credencial/decifração falhou/refresh revogado
+    /// (neste último caso a credencial é auto-removida).
+    /// </summary>
+    Task<string?> GetValidAccessTokenAsync(Guid barberId, CancellationToken ct = default);
+}
+
+public record GoogleCallbackResult(bool Success, Guid? TenantId, Guid? BarberId, string? Email);
+public record GoogleConnectionStatus(bool Connected, string? Email, DateTime? ConnectedAt);
 
 public record GoogleCalendarEventDto(
     Guid AppointmentId,
     Guid TenantId,
+    Guid BarberId,
     string GoogleCalendarId,
     string ClientName,
     string ClientPhone,

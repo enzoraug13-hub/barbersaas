@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign, FileDown,
 } from 'lucide-react'
@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
-import { useBarber, useBarberServices, useBarberSchedule, useBarberPerformanceSeries } from '../../features/barbers/barbersApi'
+import { useBarber, useBarberServices, useBarberSchedule, useBarberPerformanceSeries, useGoogleStatus, useConnectGoogle, useDisconnectGoogle } from '../../features/barbers/barbersApi'
 import { useBarberPerformance } from '../../features/dashboard/dashboardApi'
 import { useSettings } from '../../features/settings/settingsApi'
 import { generateBarberReport } from '../../lib/pdf/barberReport'
@@ -75,6 +75,22 @@ export default function BarberProfilePage() {
   const { data: barber, isLoading, isError } = useBarber(id)
   const { data: services, isLoading: loadingServices } = useBarberServices(id)
   const { data: schedule, isLoading: loadingSchedule } = useBarberSchedule(id)
+  const { data: google } = useGoogleStatus(id)
+  const connectGoogle = useConnectGoogle(id)
+  const disconnectGoogle = useDisconnectGoogle(id)
+
+  // Volta do consentimento do Google: o callback do backend redireciona pra cá
+  // com ?google=connected|error — mostra o toast e limpa o parâmetro da URL.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    const result = searchParams.get('google')
+    if (!result) return
+    if (result === 'connected') toast.success('Google Calendar conectado!')
+    else toast.error('Não foi possível conectar o Google Calendar. Tente de novo.')
+    searchParams.delete('google')
+    setSearchParams(searchParams, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const { data: series, isLoading: loadingSeries } = useBarberPerformanceSeries(id, 6)
   const { data: perfList } = useBarberPerformance(monthStart, todayStr)
   const { data: settings } = useSettings()
@@ -278,6 +294,52 @@ export default function BarberProfilePage() {
           )}
         </Card>
       </div>
+
+      {/* Integração Google Calendar (OAuth por barbeiro) */}
+      <Card>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)' }}>
+              <Calendar size={18} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="ds-section-title">Google Calendar</h3>
+                {google?.connected
+                  ? <Badge variant="success">Conectado</Badge>
+                  : <Badge variant="default">Não conectado</Badge>}
+              </div>
+              <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)' }}>
+                {google?.connected
+                  ? <>Os agendamentos deste barbeiro viram eventos no calendário
+                      {google.email ? <> de <span className="ds-text-primary font-medium">{google.email}</span></> : ' da conta conectada'}.</>
+                  : 'Conecte a conta Google do barbeiro para que cada agendamento vire um evento no calendário dele automaticamente.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            {google?.connected ? (
+              <Button variant="danger" loading={disconnectGoogle.isPending}
+                onClick={() => {
+                  if (window.confirm('Desconectar o Google Calendar deste barbeiro? Os próximos agendamentos deixarão de virar eventos.'))
+                    disconnectGoogle.mutate(undefined, {
+                      onSuccess: () => toast.success('Google Calendar desconectado.'),
+                      onError: () => toast.error('Não foi possível desconectar. Tente de novo.'),
+                    })
+                }}>
+                Desconectar
+              </Button>
+            ) : (
+              <Button loading={connectGoogle.isPending}
+                onClick={() => connectGoogle.mutate(undefined, {
+                  onError: () => toast.error('Não foi possível iniciar a conexão com o Google.'),
+                })}>
+                <Calendar size={16} /> Conectar Google Calendar
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {/* Distribuição por dia da semana (mês) */}
       <Card>

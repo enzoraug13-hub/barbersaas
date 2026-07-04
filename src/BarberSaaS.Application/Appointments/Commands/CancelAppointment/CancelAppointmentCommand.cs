@@ -48,7 +48,7 @@ public class CancelAppointmentHandler : IRequestHandler<CancelAppointmentCommand
                 try
                 {
                     await _googleCalendar.CancelEventAsync(
-                        barber.GoogleCalendarId, appointment.GoogleEventId, clientName, ct);
+                        barber.Id, barber.GoogleCalendarId, appointment.GoogleEventId, clientName, ct);
                 }
                 catch { /* não bloqueia cancelamento por falha no calendar */ }
             }
