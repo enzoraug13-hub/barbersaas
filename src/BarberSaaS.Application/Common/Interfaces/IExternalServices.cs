@@ -35,6 +35,21 @@ public interface IAuthOptions
     string FrontendUrl { get; }
 }
 
+/// <summary>Resultado da consulta de CNPJ na Receita (via BrasilAPI).</summary>
+/// <param name="Found">False quando a Receita não conhece o CNPJ (404).</param>
+/// <param name="RazaoSocial">Razão social registrada, quando encontrada.</param>
+/// <param name="Situacao">Descrição da situação cadastral (ex.: "ATIVA", "BAIXADA").</param>
+public record CnpjLookupResult(bool Found, string? RazaoSocial, string? Situacao);
+
+public interface ICnpjLookupService
+{
+    /// <summary>
+    /// Consulta o CNPJ na Receita. Retorna <c>null</c> quando a consulta falhou
+    /// (API fora do ar, timeout, erro 5xx) — o chamador decide fail-open.
+    /// </summary>
+    Task<CnpjLookupResult?> LookupAsync(string cnpjDigits, CancellationToken ct = default);
+}
+
 public interface ISmsService
 {
     /// <summary>True quando há um provedor real (ex.: Twilio) configurado.</summary>

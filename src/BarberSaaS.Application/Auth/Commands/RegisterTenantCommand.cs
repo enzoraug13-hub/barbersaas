@@ -1,3 +1,4 @@
+using BarberSaaS.Application.Common;
 using BarberSaaS.Application.Common.Interfaces;
 using BarberSaaS.Domain.Entities;
 using BarberSaaS.Domain.Enums;
@@ -7,12 +8,16 @@ using Microsoft.Extensions.Logging;
 
 namespace BarberSaaS.Application.Auth.Commands;
 
+/// <param name="PersonType">"PF" (CPF) ou "PJ" (CNPJ).</param>
+/// <param name="Document">CPF ou CNPJ — aceita com ou sem máscara.</param>
 public record RegisterTenantCommand(
     string BusinessName,
     string OwnerName,
     string Email,
     string Password,
-    string Phone) : IRequest<RegisterTenantResult>;
+    string Phone,
+    string PersonType,
+    string Document) : IRequest<RegisterTenantResult>;
 
 // Quando RequiresEmailConfirmation=true os tokens vêm nulos: a conta fica pendente
 // até o usuário clicar no link enviado por e-mail (sem auto-login).
@@ -31,6 +36,16 @@ public class RegisterTenantValidator : AbstractValidator<RegisterTenantCommand>
             .NotEmpty().WithMessage("Informe a senha.")
             .MinimumLength(8).WithMessage("A senha deve ter no mínimo 8 caracteres.");
         RuleFor(x => x.Phone).NotEmpty().WithMessage("Informe o WhatsApp.");
+        RuleFor(x => x.PersonType)
+            .Must(t => t is "PF" or "PJ").WithMessage("Escolha Pessoa Física ou Pessoa Jurídica.");
+        RuleFor(x => x.Document)
+            .NotEmpty().WithMessage("Informe o CPF ou CNPJ.");
+        RuleFor(x => x.Document)
+            .Must(BrDocuments.IsValidCpf).WithMessage("CPF inválido. Confira os números digitados.")
+            .When(x => x.PersonType == "PF");
+        RuleFor(x => x.Document)
+            .Must(BrDocuments.IsValidCnpj).WithMessage("CNPJ inválido. Confira os números digitados.")
+            .When(x => x.PersonType == "PJ");
     }
 }
 
@@ -44,20 +59,48 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IAuthOptions _authOptions;
     private readonly IEmailService _email;
+    private readonly ICnpjLookupService _cnpjLookup;
     private readonly ILogger<RegisterTenantHandler> _logger;
 
     public RegisterTenantHandler(
         ITenantRepository tenants, IUserRepository users, IPlanRepository plans,
         IPasswordHasher hasher, IJwtService jwt, IRefreshTokenRepository refreshTokens,
-        IAuthOptions authOptions, IEmailService email, ILogger<RegisterTenantHandler> logger)
+        IAuthOptions authOptions, IEmailService email, ICnpjLookupService cnpjLookup,
+        ILogger<RegisterTenantHandler> logger)
     {
         _tenants = tenants; _users = users; _plans = plans;
         _hasher = hasher; _jwt = jwt; _refreshTokens = refreshTokens;
-        _authOptions = authOptions; _email = email; _logger = logger;
+        _authOptions = authOptions; _email = email; _cnpjLookup = cnpjLookup; _logger = logger;
     }
 
     public async Task<RegisterTenantResult> Handle(RegisterTenantCommand request, CancellationToken ct)
     {
+        var document = BrDocuments.OnlyDigits(request.Document);
+
+        // PJ: confirma na Receita. Só bloqueia CNPJ inexistente (404) ou BAIXADO;
+        // situação irregular/suspensa passa. Falha da API (null) = fail-open, só loga.
+        string? legalName = null;
+        if (request.PersonType == "PJ")
+        {
+            var lookup = await _cnpjLookup.LookupAsync(document, ct);
+            if (lookup is null)
+            {
+                _logger.LogWarning("Cadastro PJ seguiu sem validação online do CNPJ {Cnpj} (BrasilAPI indisponível)", document);
+            }
+            else if (!lookup.Found)
+            {
+                throw new BarberSaaS.Domain.Exceptions.DomainException("CNPJ não encontrado na Receita Federal. Confira os números digitados.");
+            }
+            else if (string.Equals(lookup.Situacao, "BAIXADA", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BarberSaaS.Domain.Exceptions.DomainException("Este CNPJ consta como baixado (encerrado) na Receita Federal.");
+            }
+            else
+            {
+                legalName = lookup.RazaoSocial;
+            }
+        }
+
         var slug = GenerateSlug(request.BusinessName);
         var slugExists = await _tenants.SlugExistsAsync(slug, ct);
         if (slugExists) slug = $"{slug}-{Guid.NewGuid().ToString()[..4]}";
@@ -74,7 +117,10 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
             TenantId     = tenant.Id,
             BusinessName = request.BusinessName,
             Phone        = request.Phone,
-            PublicSlug   = slug
+            PublicSlug   = slug,
+            PersonType   = request.PersonType,
+            Document     = document,
+            LegalName    = legalName
         };
         tenant.Settings = settings;
 

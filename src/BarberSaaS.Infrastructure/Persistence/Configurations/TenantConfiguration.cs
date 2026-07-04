@@ -55,6 +55,9 @@ public class TenantSettingsConfiguration : IEntityTypeConfiguration<TenantSettin
         b.HasKey(x => x.Id);
 
         b.Property(x => x.BusinessName).HasMaxLength(150).IsRequired();
+        b.Property(x => x.PersonType).HasMaxLength(2);
+        b.Property(x => x.Document).HasMaxLength(14);
+        b.Property(x => x.LegalName).HasMaxLength(300);
         b.Property(x => x.Description).HasMaxLength(500);
         b.Property(x => x.Address).HasMaxLength(300);
         b.Property(x => x.City).HasMaxLength(100);

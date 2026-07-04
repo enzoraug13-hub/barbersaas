@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Check, MailCheck } from 'lucide-react'
+import { Scissors, Check, MailCheck, User, Building2 } from 'lucide-react'
 import { useRegister } from '../../features/auth/authApi'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { PhoneField } from '../../components/ui/PhoneField'
-import { toE164BR, isValidBRPhone } from '../../lib/masks'
+import { toE164BR, isValidBRPhone, onlyDigits, maskCPF, maskCNPJ, isValidCPF, isValidCNPJ } from '../../lib/masks'
 import toast from 'react-hot-toast'
+
+type PersonType = 'PF' | 'PJ'
 
 export default function RegisterPage() {
   const navigate  = useNavigate()
@@ -14,14 +16,31 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     businessName: '', ownerName: '', email: '', password: ''
   })
+  const [personType, setPersonType] = useState<PersonType>('PF')
+  const [docDigits, setDocDigits]   = useState('')
+  const [docError, setDocError]     = useState<string | null>(null)
   const [phoneDigits, setPhoneDigits] = useState('')
   const [phoneError, setPhoneError]   = useState<string | null>(null)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   const passwordOk = form.password.length >= 8
+  const isPF = personType === 'PF'
+
+  // Trocar PF<->PJ limpa o documento (tamanhos e máscaras diferentes).
+  const switchType = (t: PersonType) => {
+    if (t === personType) return
+    setPersonType(t); setDocDigits(''); setDocError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isPF ? !isValidCPF(docDigits) : !isValidCNPJ(docDigits)) {
+      setDocError(isPF
+        ? 'CPF inválido. Confira os números digitados.'
+        : 'CNPJ inválido. Confira os números digitados.')
+      return
+    }
+    setDocError(null)
     if (!isValidBRPhone(phoneDigits)) {
       setPhoneError('Telefone inválido. Informe DDD + número.')
       return
@@ -32,7 +51,9 @@ export default function RegisterPage() {
       return
     }
     try {
-      const data = await register.mutateAsync({ ...form, phone: toE164BR(phoneDigits) })
+      const data = await register.mutateAsync({
+        ...form, phone: toE164BR(phoneDigits), personType, document: docDigits,
+      })
       if (data.requiresEmailConfirmation) {
         // Conta criada pendente: sem auto-login até clicar no link do e-mail.
         setPendingEmail(form.email)
@@ -84,13 +105,61 @@ export default function RegisterPage() {
 
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Seletor PF / PJ */}
+            <div className="ds-field">
+              <label className="ds-label">Tipo de cadastro</label>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de cadastro">
+                {([
+                  { type: 'PF' as const, icon: User,      label: 'Pessoa Física' },
+                  { type: 'PJ' as const, icon: Building2, label: 'Pessoa Jurídica' },
+                ]).map(({ type, icon: Icon, label }) => {
+                  const active = personType === type
+                  return (
+                    <button key={type} type="button" role="radio" aria-checked={active}
+                      onClick={() => switchType(type)}
+                      className="flex items-center justify-center gap-2 font-medium transition-colors"
+                      style={{
+                        padding: '10px 8px', fontSize: 'var(--text-sm)', cursor: 'pointer',
+                        borderRadius: 'var(--radius-md)',
+                        border: `1px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`,
+                        background: active ? 'var(--accent-soft, rgba(201,168,76,0.12))' : 'var(--bg-base)',
+                        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                      }}>
+                      <Icon size={15} /> {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="ds-field">
+              <label className="ds-label">{isPF ? 'CPF' : 'CNPJ'}</label>
+              <input
+                className={`ds-input ${docError ? 'ds-input-error' : ''}`}
+                inputMode="numeric"
+                placeholder={isPF ? '000.000.000-00' : '00.000.000/0000-00'}
+                value={isPF ? maskCPF(docDigits) : maskCNPJ(docDigits)}
+                onChange={e => {
+                  setDocDigits(onlyDigits(e.target.value).slice(0, isPF ? 11 : 14))
+                  if (docError) setDocError(null)
+                }}
+                required
+              />
+              {docError && <span className="ds-error-text">{docError}</span>}
+              {!isPF && !docError && (
+                <span className="ds-text-disabled mt-1" style={{ fontSize: 'var(--text-xs)' }}>
+                  Validamos o CNPJ na Receita Federal.
+                </span>
+              )}
+            </div>
+
+            <div className="ds-field">
+              <label className="ds-label">Nome do responsável</label>
+              <input className="ds-input" placeholder="João Silva" value={form.ownerName} onChange={set('ownerName')} required />
+            </div>
             <div className="ds-field">
               <label className="ds-label">Nome da Barbearia</label>
               <input className="ds-input" placeholder="Barbearia do João" value={form.businessName} onChange={set('businessName')} required />
-            </div>
-            <div className="ds-field">
-              <label className="ds-label">Seu nome</label>
-              <input className="ds-input" placeholder="João Silva" value={form.ownerName} onChange={set('ownerName')} required />
             </div>
             <div className="ds-field">
               <label className="ds-label">E-mail</label>

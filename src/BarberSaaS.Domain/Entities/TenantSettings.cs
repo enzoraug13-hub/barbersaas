@@ -11,6 +11,13 @@ public class TenantSettings : BaseEntity
     public string AccentColor { get; set; } = "#ffffff";
 
     public string BusinessName { get; set; } = string.Empty;
+
+    // Cadastro PF/PJ: tipo ("PF"/"PJ"), documento (CPF/CNPJ, só dígitos) e razão
+    // social retornada pela Receita (via BrasilAPI) quando PJ.
+    public string? PersonType { get; set; }
+    public string? Document { get; set; }
+    public string? LegalName { get; set; }
+
     public string? Description { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }

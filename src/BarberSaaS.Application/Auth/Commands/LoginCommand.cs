@@ -43,8 +43,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
 
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken ct)
     {
+        // Mesma mensagem para e-mail inexistente e senha errada — não vaza qual dos dois falhou.
         var user = await _users.GetByEmailAsync(request.Email, ct)
-            ?? throw new UnauthorizedAccessException("Credenciais inválidas.");
+            ?? throw new UnauthorizedAccessException("E-mail ou senha incorretos.");
 
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Usuário inativo.");
@@ -58,7 +59,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
             if (user.FailedLoginCount >= 5)
                 user.LockedUntil = DateTime.UtcNow.AddMinutes(15);
             await _users.UpdateAsync(user, ct);
-            throw new UnauthorizedAccessException("Credenciais inválidas.");
+            throw new UnauthorizedAccessException("E-mail ou senha incorretos.");
         }
 
         // Só depois da senha conferir, para não vazar se a conta existe.

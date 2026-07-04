@@ -165,15 +165,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        {/* User */}
+        {/* Barbearia + dono */}
         <div className="ds-sidebar-footer px-3 py-4">
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="ds-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm">
-              {user?.name?.[0]?.toUpperCase()}
+            <div className="ds-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0">
+              {(settings?.businessName ?? user?.name)?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="ds-user-name truncate">{user?.name}</p>
-              <p className="ds-user-role">{user?.role}</p>
+              <p className="ds-user-name truncate">{settings?.businessName || 'Minha barbearia'}</p>
+              <p className="ds-user-role truncate">{user?.name}</p>
+              <p className="ds-user-role truncate">{user?.email}</p>
             </div>
           </div>
           <button onClick={handleLogout} className="ds-logout-btn">

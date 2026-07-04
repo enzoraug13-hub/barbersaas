@@ -55,6 +55,36 @@ export function formatPhoneBR(stored?: string | null): string {
   return stored
 }
 
+/** Aplica XX.XXX.XXX/XXXX-XX progressivamente enquanto digita. */
+export function maskCNPJ(digits: string): string {
+  const d = onlyDigits(digits).slice(0, 14)
+  if (d.length <= 2) return d
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+}
+
+/** CNPJ válido: 14 dígitos, não repetidos, com dígitos verificadores corretos. */
+export function isValidCNPJ(digits: string): boolean {
+  const d = onlyDigits(digits)
+  if (d.length !== 14) return false
+  if (/^(\d)\1{13}$/.test(d)) return false
+
+  const calcDigit = (length: number): number => {
+    let weight = length - 7
+    let sum = 0
+    for (let i = 0; i < length; i++) {
+      sum += parseInt(d[i], 10) * weight
+      weight = weight === 2 ? 9 : weight - 1
+    }
+    const rest = sum % 11
+    return rest < 2 ? 0 : 11 - rest
+  }
+
+  return calcDigit(12) === parseInt(d[12], 10) && calcDigit(13) === parseInt(d[13], 10)
+}
+
 /** CPF válido: 11 dígitos, não repetidos, com dígitos verificadores corretos. */
 export function isValidCPF(digits: string): boolean {
   const d = onlyDigits(digits)
