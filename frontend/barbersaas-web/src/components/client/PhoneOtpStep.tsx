@@ -119,7 +119,7 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
     return (
       <div>
         <ClientFlowHeader logoUrl={logoUrl} businessName={businessName} />
-        <div className="ds-card text-center py-8 space-y-3 animate-fade-in">
+        <div className="ds-card-glass text-center py-8 space-y-3 animate-fade-in">
           <ShieldAlert size={36} className="mx-auto" style={{ color: 'var(--color-error)' }} />
           <p className="ds-text-primary font-semibold">Conta bloqueada</p>
           <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{blocked}</p>
@@ -134,7 +134,7 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
     return (
       <div>
         <ClientFlowHeader logoUrl={logoUrl} businessName={businessName} subtitle={`Enviamos um código para ${COUNTRIES[0].dial} ${phoneDigits}`} />
-        <div className="ds-card space-y-5 animate-fade-in">
+        <div className="ds-card-glass space-y-5 animate-fade-in">
           <button onClick={() => setStage('phone')} className="flex items-center gap-1 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}>
             <ChevronLeft size={15} /> Trocar telefone
           </button>
@@ -156,7 +156,7 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
   return (
     <div>
       <ClientFlowHeader logoUrl={logoUrl} businessName={businessName} subtitle={phoneSubtitle ?? 'Confirme seu telefone para continuar.'} />
-      <div className="ds-card space-y-4 animate-fade-in">
+      <div className="ds-card-glass space-y-4 animate-fade-in">
         <PhoneField label="Telefone (WhatsApp)" value={phoneDigits} onChange={setPhoneDigits}
           error={phoneError ?? undefined} autoFocus onEnter={requestCode} />
         <Button onClick={requestCode} loading={busy} className="w-full">

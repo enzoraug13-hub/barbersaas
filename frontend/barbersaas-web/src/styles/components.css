@@ -391,3 +391,107 @@
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .ds-config-tab-active svg { color: var(--accent); }
+
+/* ---------------- Login cinematográfico (/login) ---------------- */
+/* A cena é SEMPRE noturna (foto da fachada) — cores fixas de propósito aqui,
+   independentes do tema claro/escuro; o dourado da marca continua via --accent. */
+
+.login-scene {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #0a0a0d;
+}
+.login-scene-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+/* Overlay: vinheta + escurecimento sutil para o card ter contraste sem matar a foto. */
+.login-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 42%, transparent 0%, rgba(5, 6, 10, 0.42) 68%, rgba(5, 6, 10, 0.72) 100%),
+    linear-gradient(to bottom, rgba(5, 6, 10, 0.30) 0%, rgba(5, 6, 10, 0.16) 40%, rgba(5, 6, 10, 0.55) 100%);
+}
+/* Brilho quente pulsando devagar sobre as áreas de luz (letreiro "respirando"). */
+.login-sign-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(34% 26% at 50% 30%, rgba(255, 190, 92, 0.30) 0%, transparent 70%),
+    radial-gradient(60% 40% at 50% 78%, rgba(255, 170, 70, 0.10) 0%, transparent 70%);
+  animation: login-sign-pulse 5.5s ease-in-out infinite;
+}
+@keyframes login-sign-pulse {
+  0%, 100% { opacity: 0.45; }
+  38%      { opacity: 0.85; }
+  46%      { opacity: 0.62; } /* meio "tremulado", como neon */
+  54%      { opacity: 0.9; }
+}
+
+/* Cartão de vidro fosco. Fallback sem backdrop-filter: fundo mais opaco. */
+.login-glass {
+  background: rgba(12, 12, 16, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .login-glass {
+    background: rgba(12, 12, 16, 0.55);
+    -webkit-backdrop-filter: blur(16px) saturate(1.25);
+    backdrop-filter: blur(16px) saturate(1.25);
+  }
+}
+/* Nome Trimly com glow dourado sutil, casando com o letreiro da foto. */
+.login-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #f5efe2;
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 44px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+/* Inputs dentro do vidro: translúcidos, com foco bem visível. */
+.login-glass .ds-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f2f0ea;
+}
+.login-glass .ds-input::placeholder { color: rgba(235, 230, 218, 0.38); }
+.login-glass .ds-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.login-glass .ds-label { color: rgba(238, 233, 222, 0.75); }
+
+/* ---------------- Cartão premium do fluxo do cliente (/b/:slug) ---------------- */
+/* Vidro fosco discreto sobre o fundo da página, mantendo a cor da marca do tenant. */
+.ds-card-glass {
+  background: color-mix(in srgb, #14110d 78%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  padding: 28px 24px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .ds-card-glass {
+    background: color-mix(in srgb, #14110d 58%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    backdrop-filter: blur(14px) saturate(1.15);
+  }
+}
+.ds-card-glass:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}

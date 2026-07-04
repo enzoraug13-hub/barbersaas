@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
 import { useLogin } from '../../features/auth/authApi'
 import { Button } from '../../components/ui/Button'
+import { RainCanvas } from '../../components/ui/RainCanvas'
+import facade from '../../assets/login-facade.jpg'
 
+/* Cena cinematográfica: fachada da barbearia à noite (asset local otimizado) +
+   chuva leve em canvas + brilho pulsante de letreiro + card de vidro fosco.
+   A cena é sempre noturna — textos do card usam cores fixas claras de propósito
+   (exceção consciente aos tokens de tema, que invertem no modo claro); o dourado
+   da marca continua vindo de var(--accent). Só visual: o fluxo de login é o mesmo. */
 export default function LoginPage() {
   const navigate = useNavigate()
   const login    = useLogin()
@@ -31,42 +38,29 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      {/* Brilhos sutis da marca (carvão + dourado) */}
-      <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full"
-        style={{ background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 65%)' }} />
-      <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-24 w-[520px] h-[520px] rounded-full"
-        style={{ background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 60%)' }} />
+    <div className="login-scene flex items-center justify-center p-4 sm:p-6">
+      {/* Cena de fundo: foto + overlay de contraste + brilho de letreiro + chuva */}
+      <img src={facade} alt="" aria-hidden className="login-scene-img" />
+      <div aria-hidden className="login-overlay" />
+      <div aria-hidden className="login-sign-glow" />
+      <RainCanvas />
 
       <div className="relative w-full max-w-sm animate-fade-in">
-        {/* Marca */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 flex items-center justify-center mb-4"
-            style={{ background: 'var(--accent)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 28px var(--accent-soft)' }}>
-            <Scissors size={26} style={{ color: 'var(--accent-fg)' }} />
+        {/* Cartão de vidro fosco */}
+        <div className="login-glass" style={{ padding: 'var(--space-8, 32px) var(--space-6)' }}>
+          {/* Marca */}
+          <div className="flex flex-col items-center mb-8 text-center">
+            <h1 className="login-brand" style={{ fontSize: '34px', lineHeight: 1.1 }}>Trimly</h1>
+            <p className="mt-2" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.72)' }}>
+              Gestão e agendamento para barbearias
+            </p>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Trimly
-          </h1>
-          <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)' }}>Gestão e agendamento para barbearias</p>
-        </div>
-
-        {/* Cartão de login */}
-        <div style={{
-          background: 'var(--bg-subtle)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl, 16px)',
-          padding: 'var(--space-6)',
-          boxShadow: 'var(--shadow-md, 0 12px 32px rgba(0,0,0,0.35))',
-        }}>
-          <h2 className="ds-section-title" style={{ fontSize: 'var(--text-lg)' }}>Bem-vindo de volta</h2>
-          <p className="ds-text-secondary mb-6 mt-1" style={{ fontSize: 'var(--text-sm)' }}>Entre no painel da sua barbearia.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="ds-field">
               <label className="ds-label" htmlFor="login-email">E-mail</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(235,230,218,0.45)' }} />
                 <input
                   id="login-email"
                   type="email"
@@ -84,7 +78,7 @@ export default function LoginPage() {
             <div className="ds-field">
               <label className="ds-label" htmlFor="login-password">Senha</label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-disabled)' }} />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(235,230,218,0.45)' }} />
                 <input
                   id="login-password"
                   type={showPass ? 'text' : 'password'}
@@ -99,7 +93,7 @@ export default function LoginPage() {
                 <button type="button" onClick={() => setShowPass(p => !p)}
                   aria-label={showPass ? 'Ocultar senha' : 'Mostrar senha'}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  style={{ color: 'rgba(235,230,218,0.6)', background: 'none', border: 'none', cursor: 'pointer' }}>
                   {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
@@ -108,11 +102,11 @@ export default function LoginPage() {
             {error && (
               <div role="alert" className="flex items-start gap-2.5"
                 style={{
-                  background: 'rgba(224,92,92,0.10)',
-                  border: '1px solid rgba(224,92,92,0.35)',
+                  background: 'rgba(224,92,92,0.14)',
+                  border: '1px solid rgba(224,92,92,0.4)',
                   borderRadius: 'var(--radius-md)',
                   padding: 'var(--space-3)',
-                  color: 'var(--color-error)',
+                  color: '#f2a3a3',
                   fontSize: 'var(--text-sm)',
                 }}>
                 <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
@@ -124,14 +118,14 @@ export default function LoginPage() {
               {login.isPending ? 'Entrando…' : <>Entrar <ArrowRight size={16} /></>}
             </Button>
           </form>
-        </div>
 
-        <p className="ds-text-disabled text-center mt-5" style={{ fontSize: 'var(--text-sm)' }}>
-          Não tem conta?{' '}
-          <Link to="/register" className="ds-text-accent font-medium hover:underline">
-            Criar barbearia grátis
-          </Link>
-        </p>
+          <p className="text-center mt-6" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.55)' }}>
+            Não tem conta?{' '}
+            <Link to="/register" className="font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+              Criar barbearia grátis
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )
