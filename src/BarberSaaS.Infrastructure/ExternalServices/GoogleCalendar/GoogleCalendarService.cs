@@ -30,10 +30,13 @@ public class GoogleCalendarService : IGoogleCalendarService
         var calendar = await CreateClientAsync(dto.BarberId, ct);
         if (calendar == null) return null;
 
+        var barberEmail = await GetBarberEmailAsync(dto.BarberId, ct);
+
         return await ExecuteWithRetryAsync(async () =>
         {
-            var ev  = BuildEvent(dto);
+            var ev  = BuildEvent(dto, barberEmail);
             var req = calendar.Events.Insert(ev, dto.GoogleCalendarId);
+            req.SendUpdates = EventsResource.InsertRequest.SendUpdatesEnum.All;
             var result = await req.ExecuteAsync(ct);
             return result.Id;
         }, "CreateEvent", dto.AppointmentId);
@@ -44,10 +47,14 @@ public class GoogleCalendarService : IGoogleCalendarService
         var calendar = await CreateClientAsync(barberId, ct);
         if (calendar == null) return;
 
+        var barberEmail = await GetBarberEmailAsync(barberId, ct);
+
         await ExecuteWithRetryAsync(async () =>
         {
-            var ev = BuildEvent(dto);
-            await calendar.Events.Update(ev, calendarId, eventId).ExecuteAsync(ct);
+            var ev  = BuildEvent(dto, barberEmail);
+            var req = calendar.Events.Update(ev, calendarId, eventId);
+            req.SendUpdates = EventsResource.UpdateRequest.SendUpdatesEnum.All;
+            await req.ExecuteAsync(ct);
             return true;
         }, "UpdateEvent", dto.AppointmentId);
     }
@@ -63,7 +70,9 @@ public class GoogleCalendarService : IGoogleCalendarService
             existing.Summary  = $"[CANCELADO] — {clientName}";
             existing.ColorId  = "11"; // tomato
             existing.Description += "\n\n⚠️ Agendamento cancelado.";
-            await calendar.Events.Update(existing, calendarId, eventId).ExecuteAsync(ct);
+            var req = calendar.Events.Update(existing, calendarId, eventId);
+            req.SendUpdates = EventsResource.UpdateRequest.SendUpdatesEnum.All;
+            await req.ExecuteAsync(ct);
             return true;
         }, "CancelEvent", Guid.Empty);
     }
@@ -81,13 +90,36 @@ public class GoogleCalendarService : IGoogleCalendarService
         });
     }
 
-    private static Event BuildEvent(GoogleCalendarEventDto dto) => new()
+    // E-mail da conta Google conectada — vira attendee para o Google disparar a
+    // notificação imediata de "convite" ao barbeiro. Falha aqui não pode derrubar
+    // a criação do evento: qualquer erro vira null (evento sai sem attendee).
+    private async Task<string?> GetBarberEmailAsync(Guid barberId, CancellationToken ct)
+    {
+        try
+        {
+            var status = await _oauth.GetStatusAsync(barberId, ct);
+            return string.IsNullOrWhiteSpace(status.Email) ? null : status.Email;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Google Calendar: falha ao obter e-mail do barbeiro {BarberId} para attendee", barberId);
+            return null;
+        }
+    }
+
+    private static Event BuildEvent(GoogleCalendarEventDto dto, string? barberEmail) => new()
     {
         Summary     = $"✂️ {dto.ClientName} — {dto.ServiceName}",
         Description = $"👤 {dto.ClientName}\n📱 {dto.ClientPhone}\n✂️ {dto.ServiceName}\n💰 R${dto.ServicePrice:F2}\n⏱ {dto.DurationMinutes}min",
         Start       = new EventDateTime { DateTimeDateTimeOffset = dto.StartDateTime, TimeZone = dto.TimeZone },
         End         = new EventDateTime { DateTimeDateTimeOffset = dto.EndDateTime,   TimeZone = dto.TimeZone },
         ColorId     = dto.ColorId ?? "5",
+        // O barbeiro entra como attendee do próprio evento: combinado com
+        // SendUpdates=All, o Google trata como convite e notifica na hora
+        // (push/e-mail conforme as configurações pessoais da conta dele).
+        Attendees   = barberEmail is null
+            ? null
+            : new List<EventAttendee> { new() { Email = barberEmail, ResponseStatus = "accepted" } },
         ExtendedProperties = new Event.ExtendedPropertiesData
         {
             Private__ = new Dictionary<string, string>
