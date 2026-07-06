@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign, FileDown,
+  ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign, FileDown, Armchair,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, BarChart, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts'
-import { format, startOfMonth } from 'date-fns'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
@@ -24,6 +24,7 @@ import { Badge } from '../../components/ui/Badge'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardGridSkeleton } from '../../components/ui/Skeleton'
 import { formatPhoneBR } from '../../lib/masks'
+import { assetUrl } from '../../lib/api'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtN = (n: number) => n.toLocaleString('pt-BR')
@@ -70,7 +71,9 @@ export default function BarberProfilePage() {
 
   const today = new Date()
   const monthStart = format(startOfMonth(today), 'yyyy-MM-dd')
-  const todayStr = format(today, 'yyyy-MM-dd')
+  // Mês INTEIRO (não "até hoje") — mesma janela do Dashboard, senão agendamentos
+  // com data futura concluídos antecipadamente somem daqui mas contam lá.
+  const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd')
 
   const { data: barber, isLoading, isError } = useBarber(id)
   const { data: services, isLoading: loadingServices } = useBarberServices(id)
@@ -92,7 +95,7 @@ export default function BarberProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const { data: series, isLoading: loadingSeries } = useBarberPerformanceSeries(id, 6)
-  const { data: perfList } = useBarberPerformance(monthStart, todayStr)
+  const { data: perfList } = useBarberPerformance(monthStart, monthEnd)
   const { data: settings } = useSettings()
   const perf = perfList?.find(p => p.id.toLowerCase() === id.toLowerCase())
 
@@ -162,7 +165,7 @@ export default function BarberProfilePage() {
       <Card style={{ padding: 'var(--space-6)' }}>
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
           {barber.photoUrl ? (
-            <img src={barber.photoUrl} alt={barber.name} className="rounded-full object-cover flex-shrink-0"
+            <img src={assetUrl(barber.photoUrl)} alt={barber.name} className="rounded-full object-cover flex-shrink-0"
               style={{ width: 112, height: 112, border: '3px solid var(--accent)' }} />
           ) : (
             <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0"
@@ -187,6 +190,12 @@ export default function BarberProfilePage() {
                 <Percent size={14} /> Comissão: <span className="ds-text-primary font-semibold">{commissionLabel}</span>
                 <span className="ds-text-disabled">({barber.commissionType === 1 ? 'fixo' : 'percentual'})</span>
               </span>
+              {barber.chairRentAmount != null && (
+                <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
+                  <Armchair size={14} /> Cadeira: <span className="ds-text-primary font-semibold">{fmt(barber.chairRentAmount)}</span>
+                  <span className="ds-text-disabled">({barber.chairRentPeriod === 0 ? 'por semana' : 'por mês'} — pago pelo barbeiro)</span>
+                </span>
+              )}
             </div>
           </div>
         </div>

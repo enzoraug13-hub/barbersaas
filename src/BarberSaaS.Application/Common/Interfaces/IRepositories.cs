@@ -79,6 +79,16 @@ public interface IFinancialRepository : IBaseRepository<FinancialTransaction>
     Task<IReadOnlyList<FinancialTransaction>> GetByPeriodAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
     Task<decimal> GetTotalRevenueAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
     Task<decimal> GetTotalExpenseAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default);
+
+    /// <summary>Transação vinculada ao agendamento (usada para idempotência e estorno).</summary>
+    Task<FinancialTransaction?> GetByAppointmentIdAsync(Guid tenantId, Guid appointmentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cria retroativamente as receitas de agendamentos Completed que ainda não têm
+    /// FinancialTransaction (concluídos antes do elo agendamento→financeiro existir).
+    /// Idempotente. Retorna quantas transações foram criadas.
+    /// </summary>
+    Task<int> BackfillCompletedAppointmentsAsync(Guid tenantId, Guid createdByUserId, CancellationToken ct = default);
 }
 
 public interface IGoalRepository : IBaseRepository<Goal>

@@ -40,6 +40,16 @@ public class FinancialController : ControllerBase
         return Ok(ApiResponse<TransactionDto>.Ok(result));
     }
 
+    // Correção retroativa (idempotente): lança as receitas de agendamentos concluídos
+    // que ficaram sem FinancialTransaction. Seguro rodar mais de uma vez.
+    [HttpPost("backfill-appointments")]
+    public async Task<IActionResult> BackfillAppointments(CancellationToken ct)
+    {
+        var created = await _mediator.Send(new BackfillAppointmentRevenueCommand(_tenant.Id, _user.Id), ct);
+        return Ok(ApiResponse<object>.Ok(new { created },
+            created > 0 ? $"{created} receita(s) criada(s) retroativamente." : "Nada a corrigir — tudo em dia."));
+    }
+
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary([FromQuery] DateOnly start, [FromQuery] DateOnly end, CancellationToken ct)
     {

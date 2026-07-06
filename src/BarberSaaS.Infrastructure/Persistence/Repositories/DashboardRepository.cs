@@ -131,11 +131,14 @@ public class DashboardRepository : IDashboardRepository
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var firstMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(-(months - 1));
+        // Mês corrente INTEIRO (não "até hoje") — mesma janela do Dashboard/perfil, senão
+        // atendimentos com data futura concluídos antecipadamente ficam de fora do gráfico.
+        var endOfCurrentMonth = new DateOnly(today.Year, today.Month, 1).AddMonths(1).AddDays(-1);
 
         var appts = await _db.Appointments
             .AsNoTracking()
             .Where(a => a.TenantId == tenantId && !a.IsDeleted && a.BarberId == barberId
-                     && a.Date >= firstMonth && a.Date <= today
+                     && a.Date >= firstMonth && a.Date <= endOfCurrentMonth
                      && a.Status == AppointmentStatus.Completed)
             .Select(a => new { a.Date, a.FinalPrice })
             .ToListAsync(ct);

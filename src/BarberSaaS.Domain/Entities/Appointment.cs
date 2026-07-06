@@ -72,13 +72,13 @@ public class Appointment : BaseEntity
         AddDomainEvent(new AppointmentCancelledEvent(Id, TenantId, ClientId, BarberId, GoogleEventId));
     }
 
-    public void Complete(PaymentMethod paymentMethod)
+    public void Complete(PaymentMethod paymentMethod, Guid completedBy)
     {
         Status      = AppointmentStatus.Completed;
         CompletedAt = DateTime.UtcNow;
         IsPaid      = true;
         PaidAt      = DateTime.UtcNow;
         PaymentMethod = paymentMethod;
-        AddDomainEvent(new AppointmentCompletedEvent(Id, TenantId, ClientId, FinalPrice));
+        AddDomainEvent(new AppointmentCompletedEvent(Id, TenantId, ClientId, FinalPrice, completedBy));
     }
 }

@@ -19,4 +19,5 @@ public record AppointmentCompletedEvent(
     Guid AppointmentId,
     Guid TenantId,
     Guid ClientId,
-    decimal FinalPrice) : IDomainEvent;
+    decimal FinalPrice,
+    Guid CompletedBy) : IDomainEvent;

@@ -90,6 +90,49 @@ public class FinancialRepository : BaseRepository<FinancialTransaction>, IFinanc
     public async Task<decimal> GetTotalExpenseAsync(Guid tenantId, DateOnly start, DateOnly end, CancellationToken ct = default)
         => await _set.Where(t => t.TenantId == tenantId && t.Type == TransactionType.Expense && t.TransactionDate >= start && t.TransactionDate <= end)
             .SumAsync(t => t.Amount, ct);
+
+    public async Task<FinancialTransaction?> GetByAppointmentIdAsync(Guid tenantId, Guid appointmentId, CancellationToken ct = default)
+        => await _set.FirstOrDefaultAsync(t => t.TenantId == tenantId && t.AppointmentId == appointmentId, ct);
+
+    public async Task<int> BackfillCompletedAppointmentsAsync(Guid tenantId, Guid createdByUserId, CancellationToken ct = default)
+    {
+        // Agendamentos concluídos cujo Id não aparece em nenhuma transação (nem
+        // soft-deletada — um estorno de cancelamento não deve ser recriado).
+        var linkedIds = _db.FinancialTransactions.IgnoreQueryFilters()
+            .Where(t => t.TenantId == tenantId && t.AppointmentId != null)
+            .Select(t => t.AppointmentId!.Value);
+
+        var missing = await _db.Appointments
+            .Where(a => a.TenantId == tenantId && !a.IsDeleted
+                     && a.Status == AppointmentStatus.Completed
+                     && !linkedIds.Contains(a.Id))
+            .Select(a => new { a.Id, a.BarberId, a.Date, a.FinalPrice, ClientName = a.Client!.Name, ServiceName = a.Service!.Name })
+            .ToListAsync(ct);
+
+        foreach (var a in missing)
+        {
+            _db.FinancialTransactions.Add(new FinancialTransaction
+            {
+                TenantId        = tenantId,
+                Type            = TransactionType.Revenue,
+                Category        = TransactionCategory.Service,
+                Description     = $"{a.ServiceName} — {a.ClientName}",
+                Amount          = a.FinalPrice,
+                PaidAmount      = a.FinalPrice,
+                Status          = TransactionStatus.Paid,
+                AppointmentId   = a.Id,
+                BarberId        = a.BarberId,
+                CreatedByUserId = createdByUserId,
+                DueDate         = a.Date,
+                TransactionDate = a.Date,
+                PaidAt          = DateTime.UtcNow,
+                Notes           = "Criada retroativamente (backfill de agendamentos concluídos)."
+            });
+        }
+
+        if (missing.Count > 0) await _db.SaveChangesAsync(ct);
+        return missing.Count;
+    }
 }
 
 public class GoalRepository : BaseRepository<Goal>, IGoalRepository

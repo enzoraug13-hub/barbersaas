@@ -36,7 +36,7 @@ public class CompleteAppointmentHandler : IRequestHandler<CompleteAppointmentCom
         if (appointment.Status == AppointmentStatus.Cancelled)
             throw new BarberSaaS.Domain.Exceptions.DomainException("Não é possível concluir um agendamento cancelado.");
 
-        appointment.Complete(request.PaymentMethod);
+        appointment.Complete(request.PaymentMethod, request.CompletedBy);
         await _appointments.UpdateAsync(appointment, ct);
 
         await _cache.RemoveByPatternAsync($"slots:{appointment.BarberId}:*");
