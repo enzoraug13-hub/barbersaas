@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock, Check, Scissors } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '../../lib/api'
+import { api, assetUrl } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ImageField } from '../../components/ui/ImageField'
+import { NumberField } from '../../components/ui/NumberField'
+import { PublicLinkButtons } from '../../components/admin/PublicLinkButtons'
 import { PhoneField } from '../../components/ui/PhoneField'
 import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import toast from 'react-hot-toast'
@@ -98,7 +100,7 @@ function ThemePreview({ brand, hero, logoUrl, name }: {
       <div className="h-24 flex flex-col items-center justify-center gap-1.5"
         style={{ background: `linear-gradient(to bottom, ${hero}, var(--bg-elevated))` }}>
         {logoUrl
-          ? <img src={logoUrl} alt="" className="w-10 h-10 object-cover" style={{ borderRadius: 'var(--radius-md)', border: `2px solid ${brand}80` }} />
+          ? <img src={assetUrl(logoUrl)} alt="" className="w-10 h-10 object-cover" style={{ borderRadius: 'var(--radius-md)', border: `2px solid ${brand}80` }} />
           : <div className="w-10 h-10 flex items-center justify-center" style={{ borderRadius: 'var(--radius-md)', background: brand }}>
               <Scissors size={18} style={{ color: fg }} />
             </div>}
@@ -224,6 +226,10 @@ export default function ConfigPage() {
 
           {tab === 'identidade' && (
             <SectionCard icon={Store} title="Identidade" desc="Nome, contato e endereço — aparecem na página pública e nas mensagens.">
+              <div className="ds-field">
+                <label className="ds-label">Link da área do cliente</label>
+                <PublicLinkButtons />
+              </div>
               <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.businessName ?? ''} onChange={set('businessName')} /></div>
               <div className="ds-field"><label className="ds-label">Descrição</label><textarea className="ds-input resize-none" style={{ height: 80, paddingTop: 8 }} value={form.description ?? ''} onChange={set('description')} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -242,8 +248,8 @@ export default function ConfigPage() {
           {tab === 'agenda' && (
             <SectionCard icon={CalendarClock} title="Agenda" desc="Como os clientes agendam online.">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="ds-field"><label className="ds-label">Intervalo entre horários (min)</label><input type="number" min={5} step={5} className="ds-input" value={form.slotIntervalMinutes ?? 15} onChange={set('slotIntervalMinutes')} /></div>
-                <div className="ds-field"><label className="ds-label">Antecedência máxima (dias)</label><input type="number" min={1} className="ds-input" value={form.maxAdvanceDays ?? 30} onChange={set('maxAdvanceDays')} /></div>
+                <div className="ds-field"><label className="ds-label">Intervalo entre horários (min)</label><NumberField min={5} step={5} placeholder="15" value={toNum(form.slotIntervalMinutes) || 15} onChange={v => setVal('slotIntervalMinutes', v)} /></div>
+                <div className="ds-field"><label className="ds-label">Antecedência máxima (dias)</label><NumberField min={1} placeholder="30" value={toNum(form.maxAdvanceDays) || 30} onChange={v => setVal('maxAdvanceDays', v)} /></div>
               </div>
               <Toggle label="Permitir agendamento online" desc="Clientes podem marcar pela página pública." checked={form.allowOnlineBooking ?? true} onChange={v => setVal('allowOnlineBooking', v)} />
               <Toggle label="Exigir confirmação manual" desc="Você aprova cada agendamento antes de confirmar." checked={form.requireConfirmation ?? false} onChange={v => setVal('requireConfirmation', v)} />

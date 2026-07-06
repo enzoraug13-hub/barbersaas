@@ -15,6 +15,15 @@ public class Barber : BaseEntity
     public CommissionType CommissionType { get; set; } = CommissionType.Percentage;
     public decimal CommissionValue { get; set; } = 0;
 
+    /// <summary>
+    /// Aluguel de cadeira: valor fixo que o barbeiro PAGA à barbearia pelo espaço,
+    /// independente do faturamento. Modelo adicional — coexiste com a comissão acima.
+    /// Null = modelo desligado (todos os barbeiros pré-existentes). Quando preenchido,
+    /// <see cref="ChairRentPeriod"/> indica a periodicidade.
+    /// </summary>
+    public decimal? ChairRentAmount { get; set; }
+    public ChairRentPeriod? ChairRentPeriod { get; set; }
+
     public string? GoogleCalendarId { get; set; }
     public string? GoogleCalendarColor { get; set; }
 

@@ -17,6 +17,10 @@ export interface Barber {
   googleCalendarId?: string
   commissionType: number
   commissionValue: number
+  /** Aluguel de cadeira: valor fixo que o barbeiro paga pelo espaço (null = desligado). */
+  chairRentAmount?: number | null
+  /** 0 = semanal, 1 = mensal (só faz sentido quando chairRentAmount está preenchido). */
+  chairRentPeriod?: number | null
 }
 
 export interface Service {

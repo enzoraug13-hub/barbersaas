@@ -19,6 +19,8 @@ public class BarberConfiguration : IEntityTypeConfiguration<Barber>
         b.Property(x => x.GoogleCalendarColor).HasMaxLength(30);
         b.Property(x => x.CommissionType).HasConversion<byte>();
         b.Property(x => x.CommissionValue).HasColumnType("decimal(10,2)");
+        b.Property(x => x.ChairRentAmount).HasColumnType("decimal(10,2)");
+        b.Property(x => x.ChairRentPeriod).HasConversion<byte?>();
 
         b.HasMany(x => x.WorkSchedules)
             .WithOne(x => x.Barber)

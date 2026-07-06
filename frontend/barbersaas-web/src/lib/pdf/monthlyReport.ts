@@ -11,8 +11,13 @@ import type { BarberPerformance, PaymentMethods } from '../../features/dashboard
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-const commissionLabel = (b?: Barber) =>
-  !b ? '—' : b.commissionType === 0 ? `Comissão ${b.commissionValue}%` : `Fixo ${fmtBRL(b.commissionValue)}`
+const commissionLabel = (b?: Barber) => {
+  if (!b) return '—'
+  const commission = b.commissionType === 0 ? `Comissão ${b.commissionValue}%` : `Fixo ${fmtBRL(b.commissionValue)}`
+  return b.chairRentAmount != null
+    ? `${commission} + Cadeira ${fmtBRL(b.chairRentAmount)}/${b.chairRentPeriod === 0 ? 'sem' : 'mês'}`
+    : commission
+}
 
 export interface MonthlyReportInput {
   settings: TenantSettings

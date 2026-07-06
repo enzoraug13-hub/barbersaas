@@ -65,6 +65,13 @@ public enum CommissionType : byte
     Fixed      = 1
 }
 
+/// <summary>Periodicidade do aluguel de cadeira (ver Barber.ChairRentAmount).</summary>
+public enum ChairRentPeriod : byte
+{
+    Weekly  = 0,
+    Monthly = 1
+}
+
 public enum GoalStatus : byte
 {
     Active    = 0,

@@ -20,7 +20,9 @@ public record UpdateBarberCommand(
     CommissionType CommissionType,
     decimal CommissionValue,
     bool ShowInPublicPage,
-    int DisplayOrder) : IRequest<BarberDto>;
+    int DisplayOrder,
+    decimal? ChairRentAmount = null,
+    ChairRentPeriod? ChairRentPeriod = null) : IRequest<BarberDto>;
 
 public class UpdateBarberValidator : AbstractValidator<UpdateBarberCommand>
 {
@@ -36,6 +38,13 @@ public class UpdateBarberValidator : AbstractValidator<UpdateBarberCommand>
         When(x => x.CommissionType == CommissionType.Fixed, () =>
             RuleFor(x => x.CommissionValue).GreaterThanOrEqualTo(0)
                 .WithMessage("A comissão fixa não pode ser negativa."));
+
+        RuleFor(x => x.ChairRentAmount).GreaterThan(0)
+            .When(x => x.ChairRentAmount.HasValue)
+            .WithMessage("O valor da cadeira deve ser maior que zero.");
+        RuleFor(x => x.ChairRentPeriod).NotNull()
+            .When(x => x.ChairRentAmount.HasValue)
+            .WithMessage("Informe a periodicidade do aluguel da cadeira (semanal ou mensal).");
     }
 }
 
@@ -61,11 +70,13 @@ public class UpdateBarberHandler : IRequestHandler<UpdateBarberCommand, BarberDt
         barber.CommissionValue  = request.CommissionValue;
         barber.ShowInPublicPage = request.ShowInPublicPage;
         barber.DisplayOrder     = request.DisplayOrder;
+        barber.ChairRentAmount  = request.ChairRentAmount;
+        barber.ChairRentPeriod  = request.ChairRentAmount.HasValue ? request.ChairRentPeriod : null;
 
         await _barbers.UpdateAsync(barber, ct);
 
         return new BarberDto(barber.Id, barber.Name, barber.PhotoUrl, barber.Bio, barber.Phone,
             barber.IsActive, barber.ShowInPublicPage, barber.GoogleCalendarId, barber.DisplayOrder,
-            (int)barber.CommissionType, barber.CommissionValue);
+            (int)barber.CommissionType, barber.CommissionValue, barber.ChairRentAmount, (int?)barber.ChairRentPeriod);
     }
 }

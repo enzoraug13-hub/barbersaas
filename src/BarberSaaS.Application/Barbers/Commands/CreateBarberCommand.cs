@@ -15,7 +15,9 @@ public record CreateBarberCommand(
     string? Bio,
     CommissionType CommissionType,
     decimal CommissionValue,
-    string? GoogleCalendarId) : IRequest<BarberDto>;
+    string? GoogleCalendarId,
+    decimal? ChairRentAmount = null,
+    ChairRentPeriod? ChairRentPeriod = null) : IRequest<BarberDto>;
 
 public record BarberDto(
     Guid Id,
@@ -28,7 +30,9 @@ public record BarberDto(
     string? GoogleCalendarId,
     int DisplayOrder,
     int CommissionType,
-    decimal CommissionValue);
+    decimal CommissionValue,
+    decimal? ChairRentAmount = null,
+    int? ChairRentPeriod = null);
 
 public class CreateBarberValidator : AbstractValidator<CreateBarberCommand>
 {
@@ -36,6 +40,12 @@ public class CreateBarberValidator : AbstractValidator<CreateBarberCommand>
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
         RuleFor(x => x.CommissionValue).InclusiveBetween(0, 100);
+        RuleFor(x => x.ChairRentAmount).GreaterThan(0)
+            .When(x => x.ChairRentAmount.HasValue)
+            .WithMessage("O valor da cadeira deve ser maior que zero.");
+        RuleFor(x => x.ChairRentPeriod).NotNull()
+            .When(x => x.ChairRentAmount.HasValue)
+            .WithMessage("Informe a periodicidade do aluguel da cadeira (semanal ou mensal).");
     }
 }
 
@@ -58,7 +68,9 @@ public class CreateBarberHandler : IRequestHandler<CreateBarberCommand, BarberDt
             Bio             = request.Bio,
             CommissionType  = request.CommissionType,
             CommissionValue = request.CommissionValue,
-            GoogleCalendarId = request.GoogleCalendarId
+            GoogleCalendarId = request.GoogleCalendarId,
+            ChairRentAmount = request.ChairRentAmount,
+            ChairRentPeriod = request.ChairRentAmount.HasValue ? request.ChairRentPeriod : null
         };
 
         // WorkSchedule padrão: Seg-Sex 09h-12h e 13h-19h
@@ -73,6 +85,6 @@ public class CreateBarberHandler : IRequestHandler<CreateBarberCommand, BarberDt
 
         await _barbers.AddAsync(barber, ct);
 
-        return new BarberDto(barber.Id, barber.Name, barber.PhotoUrl, barber.Bio, barber.Phone, barber.IsActive, barber.ShowInPublicPage, barber.GoogleCalendarId, barber.DisplayOrder, (int)barber.CommissionType, barber.CommissionValue);
+        return new BarberDto(barber.Id, barber.Name, barber.PhotoUrl, barber.Bio, barber.Phone, barber.IsActive, barber.ShowInPublicPage, barber.GoogleCalendarId, barber.DisplayOrder, (int)barber.CommissionType, barber.CommissionValue, barber.ChairRentAmount, (int?)barber.ChairRentPeriod);
     }
 }

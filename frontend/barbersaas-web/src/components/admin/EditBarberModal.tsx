@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { ImageField } from '../ui/ImageField'
 import { useUpdateBarber } from '../../features/barbers/barbersApi'
 import { PhoneField } from '../ui/PhoneField'
+import { NumberField } from '../ui/NumberField'
 import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
@@ -22,10 +23,13 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
     commissionValue: barber.commissionValue ?? 0,
     showInPublicPage: barber.showInPublicPage,
     displayOrder: barber.displayOrder ?? 0,
+    chairRentEnabled: barber.chairRentAmount != null,
+    chairRentAmount: barber.chairRentAmount ?? 0,
+    chairRentPeriod: barber.chairRentPeriod ?? 1, // mensal por padrão
   })
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [k]: (k === 'commissionType' || k === 'commissionValue' || k === 'displayOrder') ? +e.target.value : e.target.value }))
+    setForm(f => ({ ...f, [k]: k === 'commissionType' ? +e.target.value : e.target.value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,6 +45,8 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
           commissionValue: form.commissionValue,
           showInPublicPage: form.showInPublicPage,
           displayOrder: form.displayOrder,
+          chairRentAmount: form.chairRentEnabled && form.chairRentAmount > 0 ? form.chairRentAmount : null,
+          chairRentPeriod: form.chairRentEnabled && form.chairRentAmount > 0 ? form.chairRentPeriod : null,
         },
       })
       setSaved(true)
@@ -72,7 +78,7 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
           <PhoneField label="Telefone" value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
           <div className="ds-field">
             <label className="ds-label">Ordem de exibição</label>
-            <input type="number" min={0} className="ds-input" value={form.displayOrder} onChange={set('displayOrder')} />
+            <NumberField min={0} value={form.displayOrder} onChange={v => setForm(f => ({ ...f, displayOrder: v }))} />
           </div>
         </div>
 
@@ -92,8 +98,39 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
           </div>
           <div className="ds-field">
             <label className="ds-label">Valor</label>
-            <input type="number" min={0} step="0.01" className="ds-input" value={form.commissionValue} onChange={set('commissionValue')} />
+            <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
           </div>
+        </div>
+
+        {/* Aluguel de cadeira — modelo ADICIONAL, combinável com a comissão acima:
+            valor fixo que o barbeiro paga pelo espaço, independente do faturamento. */}
+        <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input type="checkbox" checked={form.chairRentEnabled}
+              onChange={e => setForm(f => ({ ...f, chairRentEnabled: e.target.checked }))}
+              className="w-4 h-4 flex-shrink-0" style={{ accentColor: 'var(--accent)' }} />
+            <span>
+              <span className="ds-text-primary block" style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Valor fixo por cadeira</span>
+              <span className="ds-text-disabled block" style={{ fontSize: 'var(--text-xs)' }}>O barbeiro paga um valor fixo pelo espaço — pode ser combinado com a comissão.</span>
+            </span>
+          </label>
+          {form.chairRentEnabled && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="ds-field">
+                <label className="ds-label">Valor (R$)</label>
+                <NumberField min={0} step="0.01" placeholder="0,00" value={form.chairRentAmount}
+                  onChange={v => setForm(f => ({ ...f, chairRentAmount: v }))} required />
+              </div>
+              <div className="ds-field">
+                <label className="ds-label">Periodicidade</label>
+                <select className="ds-input" value={form.chairRentPeriod}
+                  onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
+                  <option value={0}>Semanal</option>
+                  <option value={1}>Mensal</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         <label className="flex items-center gap-3 cursor-pointer select-none"

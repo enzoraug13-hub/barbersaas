@@ -8,7 +8,9 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { EditBarberModal } from '../../components/admin/EditBarberModal'
 import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
+import { assetUrl } from '../../lib/api'
 import { PhoneField } from '../../components/ui/PhoneField'
+import { NumberField } from '../../components/ui/NumberField'
 import { toE164BR, formatPhoneBR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
@@ -114,13 +116,19 @@ export default function BarbersPage() {
   const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null)
   const [editBarber, setEditBarber] = useState<Barber | null>(null)
   // Google Calendar não entra mais aqui: a conexão é por OAuth no perfil do barbeiro.
-  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50 }
+  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, chairRentEnabled: false, chairRentAmount: 0, chairRentPeriod: 1 }
   const [form, setForm] = useState(EMPTY_FORM)
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await create.mutateAsync({ ...form, phone: form.phone ? toE164BR(form.phone) : undefined })
+      const { chairRentEnabled, chairRentAmount, chairRentPeriod, ...rest } = form
+      await create.mutateAsync({
+        ...rest,
+        phone: form.phone ? toE164BR(form.phone) : undefined,
+        chairRentAmount: chairRentEnabled && chairRentAmount > 0 ? chairRentAmount : null,
+        chairRentPeriod: chairRentEnabled && chairRentAmount > 0 ? chairRentPeriod : null,
+      })
       toast.success('Barbeiro cadastrado!')
       setShowForm(false)
       setForm(EMPTY_FORM)
@@ -128,7 +136,7 @@ export default function BarbersPage() {
   }
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [k]: k === 'commissionType' || k === 'commissionValue' ? +e.target.value : e.target.value }))
+    setForm(f => ({ ...f, [k]: k === 'commissionType' ? +e.target.value : e.target.value }))
 
   return (
     <div className="space-y-6">
@@ -150,7 +158,7 @@ export default function BarbersPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/admin/barbeiros/${b.id}`) }}
                 className="flex items-center gap-4 group" style={{ cursor: 'pointer' }}>
                 {b.photoUrl ? (
-                  <img src={b.photoUrl} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+                  <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
                 ) : (
                   <div className="ds-icon-chip ds-icon-chip-accent" style={{ width: 56, height: 56, borderRadius: '50%' }}>
                     <User size={24} />
@@ -203,8 +211,37 @@ export default function BarbersPage() {
             </div>
             <div className="ds-field">
               <label className="ds-label">Valor</label>
-              <input type="number" className="ds-input" value={form.commissionValue} onChange={set('commissionValue')} />
+              <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
             </div>
+          </div>
+          {/* Aluguel de cadeira — modelo adicional, combinável com a comissão. */}
+          <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={form.chairRentEnabled}
+                onChange={e => setForm(f => ({ ...f, chairRentEnabled: e.target.checked }))}
+                className="w-4 h-4 flex-shrink-0" style={{ accentColor: 'var(--accent)' }} />
+              <span>
+                <span className="ds-text-primary block" style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Valor fixo por cadeira</span>
+                <span className="ds-text-disabled block" style={{ fontSize: 'var(--text-xs)' }}>O barbeiro paga um valor fixo pelo espaço — pode ser combinado com a comissão.</span>
+              </span>
+            </label>
+            {form.chairRentEnabled && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="ds-field">
+                  <label className="ds-label">Valor (R$)</label>
+                  <NumberField min={0} step="0.01" placeholder="0,00" value={form.chairRentAmount}
+                    onChange={v => setForm(f => ({ ...f, chairRentAmount: v }))} required />
+                </div>
+                <div className="ds-field">
+                  <label className="ds-label">Periodicidade</label>
+                  <select className="ds-input" value={form.chairRentPeriod}
+                    onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
+                    <option value={0}>Semanal</option>
+                    <option value={1}>Mensal</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>

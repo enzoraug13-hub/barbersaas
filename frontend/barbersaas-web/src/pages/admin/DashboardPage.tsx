@@ -11,6 +11,8 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
+import { assetUrl } from '../../lib/api'
+import { PublicLinkButtons } from '../../components/admin/PublicLinkButtons'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtN = (n: number) => n.toLocaleString('pt-BR')
@@ -30,7 +32,7 @@ function BarberPerformanceCard({ b, i }: { b: import('../../features/dashboard/d
     <Card className="animate-slide-up" style={{ animationDelay: `${i * 45}ms` }}>
       <div className="flex items-center gap-3 mb-4">
         {b.photoUrl
-          ? <img src={b.photoUrl} alt={b.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          ? <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
           : <div className="ds-icon-chip ds-icon-chip-accent font-bold flex-shrink-0" style={{ width: 40, height: 40, borderRadius: '50%' }}>{b.name[0]?.toUpperCase()}</div>}
         <div className="flex-1 min-w-0">
           <p className="ds-text-primary font-semibold truncate" style={{ fontSize: 'var(--text-sm)' }}>{b.name}</p>
@@ -143,11 +145,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', color: 'var(--text-primary)' }}>Dashboard</h2>
-        <p className="ds-text-secondary mt-1" style={{ fontSize: '13px' }}>
-          {format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
+      <div className="pb-4 flex items-end justify-between gap-3 flex-wrap" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', color: 'var(--text-primary)' }}>Dashboard</h2>
+          <p className="ds-text-secondary mt-1" style={{ fontSize: '13px' }}>
+            {format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+        <PublicLinkButtons />
       </div>
 
       {/* KPIs */}

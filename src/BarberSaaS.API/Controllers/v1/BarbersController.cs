@@ -29,7 +29,7 @@ public class BarbersController : ControllerBase
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
         var barbers = await _barbers.GetActiveByTenantAsync(_tenant.Id, ct);
-        return Ok(ApiResponse<object>.Ok(barbers.Select(b => new BarberDto(b.Id, b.Name, b.PhotoUrl, b.Bio, b.Phone, b.IsActive, b.ShowInPublicPage, b.GoogleCalendarId, b.DisplayOrder, (int)b.CommissionType, b.CommissionValue))));
+        return Ok(ApiResponse<object>.Ok(barbers.Select(b => new BarberDto(b.Id, b.Name, b.PhotoUrl, b.Bio, b.Phone, b.IsActive, b.ShowInPublicPage, b.GoogleCalendarId, b.DisplayOrder, (int)b.CommissionType, b.CommissionValue, b.ChairRentAmount, (int?)b.ChairRentPeriod))));
     }
 
     [HttpGet("{id:guid}")]
@@ -38,7 +38,8 @@ public class BarbersController : ControllerBase
         var b = await _barbers.GetByIdAsync(id, ct);
         if (b == null || b.TenantId != _tenant.Id) return NotFound();
         return Ok(ApiResponse<BarberDto>.Ok(new BarberDto(b.Id, b.Name, b.PhotoUrl, b.Bio, b.Phone,
-            b.IsActive, b.ShowInPublicPage, b.GoogleCalendarId, b.DisplayOrder, (int)b.CommissionType, b.CommissionValue)));
+            b.IsActive, b.ShowInPublicPage, b.GoogleCalendarId, b.DisplayOrder, (int)b.CommissionType, b.CommissionValue,
+            b.ChairRentAmount, (int?)b.ChairRentPeriod)));
     }
 
     // Série temporal mensal de desempenho do barbeiro (gráfico do perfil — Parte D).
@@ -61,7 +62,8 @@ public class BarbersController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBarberRequest body, CancellationToken ct)
     {
         var cmd = new UpdateBarberCommand(_tenant.Id, id, body.Name, body.PhotoUrl, body.Bio, body.Phone,
-            body.CommissionType, body.CommissionValue, body.ShowInPublicPage, body.DisplayOrder);
+            body.CommissionType, body.CommissionValue, body.ShowInPublicPage, body.DisplayOrder,
+            body.ChairRentAmount, body.ChairRentPeriod);
         var result = await _mediator.Send(cmd, ct);
         return Ok(ApiResponse<BarberDto>.Ok(result, "Barbeiro atualizado."));
     }
@@ -179,7 +181,9 @@ public record UpdateBarberRequest(
     CommissionType CommissionType,
     decimal CommissionValue,
     bool ShowInPublicPage,
-    int DisplayOrder);
+    int DisplayOrder,
+    decimal? ChairRentAmount = null,
+    ChairRentPeriod? ChairRentPeriod = null);
 
 public record UpsertBarberServiceRequest(decimal? CustomPrice);
 public record SetBarberServicesRequest(IReadOnlyList<BarberServiceInput> Services);

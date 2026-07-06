@@ -24,7 +24,7 @@ export const usePublicBarbers = (slug: string) =>
 export const useCreateBarber = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (data: { name: string; phone?: string; bio?: string; commissionType: number; commissionValue: number; googleCalendarId?: string }) => {
+    mutationFn: async (data: { name: string; phone?: string; bio?: string; commissionType: number; commissionValue: number; googleCalendarId?: string; chairRentAmount?: number | null; chairRentPeriod?: number | null }) => {
       const res = await api.post('/barbers', data)
       return res.data.data
     },
@@ -65,6 +65,8 @@ export type UpdateBarberInput = {
   commissionValue: number
   showInPublicPage: boolean
   displayOrder: number
+  chairRentAmount?: number | null
+  chairRentPeriod?: number | null
 }
 
 export const useUpdateBarber = () => {
