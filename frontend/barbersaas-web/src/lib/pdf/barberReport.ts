@@ -83,8 +83,10 @@ export async function generateBarberReport(input: BarberReportInput): Promise<vo
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24
   }
 
-  // Remuneração
-  y = ensureSpace(doc, y, 110)
+  // Remuneração — comissão (o que o barbeiro RECEBE) e aluguel de cadeira (o que
+  // ele PAGA pelo espaço) aparecem separados, sem somar um no outro.
+  const hasRent = barber.chairRentAmount != null
+  y = ensureSpace(doc, y, hasRent ? 130 : 110)
   y = sectionTitle(doc, y, 'Remuneração', brand)
   const isPct = barber.commissionType === 0
   const model = isPct
@@ -95,8 +97,19 @@ export async function generateBarberReport(input: BarberReportInput): Promise<vo
   doc.text('Modelo de remuneração', MARGIN, y + 4)
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...INK)
   doc.text(model, MARGIN, y + 20)
-  drawKpiCards(doc, y + 32, [
-    { label: 'Recebe no mês (estimado)', value: fmtBRL(earns), accent: true },
+  let kpiY = y + 32
+  if (hasRent) {
+    const weeklyRent = barber.chairRentPeriod === 0
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...INK)
+    doc.text(`+ Aluguel de cadeira: ${fmtBRL(barber.chairRentAmount!)} por ${weeklyRent ? 'semana' : 'mês'} (pago pelo barbeiro)`, MARGIN, y + 36)
+    kpiY = y + 48
+  }
+  const rentMonthly = hasRent
+    ? (barber.chairRentPeriod === 0 ? barber.chairRentAmount! * 4 : barber.chairRentAmount!)
+    : 0
+  drawKpiCards(doc, kpiY, [
+    { label: 'Comissão no mês (estimada)', value: fmtBRL(earns), accent: true },
+    ...(hasRent ? [{ label: barber.chairRentPeriod === 0 ? 'Cadeira no mês (4 semanas)' : 'Cadeira no mês', value: fmtBRL(rentMonthly) }] : []),
   ], brand)
 
   applyFooters(doc, brand)
