@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
+import { NumberField } from '../../components/ui/NumberField'
 import { useGoals, useCreateGoal, useUpdateGoal, useContributeGoal } from '../../features/goals/goalsApi'
 import type { Goal } from '../../types'
 import toast from 'react-hot-toast'
@@ -189,7 +190,7 @@ export default function GoalsPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
           <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} /></div>
-          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><input type="number" step="0.01" className="ds-input" value={form.targetAmount} onChange={e => setForm(f => ({...f, targetAmount: +e.target.value}))} required /></div>
+          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><NumberField step="0.01" value={form.targetAmount} onChange={v => setForm(f => ({...f, targetAmount: v}))} placeholder="0,00" required /></div>
           <div className="ds-field"><label className="ds-label">Data prevista</label><input type="date" className="ds-input" value={form.targetDate} onChange={e => setForm(f => ({...f, targetDate: e.target.value}))} /></div>
           <div className="flex gap-3">
             <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
@@ -203,7 +204,7 @@ export default function GoalsPage() {
         <form onSubmit={handleUpdate} className="space-y-4">
           <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
           <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} /></div>
-          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><input type="number" step="0.01" className="ds-input" value={form.targetAmount} onChange={e => setForm(f => ({...f, targetAmount: +e.target.value}))} required /></div>
+          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><NumberField step="0.01" value={form.targetAmount} onChange={v => setForm(f => ({...f, targetAmount: v}))} placeholder="0,00" required /></div>
           <div className="ds-field"><label className="ds-label">Data prevista</label><input type="date" className="ds-input" value={form.targetDate} onChange={e => setForm(f => ({...f, targetDate: e.target.value}))} /></div>
           <div className="flex gap-3">
             <Button type="button" variant="ghost" className="flex-1" onClick={() => setEditGoal(null)}>Cancelar</Button>

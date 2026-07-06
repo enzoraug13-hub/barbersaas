@@ -1,5 +1,6 @@
 export { Button } from './Button'
 export { Input } from './Input'
+export { NumberField } from './NumberField'
 export { Card } from './Card'
 export { Badge } from './Badge'
 export { Modal } from './Modal'

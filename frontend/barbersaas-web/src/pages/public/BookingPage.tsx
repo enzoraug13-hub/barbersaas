@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User, MapPin, Calendar as CalendarIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { publicApi } from '../../lib/api'
+import { publicApi, assetUrl } from '../../lib/api'
 import { usePublicBarbers } from '../../features/barbers/barbersApi'
 import { usePublicServices } from '../../features/services/servicesApi'
 import { useAvailableSlots, useReserveSlot, useConfirmClientAppointment } from '../../features/appointments/appointmentsApi'
@@ -149,12 +149,12 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
       {/* Header — capa imponente que esmaece no fundo escuro da página (sem corte
-          seco) com o nome em serifada premium por cima. O card de endereço/horário
-          (abaixo, na etapa 'home') fica intocado. */}
+          seco) com o nome em Sora bold por cima (melhor contraste/legibilidade
+          sobre foto que a serifada). O card de endereço/horário fica intocado. */}
       <div className="relative h-72"
         style={{ background: `linear-gradient(to bottom, ${info.primaryColor || '#1a1a1a'}, var(--bg-base))` }}>
         {info.coverImageUrl && (
-          <img src={info.coverImageUrl} alt="capa" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: 0.55 }} />
+          <img src={assetUrl(info.coverImageUrl)} alt="capa" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: 0.55 }} />
         )}
         {/* Degradê de emenda: transparente no topo → cor de fundo da página embaixo,
             dissolvendo a imagem sem corte e reforçando o contraste do texto. */}
@@ -168,13 +168,13 @@ export default function BookingPage() {
         </Link>
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           {info.logoUrl ? (
-            <img src={info.logoUrl} alt="logo" className="w-20 h-20 object-cover mb-3" style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }} />
+            <img src={assetUrl(info.logoUrl)} alt="logo" className="w-20 h-20 object-cover mb-3" style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }} />
           ) : (
             <div className="w-20 h-20 flex items-center justify-center mb-3" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
               <Scissors size={34} style={{ color: 'var(--bg-base)' }} />
             </div>
           )}
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontSize: 'clamp(var(--text-3xl), 7vw, var(--text-4xl))', lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--text-primary)', textShadow: '0 2px 16px rgba(0,0,0,0.55)' }}>{info.businessName}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(var(--text-3xl), 7vw, var(--text-4xl))', lineHeight: 1.15, letterSpacing: '-0.02em', color: 'var(--text-primary)', textShadow: '0 2px 16px rgba(0,0,0,0.55)' }}>{info.businessName}</h1>
           {info.city && <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)', textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>{info.city}</p>}
         </div>
       </div>
@@ -247,7 +247,7 @@ export default function BookingPage() {
                     style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
                     className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
                     {b.photoUrl
-                      ? <img src={b.photoUrl} alt={b.name} className="w-12 h-12 rounded-full object-cover" />
+                      ? <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-12 h-12 rounded-full object-cover" />
                       : <div className="ds-icon-chip ds-icon-chip-accent font-bold" style={{ width: 48, height: 48, borderRadius: '50%' }}>{b.name[0]}</div>
                     }
                     <div>

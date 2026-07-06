@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Scissors, ChevronLeft, CheckCircle, ArrowRight, ShieldAlert, Clock } from 'lucide-react'
-import { publicApi } from '../../lib/api'
+import { publicApi, assetUrl } from '../../lib/api'
 import { type ClientProfile } from '../../store/clientAuthStore'
 import { Button } from '../ui/Button'
 import { PhoneField, COUNTRIES } from '../ui/PhoneField'
@@ -21,7 +21,7 @@ export function ClientFlowHeader({ subtitle, logoUrl, businessName }: {
   return (
     <div className="flex flex-col items-center text-center mb-8 animate-slide-up">
       {logoUrl ? (
-        <img src={logoUrl} alt={businessName ?? 'Logo'} className="w-14 h-14 object-cover mb-4 animate-scale-in"
+        <img src={assetUrl(logoUrl)} alt={businessName ?? 'Logo'} className="w-14 h-14 object-cover mb-4 animate-scale-in"
           style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)' }} />
       ) : (
         <div className="w-14 h-14 flex items-center justify-center mb-4 animate-scale-in" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>

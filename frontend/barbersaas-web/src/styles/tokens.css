@@ -35,8 +35,6 @@
   /* Tipografia */
   --font-display: 'Sora', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
-  /* Serifada elegante — usada em títulos de marca (ex.: nome da barbearia) */
-  --font-serif: 'Fraunces', 'Playfair Display', Georgia, serif;
 
   --text-xs: 11px;
   --text-sm: 13px;

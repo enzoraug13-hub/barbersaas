@@ -167,7 +167,17 @@ recurringJobs.AddOrUpdate<BarberSaaS.Infrastructure.BackgroundJobs.ReminderJob>(
     Cron.Hourly());
 
 app.MapControllers();
-app.UseStaticFiles();
+// Imagens de upload são públicas e, em produção, consumidas de outra origem
+// (frontend no Vercel) — sem o header CORS o fetch() delas (ex.: logo nos PDFs)
+// falha; tags <img> não precisam, mas o header não atrapalha.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.Context.Request.Path.StartsWithSegments("/uploads"))
+            ctx.Context.Response.Headers.AccessControlAllowOrigin = "*";
+    }
+});
 
 // Inicialização do banco no boot:
 // - Development: EnsureCreated (SQLite) + seed completo (planos + tenant/usuário demo).

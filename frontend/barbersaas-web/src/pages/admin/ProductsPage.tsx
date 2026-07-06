@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
+import { NumberField } from '../../components/ui/NumberField'
 import {
   useProducts, useProductCategories, useCreateProduct,
   useUpdateProduct, useDeleteProduct, useAdjustStock, useCreateCategory,
@@ -35,9 +36,13 @@ export default function ProductsPage() {
   const [stockDir, setStockDir]     = useState<'entry' | 'exit'>('entry')
   const [form, setForm]             = useState(EMPTY_FORM)
 
+  // Campos numéricos usam NumberField (onChange já entrega número) — este helper
+  // fica só para os campos de texto/select.
   const set = (k: keyof typeof EMPTY_FORM) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [k]: ['salePrice','costPrice','initialStock','minStockAlert'].includes(k) ? +e.target.value : e.target.value }))
+      setForm(f => ({ ...f, [k]: e.target.value }))
+  const setNum = (k: 'salePrice' | 'costPrice' | 'initialStock' | 'minStockAlert') =>
+    (v: number) => setForm(f => ({ ...f, [k]: v }))
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true) }
   const openEdit   = (p: Product) => {
@@ -207,14 +212,14 @@ export default function ProductsPage() {
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="ds-field"><label className="ds-label">Preço de venda</label><input type="number" step="0.01" min="0" className="ds-input" value={form.salePrice} onChange={set('salePrice')} required /></div>
-            <div className="ds-field"><label className="ds-label">Preço de custo</label><input type="number" step="0.01" min="0" className="ds-input" value={form.costPrice} onChange={set('costPrice')} /></div>
+            <div className="ds-field"><label className="ds-label">Preço de venda</label><NumberField step="0.01" min="0" value={form.salePrice} onChange={setNum('salePrice')} placeholder="0,00" required /></div>
+            <div className="ds-field"><label className="ds-label">Preço de custo</label><NumberField step="0.01" min="0" value={form.costPrice} onChange={setNum('costPrice')} placeholder="0,00" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {!editing && (
-              <div className="ds-field"><label className="ds-label">Estoque inicial</label><input type="number" min="0" className="ds-input" value={form.initialStock} onChange={set('initialStock')} /></div>
+              <div className="ds-field"><label className="ds-label">Estoque inicial</label><NumberField min="0" value={form.initialStock} onChange={setNum('initialStock')} /></div>
             )}
-            <div className="ds-field"><label className="ds-label">Alerta mínimo</label><input type="number" min="0" className="ds-input" value={form.minStockAlert} onChange={set('minStockAlert')} /></div>
+            <div className="ds-field"><label className="ds-label">Alerta mínimo</label><NumberField min="0" value={form.minStockAlert} onChange={setNum('minStockAlert')} placeholder="5" /></div>
           </div>
           <div className="ds-field"><label className="ds-label">SKU</label><input className="ds-input" value={form.sku} onChange={set('sku')} placeholder="Código interno" /></div>
           <div className="flex gap-3 pt-2">

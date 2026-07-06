@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
+import { NumberField } from '../../components/ui/NumberField'
 import { useServices, useCreateService, useUpdateService, useDeleteService } from '../../features/services/servicesApi'
 import type { Service } from '../../types'
 import toast from 'react-hot-toast'
@@ -141,11 +142,11 @@ export default function ServicesPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="ds-field">
               <label className="ds-label">Duração (min)</label>
-              <input type="number" className="ds-input" value={form.durationMinutes} onChange={e => setForm(f => ({...f, durationMinutes: +e.target.value}))} min={5} required />
+              <NumberField value={form.durationMinutes} onChange={v => setForm(f => ({...f, durationMinutes: v}))} min={5} placeholder="30" required />
             </div>
             <div className="ds-field">
               <label className="ds-label">Preço (R$)</label>
-              <input type="number" step="0.01" className="ds-input" value={form.price} onChange={e => setForm(f => ({...f, price: +e.target.value}))} min={0} required />
+              <NumberField step="0.01" value={form.price} onChange={v => setForm(f => ({...f, price: v}))} min={0} placeholder="0,00" required />
             </div>
           </div>
           <div className="ds-field">

@@ -2,6 +2,7 @@ import type jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { assetUrl } from '../api'
 
 // Página A4 retrato em pontos (unit: 'pt').
 export const A4 = { w: 595.28, h: 841.89 }
@@ -43,7 +44,7 @@ export { fmtBRL }
 export async function loadImageDataUrl(url?: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
   if (!url) return null
   try {
-    const res = await fetch(url, { credentials: 'omit' })
+    const res = await fetch(assetUrl(url)!, { credentials: 'omit' })
     if (!res.ok) return null
     const blob = await res.blob()
     const dataUrl = await new Promise<string>((resolve, reject) => {

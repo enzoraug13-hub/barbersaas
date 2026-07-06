@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, assetUrl } from '../../lib/api'
 import { Button } from './Button'
 import toast from 'react-hot-toast'
 
@@ -52,7 +52,7 @@ export function ImageField({ label, hint, value, onChange, tall }: {
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onFile} />
       {value ? (
         <div className="relative group" {...dragHandlers}>
-          <img src={value} alt={label} style={{ ...boxStyle, objectFit: 'cover', border: `1px solid ${dragOver ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-elevated)' }} />
+          <img src={assetUrl(value)} alt={label} style={{ ...boxStyle, objectFit: 'cover', border: `1px solid ${dragOver ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-elevated)' }} />
           <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-md)' }}>
             <Button type="button" variant="ghost" onClick={pick} loading={busy} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}>{!busy && <Upload size={13} />} Trocar</Button>
             <Button type="button" variant="danger" onClick={() => onChange('')} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}><X size={13} /> Remover</Button>
