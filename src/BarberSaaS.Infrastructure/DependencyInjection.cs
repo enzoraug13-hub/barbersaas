@@ -94,6 +94,21 @@ public static class DependencyInjection
         services.AddSingleton<IAuthOptions, BarberSaaS.Infrastructure.ExternalServices.AuthOptions>();
         services.AddScoped<ICnpjLookupService, BarberSaaS.Infrastructure.ExternalServices.BrasilApiCnpjService>();
 
+        // Uploads (logo/capa/fotos): Cloudflare R2 quando Storage:R2:* está configurado
+        // (produção — o disco do Railway é efêmero), senão wwwroot local (dev).
+        var r2 = config.GetSection("Storage:R2");
+        if (!string.IsNullOrWhiteSpace(r2["AccountId"]))
+        {
+            services.AddSingleton(new BarberSaaS.Infrastructure.ExternalServices.Storage.R2Options(
+                r2["AccountId"]!, r2["AccessKeyId"] ?? "", r2["SecretAccessKey"] ?? "",
+                r2["Bucket"] ?? "", r2["PublicBaseUrl"] ?? ""));
+            services.AddSingleton<IFileStorage, BarberSaaS.Infrastructure.ExternalServices.Storage.R2FileStorage>();
+        }
+        else
+        {
+            services.AddSingleton<IFileStorage, BarberSaaS.Infrastructure.ExternalServices.Storage.LocalFileStorage>();
+        }
+
         // SMS (login do cliente por OTP): Twilio se configurado, senão stub de log (dev).
         services.AddHttpClient();
         if (!string.IsNullOrEmpty(config["Sms:Twilio:AccountSid"]))

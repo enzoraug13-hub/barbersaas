@@ -6,8 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace BarberSaaS.API.Controllers.v1;
 
 /// <summary>
-/// Upload de imagens da barbearia (logo, capa). Dev: salva em wwwroot/uploads/{tenantId}
-/// e serve via UseStaticFiles. Em produção, trocar por blob storage mantendo o mesmo contrato.
+/// Upload de imagens da barbearia (logo, capa, fotos). O destino vem de
+/// <see cref="IFileStorage"/>: Cloudflare R2 em produção (persistente — o disco do
+/// Railway some a cada redeploy), wwwroot local em dev. Contrato estável:
+/// POST → { url } (absoluta no R2, relativa no local — o assetUrl() do frontend
+/// resolve as duas).
 /// </summary>
 [ApiController]
 [Route("api/v1/uploads")]
@@ -15,13 +18,13 @@ namespace BarberSaaS.API.Controllers.v1;
 public class UploadsController : ControllerBase
 {
     private readonly ICurrentTenant _tenant;
-    private readonly IWebHostEnvironment _env;
+    private readonly IFileStorage _storage;
     private static readonly string[] Allowed = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
     private const long MaxBytes = 5 * 1024 * 1024;
 
-    public UploadsController(ICurrentTenant tenant, IWebHostEnvironment env)
+    public UploadsController(ICurrentTenant tenant, IFileStorage storage)
     {
-        _tenant = tenant; _env = env;
+        _tenant = tenant; _storage = storage;
     }
 
     [HttpPost]
@@ -37,15 +40,10 @@ public class UploadsController : ControllerBase
         if (!Allowed.Contains(ext))
             return BadRequest(ApiResponse<object>.Fail("Formato inválido. Use JPG, PNG, WEBP ou GIF."));
 
-        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-        var folder  = Path.Combine(webRoot, "uploads", _tenant.Id.ToString());
-        Directory.CreateDirectory(folder);
+        var key = $"{_tenant.Id}/{Guid.NewGuid():N}{ext}";
+        await using var stream = file.OpenReadStream();
+        var url = await _storage.SaveAsync(key, stream, file.ContentType, ct);
 
-        var fileName = $"{Guid.NewGuid():N}{ext}";
-        await using (var stream = System.IO.File.Create(Path.Combine(folder, fileName)))
-            await file.CopyToAsync(stream, ct);
-
-        var url = $"/uploads/{_tenant.Id}/{fileName}";
         return Ok(ApiResponse<object>.Ok(new { url }));
     }
 }

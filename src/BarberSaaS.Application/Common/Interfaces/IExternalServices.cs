@@ -120,6 +120,20 @@ public record GoogleCalendarEventDto(
     string TenantName,
     string? ColorId = null);
 
+/// <summary>
+/// Storage de arquivos de upload (logo/capa/fotos). Implementações: Cloudflare R2
+/// (produção — persistente, URL pública absoluta) e disco local em wwwroot (dev —
+/// URL relativa /uploads/..., servida por UseStaticFiles). A escolha é por
+/// configuração (Storage:R2:*); o contrato do endpoint POST /uploads → {url}
+/// não muda entre elas.
+/// </summary>
+public interface IFileStorage
+{
+    /// <param name="key">Caminho lógico do arquivo, ex.: "{tenantId}/{guid}.png".</param>
+    /// <returns>URL pública (absoluta no R2; relativa "/uploads/{key}" no local).</returns>
+    Task<string> SaveAsync(string key, Stream content, string contentType, CancellationToken ct = default);
+}
+
 public interface IPasswordHasher
 {
     string Hash(string password);
