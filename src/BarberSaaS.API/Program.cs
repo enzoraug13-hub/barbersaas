@@ -106,10 +106,31 @@ builder.Services.AddAuthorization(opt =>
 var isDev = builder.Environment.IsDevelopment();
 builder.Services.AddRateLimiter(opt =>
 {
-    opt.AddFixedWindowLimiter("global", o => { o.Window = TimeSpan.FromMinutes(1); o.PermitLimit = 100; });
-    opt.AddFixedWindowLimiter("auth",   o => { o.Window = TimeSpan.FromMinutes(isDev ? 1 : 15); o.PermitLimit = isDev ? 100 : 5; });
-    opt.AddFixedWindowLimiter("booking",o => { o.Window = TimeSpan.FromMinutes(1); o.PermitLimit = 10; });
     opt.RejectionStatusCode = 429;
+
+    // Particionado POR IP do cliente (antes era um balde global único: 5 req/15min
+    // valiam para a plataforma inteira — 2 clientes esgotavam o login de todos e
+    // qualquer anônimo derrubava a autenticação com 5 requests). Cada IP tem seu
+    // próprio balde; um cliente não afeta o outro.
+    static string ClientIp(HttpContext ctx)
+    {
+        // Atrás do proxy (Railway/Vercel) o RemoteIpAddress é o do balanceador —
+        // o IP real do cliente vem no X-Forwarded-For (primeiro da lista). Sem isso,
+        // todos voltariam a compartilhar um único balde.
+        var fwd = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(fwd))
+            return fwd.Split(',')[0].Trim();
+        return ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+
+    opt.AddPolicy("global", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(1), PermitLimit = 100 }));
+
+    opt.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(isDev ? 1 : 15), PermitLimit = isDev ? 100 : 5 }));
+
+    opt.AddPolicy("booking", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(1), PermitLimit = 10 }));
 });
 
 // CORS
