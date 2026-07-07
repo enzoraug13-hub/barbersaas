@@ -17,7 +17,11 @@ import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 
 type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phone' | 'profile' | 'done'
-const MAIN_STEPS: Step[] = ['barber', 'service', 'date', 'slots', 'confirm']
+// Identificação (OTP) é a PRIMEIRA etapa: o cliente só escolhe barbeiro/serviço/
+// horário depois de logado. Quem já tem sessão pula direto para 'barber' (a barra
+// mostra a 1ª etapa preenchida = "identificado"). 'profile' (cadastro de telefone
+// novo) fica fora da barra, entre 'phone' e 'barber'.
+const MAIN_STEPS: Step[] = ['phone', 'barber', 'service', 'date', 'slots', 'confirm']
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 /* ---- Estados de carregamento (skeleton com shimmer) ---- */
@@ -93,8 +97,8 @@ export default function BookingPage() {
     return { value: format(d, 'yyyy-MM-dd'), label: format(d, "EEE, dd MMM", { locale: ptBR }) }
   })
 
-  // Único ponto que grava o agendamento no banco — chamado só depois do OTP
-  // confirmado (ou direto, se o cliente já estava logado com perfil completo).
+  // Único ponto que grava o agendamento no banco — o cliente sempre chega aqui
+  // já autenticado (OTP é a primeira etapa do fluxo).
   const finalizeBooking = async (reservationId: string) => {
     try {
       const res = await confirmAppointment.mutateAsync({ reservationId })
@@ -112,6 +116,8 @@ export default function BookingPage() {
     try {
       const res = await reserveSlot.mutateAsync({ barberId: barber!.id, serviceId: service!.id, date, startTime: slot })
       setReservation({ id: res.reservationId, expiresAtUtc: res.expiresAtUtc })
+      // No fluxo normal o cliente já está logado (OTP veio primeiro); o else é
+      // rede de segurança para sessão expirada no meio do caminho.
       if (loggedIn) await finalizeBooking(res.reservationId)
       else setStep('phone')
     } catch (err: any) {
@@ -122,13 +128,17 @@ export default function BookingPage() {
 
   const onPhoneVerified = (token: string, client: ClientProfile, profileComplete: boolean) => {
     session.setAuth(token, client, profileComplete, slug!)
-    if (profileComplete && reservation) finalizeBooking(reservation.id)
-    else setStep('profile')
+    if (!profileComplete) { setStep('profile'); return }
+    // Fallback raro: já havia reserva (sessão expirou depois de escolher horário) —
+    // retoma a confirmação; senão, segue para a escolha do agendamento.
+    if (reservation) finalizeBooking(reservation.id)
+    else setStep('barber')
   }
 
   const onProfileDone = (patch: Partial<ClientProfile>) => {
     session.updateProfile(patch)
     if (reservation) finalizeBooking(reservation.id)
+    else setStep('barber')
   }
 
   const back = () => {
@@ -180,7 +190,8 @@ export default function BookingPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Progress — só nas etapas principais (não aparece na tela inicial nem no checkout) */}
+        {/* Progress — etapas principais, começando pela identificação (não aparece
+            na tela inicial, no cadastro de perfil nem na tela de concluído) */}
         {MAIN_STEPS.includes(step) && (
           <div className="flex items-center gap-1 mb-6">
             {MAIN_STEPS.map((s) => (
@@ -227,7 +238,8 @@ export default function BookingPage() {
               </div>
             )}
 
-            <Button onClick={() => setStep('barber')} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
+            {/* Identificação primeiro: quem já tem sessão pula o OTP e vai direto escolher. */}
+            <Button onClick={() => setStep(loggedIn ? 'barber' : 'phone')} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
               <CalendarIcon size={18} /> Agendar
             </Button>
           </div>
@@ -369,29 +381,25 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            {!loggedIn && (
-              <p className="ds-text-disabled text-center mb-4" style={{ fontSize: 'var(--text-xs)' }}>
-                No próximo passo vamos confirmar seu telefone por SMS.
-              </p>
-            )}
             <Button onClick={handleConfirmClick} loading={reserveSlot.isPending || confirmAppointment.isPending} className="w-full" style={{ height: 52, fontSize: 'var(--text-base)' }}>
               {reserveSlot.isPending ? 'Reservando...' : confirmAppointment.isPending ? 'Confirmando...' : 'Confirmar Agendamento'}
             </Button>
           </div>
         )}
 
-        {/* Telefone/OTP — reserva já existe (10min), aqui só autentica o cliente */}
+        {/* Telefone/OTP — 1ª etapa do fluxo: identifica o cliente ANTES das escolhas.
+            (expiresAtUtc só aparece no fallback raro de sessão expirada pós-reserva.) */}
         {step === 'phone' && (
           <PhoneOtpStep slug={slug!} businessName={info.businessName} logoUrl={info.logoUrl} businessPhone={info.phone}
             expiresAtUtc={reservation?.expiresAtUtc}
-            phoneSubtitle="Confirme seu telefone para garantir o horário."
+            phoneSubtitle="Confirme seu telefone para começar o agendamento."
             onVerified={onPhoneVerified} />
         )}
 
         {/* Cadastro (só se telefone novo) */}
         {step === 'profile' && session.client && (
           <CompleteProfileStep client={session.client} logoUrl={info.logoUrl} businessName={info.businessName}
-            subtitle="Só falta completar seu cadastro pra confirmar o agendamento."
+            subtitle="Só falta completar seu cadastro pra escolher seu horário."
             onDone={onProfileDone} />
         )}
 
