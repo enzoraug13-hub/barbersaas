@@ -290,5 +290,23 @@ public class RefreshTokenRepository : BaseRepository<RefreshToken>, IRefreshToke
 
     public async Task<RefreshToken?> GetByHashAsync(string hash, CancellationToken ct = default)
         => await _set.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+
+    // IgnoreQueryFilters: o refresh é anônimo (sem tenant no contexto) e o alvo é um
+    // userId específico — mesmo racional do GetByHashAsync acima.
+    public async Task<int> RevokeAllForUserAsync(Guid userId, string? ip, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var active = await _set.IgnoreQueryFilters()
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
+            .ToListAsync(ct);
+
+        foreach (var token in active)
+        {
+            token.RevokedAt   = now;
+            token.RevokedByIp = ip;
+        }
+        await _db.SaveChangesAsync(ct);
+        return active.Count;
+    }
 }
 

@@ -105,8 +105,34 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
         var slugExists = await _tenants.SlugExistsAsync(slug, ct);
         if (slugExists) slug = $"{slug}-{Guid.NewGuid().ToString()[..4]}";
 
+        // Resposta neutra quando o e-mail já tem conta (mesmo padrão do resend-confirmation):
+        // devolve o shape de "cadastro pendente de confirmação" — indistinguível de um
+        // cadastro real — em vez de anunciar "este e-mail já está cadastrado", que permitia
+        // enumerar quais e-mails têm conta. O dono verdadeiro recebe um e-mail avisando
+        // (se foi ele mesmo tentando de novo, entende na hora; se foi um terceiro, fica sabendo).
         var emailExists = await _users.EmailExistsAsync(request.Email, ct);
-        if (emailExists) throw new BarberSaaS.Domain.Exceptions.DomainException("Este e-mail já está cadastrado.");
+        if (emailExists)
+        {
+            // BCrypt é o custo dominante do caminho real — roda o hash mesmo sem usar
+            // pra não entregar a existência da conta pelo tempo de resposta.
+            _hasher.Hash(request.Password);
+            _logger.LogInformation("Registro com e-mail já cadastrado: {Email} — resposta neutra enviada", request.Email);
+            try
+            {
+                await _email.SendAsync(request.Email,
+                    AccountExistsEmail.Subject,
+                    AccountExistsEmail.BuildHtml(_authOptions.FrontendUrl), ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao enviar aviso de conta existente para {Email}", request.Email);
+            }
+
+            var ghostTenantId = Guid.NewGuid();
+            return new RegisterTenantResult(ghostTenantId, slug, null, null,
+                new UserDto(Guid.NewGuid(), request.OwnerName, request.Email, "owner", ghostTenantId),
+                RequiresEmailConfirmation: true);
+        }
 
         var freePlan = await _plans.GetBySlugAsync("gratuito", ct)
             ?? throw new BarberSaaS.Domain.Exceptions.DomainException("Plano gratuito não encontrado.");
@@ -196,4 +222,28 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
         System.Text.RegularExpressions.Regex.Replace(
             name.ToLower().Normalize(System.Text.NormalizationForm.FormD),
             @"[^a-z0-9\s-]", "").Trim().Replace(" ", "-");
+}
+
+/// <summary>
+/// E-mail enviado ao dono real quando alguém tenta se cadastrar com um e-mail que já
+/// tem conta — parte da resposta neutra anti-enumeração do registro.
+/// </summary>
+public static class AccountExistsEmail
+{
+    public const string Subject = "Você já tem uma conta — Trimly";
+
+    public static string BuildHtml(string frontendUrl) => $@"<!doctype html>
+<html lang=""pt-BR"">
+<body style=""margin:0;padding:32px 16px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#18181b;"">
+  <div style=""max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;"">
+    <h1 style=""font-size:20px;margin:0 0 16px;"">Trimly</h1>
+    <p style=""font-size:15px;line-height:1.6;margin:0 0 8px;"">Olá!</p>
+    <p style=""font-size:15px;line-height:1.6;margin:0 0 24px;"">Recebemos uma tentativa de cadastro no <b>Trimly</b> com este e-mail — mas ele <b>já tem uma conta</b>. Se foi você, é só entrar normalmente:</p>
+    <p style=""text-align:center;margin:0 0 24px;"">
+      <a href=""{frontendUrl}/login"" style=""display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:15px;font-weight:bold;"">Entrar na minha conta</a>
+    </p>
+    <p style=""font-size:12px;color:#a1a1aa;margin:0;"">Se não foi você, nenhuma ação é necessária — sua conta continua protegida e nada foi alterado.</p>
+  </div>
+</body>
+</html>";
 }

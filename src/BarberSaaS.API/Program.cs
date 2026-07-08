@@ -131,6 +131,18 @@ builder.Services.AddRateLimiter(opt =>
 
     opt.AddPolicy("booking", ctx => RateLimitPartition.GetFixedWindowLimiter(
         ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(1), PermitLimit = 10 }));
+
+    // Cadastro: mais folgado que "auth" (5) porque um dono legítimo pode errar
+    // CPF/CNPJ/senha algumas vezes no formulário — mas ainda barra spam de contas e o
+    // abuso da consulta de CNPJ na BrasilAPI, que roda a cada tentativa PJ.
+    opt.AddPolicy("register", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(isDev ? 1 : 15), PermitLimit = isDev ? 100 : 10 }));
+
+    // Refresh: o SPA renova sozinho quando o access token expira, e vários aparelhos da
+    // mesma barbearia (NAT) compartilham IP — precisa de folga acima do "auth" pra não
+    // derrubar sessões legítimas, mas limita martelamento anônimo do endpoint.
+    opt.AddPolicy("refresh", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ClientIp(ctx), _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(isDev ? 1 : 15), PermitLimit = isDev ? 100 : 20 }));
 });
 
 // CORS
@@ -196,7 +208,12 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx =>
     {
         if (ctx.Context.Request.Path.StartsWithSegments("/uploads"))
+        {
             ctx.Context.Response.Headers.AccessControlAllowOrigin = "*";
+            // Impede o navegador de "farejar" outro MIME e executar um upload malicioso
+            // como HTML/JS — o Content-Type declarado aqui é a palavra final.
+            ctx.Context.Response.Headers.XContentTypeOptions = "nosniff";
+        }
     }
 });
 

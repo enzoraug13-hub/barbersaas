@@ -129,6 +129,12 @@ public interface IPlanRepository : IBaseRepository<Plan>
 public interface IRefreshTokenRepository : IBaseRepository<RefreshToken>
 {
     Task<RefreshToken?> GetByHashAsync(string hash, CancellationToken ct = default);
+
+    /// <summary>
+    /// Revoga TODOS os refresh tokens ativos do usuário — usado quando um token já
+    /// revogado é reapresentado (sinal de roubo). Retorna quantos foram revogados.
+    /// </summary>
+    Task<int> RevokeAllForUserAsync(Guid userId, string? ip, CancellationToken ct = default);
 }
 
 public interface IWorkScheduleRepository : IBaseRepository<WorkSchedule>
