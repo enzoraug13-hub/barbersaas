@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown
+  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
@@ -39,8 +39,12 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
   ] },
 ]
 
+// Entrada extra do super admin — só entra nos grupos quando o usuário logado tem
+// o role superadmin (a rota e os endpoints têm as guardas reais; isto é só menu).
+const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Super Admin', icon: ShieldCheck }
+
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
-const allLeaves: NavLeaf[] = navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i])))
+const allLeaves: NavLeaf[] = [...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))), superAdminLeaf]
 
 // '/admin' casa só na rota exata; os demais casam também em sub-rotas
 // (ex.: '/admin/barbeiros/:id' destaca "Barbeiros").
@@ -85,6 +89,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => { logout(); navigate('/login') }
 
+  // Grupos de navegação com o item de super admin anexado ao "Sistema" quando aplicável.
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin'
+  const groups = isSuperAdmin
+    ? navGroups.map(g => (g.label === 'Sistema' ? { ...g, items: [...g.items, superAdminLeaf] } : g))
+    : navGroups
+
   return (
     // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
     // área atrás da barra de endereço, o documento fica rolável e o header (com o
@@ -113,11 +123,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {navGroups.map((group, gi) => (
+          {groups.map((group, gi) => (
             <div key={group.label ?? 'root'}>
               {group.label && <p className="ds-nav-group-label">{group.label}</p>}
               {group.items.map((item, ii) => {
-                const index = navGroups.slice(0, gi).reduce((n, g) => n + g.items.length, 0) + ii
+                const index = groups.slice(0, gi).reduce((n, g) => n + g.items.length, 0) + ii
 
                 // Pai expansível: cabeçalho clicável + lista de subitens.
                 if (isParent(item)) {

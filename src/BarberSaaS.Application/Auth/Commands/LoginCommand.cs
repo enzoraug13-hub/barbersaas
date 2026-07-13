@@ -23,6 +23,7 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
 {
     private readonly IUserRepository _users;
+    private readonly ITenantRepository _tenants;
     private readonly IPasswordHasher _hasher;
     private readonly IJwtService _jwt;
     private readonly IRefreshTokenRepository _refreshTokens;
@@ -31,13 +32,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
 
     public LoginCommandHandler(
         IUserRepository users,
+        ITenantRepository tenants,
         IPasswordHasher hasher,
         IJwtService jwt,
         IRefreshTokenRepository refreshTokens,
         IAuthOptions authOptions,
         ILogger<LoginCommandHandler> logger)
     {
-        _users = users; _hasher = hasher; _jwt = jwt;
+        _users = users; _tenants = tenants; _hasher = hasher; _jwt = jwt;
         _refreshTokens = refreshTokens; _authOptions = authOptions; _logger = logger;
     }
 
@@ -66,6 +68,16 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         // Contas antigas nasceram com EmailVerified=true, então ligar a flag não bloqueia ninguém já ativo.
         if (_authOptions.RequireEmailConfirmation && !user.EmailVerified)
             throw new UnauthorizedAccessException("Confirme seu e-mail para entrar. Verifique sua caixa de entrada (e o spam).");
+
+        // Conta suspensa pelo super admin bloqueia o login do tenant inteiro.
+        // Super admin nunca é bloqueado — senão suspender o próprio tenant o trancaria pra fora.
+        // Checado após a senha, pra não vazar o status da conta a quem não a possui.
+        if (user.Role != Domain.Enums.UserRole.SuperAdmin)
+        {
+            var tenant = await _tenants.GetByIdAsync(user.TenantId, ct);
+            if (tenant is not null && tenant.Status == Domain.Enums.TenantStatus.Suspended)
+                throw new UnauthorizedAccessException("Esta conta está suspensa. Entre em contato com o suporte do Trimly.");
+        }
 
         user.FailedLoginCount = 0;
         user.LockedUntil      = null;

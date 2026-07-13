@@ -218,7 +218,8 @@ public class RegisterTenantHandler : IRequestHandler<RegisterTenantCommand, Regi
         return Convert.ToHexString(bytes).ToLower();
     }
 
-    private static string GenerateSlug(string name) =>
+    // internal: reutilizado pela criação administrativa de tenants (CreateTenantAccountCommand).
+    internal static string GenerateSlug(string name) =>
         System.Text.RegularExpressions.Regex.Replace(
             name.ToLower().Normalize(System.Text.NormalizationForm.FormD),
             @"[^a-z0-9\s-]", "").Trim().Replace(" ", "-");

@@ -16,6 +16,7 @@ import FinancialPage from '../pages/admin/FinancialPage'
 import GoalsPage    from '../pages/admin/GoalsPage'
 import ProductsPage from '../pages/admin/ProductsPage'
 import ConfigPage   from '../pages/admin/ConfigPage'
+import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import { useAuthStore } from '../store/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,16 @@ function AdminPage({ children }: { children: React.ReactNode }) {
       <AdminLayout>{children}</AdminLayout>
     </ProtectedRoute>
   )
+}
+
+// Guarda de UI da rota /super-admin: usuário comum é mandado de volta pro painel.
+// A guarda REAL é o backend (policy RequireSuperAdmin → 403) — isto aqui só evita
+// mostrar uma tela que não funcionaria.
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore(s => s.user)
+  return user?.role?.toLowerCase() === 'superadmin'
+    ? <>{children}</>
+    : <Navigate to="/admin" replace />
 }
 
 export const router = createBrowserRouter([
@@ -49,6 +60,7 @@ export const router = createBrowserRouter([
   { path: '/admin/metas',        element: <AdminPage><GoalsPage /></AdminPage> },
   { path: '/admin/produtos',     element: <AdminPage><ProductsPage /></AdminPage> },
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
+  { path: '/super-admin',        element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },
 
   { path: '/', element: <Navigate to="/login" replace /> },
   { path: '*', element: <Navigate to="/login" replace /> },

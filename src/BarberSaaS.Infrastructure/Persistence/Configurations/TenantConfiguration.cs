@@ -1,4 +1,5 @@
 using BarberSaaS.Domain.Entities;
+using BarberSaaS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,6 +15,9 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(x => x.Name).HasMaxLength(150).IsRequired();
         b.Property(x => x.Slug).HasMaxLength(100).IsRequired();
         b.HasIndex(x => x.Slug).IsUnique();
+        // Default no BANCO (não só na entidade): linhas pré-existentes viram Active (0)
+        // quando a coluna é adicionada pela migration.
+        b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(TenantStatus.Active);
 
         b.HasMany(x => x.Users)
             .WithOne(x => x.Tenant)
