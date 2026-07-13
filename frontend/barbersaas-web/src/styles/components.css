@@ -306,6 +306,16 @@
 .ds-week-day-active .ds-week-day-label { font-weight: 600; color: var(--accent); }
 .ds-week-day-active .ds-week-day-number { font-family: var(--font-display); font-size: 24px; color: var(--accent); }
 
+/* Telas estreitas (ex.: iPhone 375px): as 7 células da semana ficam com ~28px
+   úteis cada — padding e fontes do desktop não cabem e o nome do dia cola no
+   número. Só ajuste visual; a lógica de seleção não muda. */
+@media (max-width: 640px) {
+  .ds-week-day { padding: 6px 2px; gap: 1px; border-radius: 8px; }
+  .ds-week-day-label { font-size: 9px; letter-spacing: 0.02em; }
+  .ds-week-day-number { font-size: 15px; }
+  .ds-week-day-active .ds-week-day-number { font-size: 16px; }
+}
+
 .ds-agenda-filter:hover { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 
 /* ---------------- Modal ---------------- */

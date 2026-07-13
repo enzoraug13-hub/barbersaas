@@ -18,6 +18,14 @@
   body, .card, .input, aside, header { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
   :focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
 
+  /* iOS Safari dá zoom automático ao focar campo com fonte < 16px. Regra
+     global no mobile/tablet (< lg): todo campo digitável sobe pra 16px.
+     Exceção .ds-otp-digit: os dígitos do OTP usam 20px (≥16, não dá zoom)
+     e encolhê-los quebraria o visual. Desktop (≥1024px) fica intocado. */
+  @media (max-width: 1023px) {
+    input:not(.ds-otp-digit), textarea, select { font-size: 16px !important; }
+  }
+
   /* Acessibilidade: respeita quem pediu menos movimento (SO/navegador). */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

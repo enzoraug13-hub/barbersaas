@@ -50,7 +50,7 @@ export function OtpInput({ length = 6, value, onChange, onComplete, error }: Otp
         <input
           key={i}
           ref={el => { refs.current[i] = el }}
-          className="ds-input text-center font-semibold"
+          className="ds-input ds-otp-digit text-center font-semibold"
           style={{
             width: 44, height: 52, fontSize: 'var(--text-xl)', padding: 0,
             borderColor: error ? 'var(--color-error)' : undefined,

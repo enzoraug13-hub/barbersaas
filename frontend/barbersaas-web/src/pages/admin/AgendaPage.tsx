@@ -122,9 +122,9 @@ export default function AgendaPage() {
       </div>
 
       {/* Calendário semanal */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <Button variant="ghost" onClick={() => setDate(d => subDays(d, 7))}><ChevronLeft size={16} /></Button>
-        <div className="flex-1 grid grid-cols-7 gap-2">
+        <div className="flex-1 grid grid-cols-7 gap-1 sm:gap-2">
           {weekDays.map(d => {
             const active = isSameDay(d, date)
             return (

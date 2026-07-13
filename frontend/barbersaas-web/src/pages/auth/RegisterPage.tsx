@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Check, MailCheck, User, Building2 } from 'lucide-react'
+import { Scissors, Check, MailCheck, User, Building2, ArrowLeft } from 'lucide-react'
 import { useRegister } from '../../features/auth/authApi'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -95,6 +95,10 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
       <div className="w-full max-w-md">
+        <Link to="/login" className="inline-flex items-center gap-1.5 mb-6 transition-colors hover:underline"
+          style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+          <ArrowLeft size={16} /> Voltar para o login
+        </Link>
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 flex items-center justify-center mb-4" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
             <Scissors size={28} style={{ color: 'var(--bg-base)' }} />

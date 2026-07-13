@@ -86,7 +86,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleLogout = () => { logout(); navigate('/login') }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+    // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
+    // área atrás da barra de endereço, o documento fica rolável e o header (com o
+    // botão ☰) some ao rolar. h-screen permanece como fallback pra navegadores
+    // sem suporte a dvh. No desktop dvh === vh — nada muda.
+    <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       {/* Overlay Mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
