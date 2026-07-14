@@ -41,6 +41,7 @@ public class AppDbContext : DbContext
     public DbSet<Plan>                Plans                => Set<Plan>();
     public DbSet<Subscription>        Subscriptions        => Set<Subscription>();
     public DbSet<SubscriptionPayment> SubscriptionPayments => Set<SubscriptionPayment>();
+    public DbSet<Invoice>             Invoices             => Set<Invoice>();
     public DbSet<Product>             Products             => Set<Product>();
     public DbSet<ProductCategory>     ProductCategories    => Set<ProductCategory>();
     public DbSet<StockMovement>       StockMovements       => Set<StockMovement>();

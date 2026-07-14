@@ -52,7 +52,47 @@ public class SuperAdminController : ControllerBase
         => Ok(ApiResponse<bool>.Ok(
             await _mediator.Send(new ResetTenantOwnerPasswordCommand(id, body.NewPassword), ct),
             "Senha redefinida."));
+
+    // ---------------- Faturas (o que as barbearias pagam AO TRIMLY) ----------------
+    // Receita do meu negócio. Não confundir com /financial, que é o caixa interno de
+    // cada barbearia — aquele continua isolado por tenant e intocado por aqui.
+
+    /// <summary>Faturas, com filtros opcionais de status, vencimento e barbearia.</summary>
+    [HttpGet("invoices")]
+    public async Task<IActionResult> ListInvoices(
+        [FromQuery] InvoiceStatus? status, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] Guid? tenantId, CancellationToken ct)
+        => Ok(ApiResponse<IReadOnlyList<InvoiceDto>>.Ok(
+            await _mediator.Send(new ListInvoicesQuery(status, from, to, tenantId), ct)));
+
+    /// <summary>Emite a fatura de um mês para uma barbearia (nasce em aberto).</summary>
+    [HttpPost("invoices")]
+    public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceCommand command, CancellationToken ct)
+        => Ok(ApiResponse<InvoiceDto>.Ok(await _mediator.Send(command, ct), "Fatura criada."));
+
+    /// <summary>Marca como paga (recebi o Pix). Reversível: {"paid": false} volta pra aberta.</summary>
+    [HttpPatch("invoices/{id:guid}/paid")]
+    public async Task<IActionResult> MarkPaid(Guid id, [FromBody] MarkPaidRequest body, CancellationToken ct)
+        => Ok(ApiResponse<object>.Ok(
+            new { status = await _mediator.Send(new MarkInvoicePaidCommand(id, body.Paid, body.PaidAt), ct) },
+            body.Paid ? "Fatura marcada como paga." : "Fatura reaberta."));
+
+    /// <summary>Anexa o comprovante (URL vinda de POST /uploads). Vazio remove.</summary>
+    [HttpPost("invoices/{id:guid}/receipt")]
+    public async Task<IActionResult> AttachReceipt(Guid id, [FromBody] AttachReceiptRequest body, CancellationToken ct)
+        => Ok(ApiResponse<bool>.Ok(
+            await _mediator.Send(new AttachInvoiceReceiptCommand(id, body.ReceiptUrl), ct),
+            "Comprovante atualizado."));
+
+    /// <summary>Resumo do painel: recebido, em aberto, contagens e série mensal.</summary>
+    [HttpGet("billing/summary")]
+    public async Task<IActionResult> BillingSummary(
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int months = 6, CancellationToken ct = default)
+        => Ok(ApiResponse<BillingSummaryDto>.Ok(
+            await _mediator.Send(new GetBillingSummaryQuery(from, to, months), ct)));
 }
 
 public record SetStatusRequest(TenantStatus Status);
 public record ResetPasswordRequest(string NewPassword);
+public record MarkPaidRequest(bool Paid = true, DateTime? PaidAt = null);
+public record AttachReceiptRequest(string? ReceiptUrl);

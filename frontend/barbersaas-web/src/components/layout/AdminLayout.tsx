@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck
+  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
@@ -40,19 +40,23 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
   ] },
 ]
 
-// Entrada do super admin (dono do Trimly).
-const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Super Admin', icon: ShieldCheck }
+// Entradas do super admin (dono do Trimly).
+const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Contas', icon: ShieldCheck }
+const superAdminInvoicesLeaf: NavLeaf = { to: '/super-admin/faturas', label: 'Faturas', icon: Receipt }
 
 // Menu do super admin: só o que é do Trimly. Os itens de operação de UMA barbearia
 // (agenda, clientes, equipe, produtos, financeiro, metas, configurações) somem — ele
 // não opera barbearia nenhuma. É só UI: as rotas continuam existindo e funcionando
-// se ele digitar a URL. Futuros itens do Trimly (faturas etc.) entram aqui.
+// se ele digitar a URL.
 const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
-  { label: 'Trimly', items: [superAdminLeaf] },
+  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf] },
 ]
 
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
-const allLeaves: NavLeaf[] = [...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))), superAdminLeaf]
+const allLeaves: NavLeaf[] = [
+  ...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))),
+  superAdminLeaf, superAdminInvoicesLeaf,
+]
 
 // '/admin' casa só na rota exata; os demais casam também em sub-rotas
 // (ex.: '/admin/barbeiros/:id' destaca "Barbeiros").

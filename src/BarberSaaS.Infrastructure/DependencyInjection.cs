@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanRepository,        PlanRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISuperAdminRepository,  SuperAdminRepository>();
+        services.AddScoped<IInvoiceRepository,     InvoiceRepository>();
         services.AddScoped<WorkScheduleRepository>();
         services.AddScoped<IWorkScheduleRepository>(sp => sp.GetRequiredService<WorkScheduleRepository>());
         services.AddScoped<IWorkScheduleWriteRepository>(sp => sp.GetRequiredService<WorkScheduleRepository>());
