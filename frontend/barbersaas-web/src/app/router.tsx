@@ -18,6 +18,7 @@ import ProductsPage from '../pages/admin/ProductsPage'
 import ConfigPage   from '../pages/admin/ConfigPage'
 import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import { useAuthStore } from '../store/authStore'
+import { isSuperAdmin } from '../lib/roles'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -37,9 +38,28 @@ function AdminPage({ children }: { children: React.ReactNode }) {
 // mostrar uma tela que não funcionaria.
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore(s => s.user)
-  return user?.role?.toLowerCase() === 'superadmin'
-    ? <>{children}</>
-    : <Navigate to="/admin" replace />
+  return isSuperAdmin(user?.role) ? <>{children}</> : <Navigate to="/admin" replace />
+}
+
+// O dashboard da barbearia não é a casa do super admin (ele é dono do Trimly, não
+// de uma barbearia): /admin manda ele pra /super-admin. Owner/Admin veem o Dashboard
+// normal, exatamente como antes. As rotas de barbearia seguem existindo pra ele —
+// só não são o destino padrão.
+function AdminHome() {
+  const user = useAuthStore(s => s.user)
+  return isSuperAdmin(user?.role)
+    ? <Navigate to="/super-admin" replace />
+    : <AdminPage><DashboardPage /></AdminPage>
+}
+
+// Raiz: super admin logado cai direto na casa dele. Para todos os outros, o
+// comportamento é o de sempre — vai pro login.
+function RootRedirect() {
+  const user = useAuthStore(s => s.user)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  return isAuthenticated && isSuperAdmin(user?.role)
+    ? <Navigate to="/super-admin" replace />
+    : <Navigate to="/login" replace />
 }
 
 export const router = createBrowserRouter([
@@ -50,7 +70,7 @@ export const router = createBrowserRouter([
   { path: '/b/:slug/conta', element: <ClientAccountPage /> },
   { path: '/style-guide',   element: <StyleGuidePage /> },
 
-  { path: '/admin',              element: <AdminPage><DashboardPage /></AdminPage> },
+  { path: '/admin',              element: <AdminHome /> },
   { path: '/admin/agenda',       element: <AdminPage><AgendaPage /></AdminPage> },
   { path: '/admin/clientes',     element: <AdminPage><ClientsPage /></AdminPage> },
   { path: '/admin/barbeiros',    element: <AdminPage><BarbersPage /></AdminPage> },
@@ -62,6 +82,6 @@ export const router = createBrowserRouter([
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
   { path: '/super-admin',        element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },
 
-  { path: '/', element: <Navigate to="/login" replace /> },
+  { path: '/', element: <RootRedirect /> },
   { path: '*', element: <Navigate to="/login" replace /> },
 ])

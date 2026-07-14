@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
 
@@ -39,9 +40,16 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
   ] },
 ]
 
-// Entrada extra do super admin — só entra nos grupos quando o usuário logado tem
-// o role superadmin (a rota e os endpoints têm as guardas reais; isto é só menu).
+// Entrada do super admin (dono do Trimly).
 const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Super Admin', icon: ShieldCheck }
+
+// Menu do super admin: só o que é do Trimly. Os itens de operação de UMA barbearia
+// (agenda, clientes, equipe, produtos, financeiro, metas, configurações) somem — ele
+// não opera barbearia nenhuma. É só UI: as rotas continuam existindo e funcionando
+// se ele digitar a URL. Futuros itens do Trimly (faturas etc.) entram aqui.
+const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
+  { label: 'Trimly', items: [superAdminLeaf] },
+]
 
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
 const allLeaves: NavLeaf[] = [...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))), superAdminLeaf]
@@ -89,11 +97,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = () => { logout(); navigate('/login') }
 
-  // Grupos de navegação com o item de super admin anexado ao "Sistema" quando aplicável.
-  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin'
-  const groups = isSuperAdmin
-    ? navGroups.map(g => (g.label === 'Sistema' ? { ...g, items: [...g.items, superAdminLeaf] } : g))
-    : navGroups
+  // Super admin vê só o menu do Trimly; todos os demais veem o menu da barbearia
+  // exatamente como antes.
+  const groups = isSuperAdmin(user?.role) ? superAdminGroups : navGroups
 
   return (
     // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a

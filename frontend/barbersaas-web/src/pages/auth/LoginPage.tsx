@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
 import { useLogin } from '../../features/auth/authApi'
+import { homeRouteFor } from '../../lib/roles'
 import { Button } from '../../components/ui/Button'
 import { RainCanvas } from '../../components/ui/RainCanvas'
 import facade from '../../assets/login-facade.jpg'
@@ -22,8 +23,11 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     try {
-      await login.mutateAsync(form)
-      navigate('/admin')
+      // O destino sai do role recém-logado (super admin vai pra /super-admin,
+      // os demais pro dashboard). Lê da resposta, não do store, pra não correr
+      // risco de ler o estado anterior.
+      const data = await login.mutateAsync(form)
+      navigate(homeRouteFor(data?.user?.role))
     } catch (err: any) {
       // Sem resposta = problema de rede; com resposta, usa a mensagem do backend
       // (cobre bloqueio temporário e confirmação de e-mail pendente).
