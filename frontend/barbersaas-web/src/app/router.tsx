@@ -1,6 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import LoginPage    from '../pages/auth/LoginPage'
-import RegisterPage from '../pages/auth/RegisterPage'
+// Auto-cadastro público DESATIVADO (contas criadas pelo super admin). O componente
+// RegisterPage fica no código para a reativação futura com billing self-service:
+// descomente o import e restaure a rota /register abaixo (e o link no LoginPage).
+// import RegisterPage from '../pages/auth/RegisterPage'
 import ConfirmEmailPage from '../pages/auth/ConfirmEmailPage'
 import BookingPage  from '../pages/public/BookingPage'
 import ClientAccountPage from '../pages/client/ClientAccountPage'
@@ -66,7 +69,9 @@ function RootRedirect() {
 
 export const router = createBrowserRouter([
   { path: '/login',    element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
+  // Cadastro público desligado: acesso direto a /register volta pro login em vez de
+  // uma tela quebrada. Reativar = trocar por <RegisterPage /> (import comentado acima).
+  { path: '/register', element: <Navigate to="/login" replace /> },
   { path: '/confirmar-email', element: <ConfirmEmailPage /> },
   { path: '/b/:slug',       element: <BookingPage /> },
   { path: '/b/:slug/conta', element: <ClientAccountPage /> },

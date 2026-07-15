@@ -33,6 +33,13 @@ public interface IAuthOptions
 {
     bool RequireEmailConfirmation { get; }
     string FrontendUrl { get; }
+    /// <summary>
+    /// Liga/desliga o auto-cadastro público (POST /auth/register). Desligado enquanto
+    /// as contas são criadas manualmente pelo super admin (venda ao vivo); o fluxo
+    /// completo de registro fica preservado para reativação futura com billing
+    /// self-service — basta Auth:PublicRegistrationEnabled=true (env var em prod).
+    /// </summary>
+    bool PublicRegistrationEnabled { get; }
 }
 
 /// <summary>Resultado da consulta de CNPJ na Receita (via BrasilAPI).</summary>

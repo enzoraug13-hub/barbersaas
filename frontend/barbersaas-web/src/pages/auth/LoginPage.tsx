@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
 import { useLogin } from '../../features/auth/authApi'
 import { homeRouteFor } from '../../lib/roles'
@@ -123,12 +123,15 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          {/* Auto-cadastro público desativado (contas criadas pelo super admin).
+              Reativação futura (billing self-service): restaurar o bloco abaixo e o
+              import de Link do react-router-dom.
           <p className="text-center mt-6" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.55)' }}>
             Não tem conta?{' '}
             <Link to="/register" className="font-medium hover:underline" style={{ color: 'var(--accent)' }}>
               Criar barbearia grátis
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

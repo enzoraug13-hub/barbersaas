@@ -1,5 +1,6 @@
 using BarberSaaS.Application.Auth.Commands;
 using BarberSaaS.Application.Common.DTOs;
+using BarberSaaS.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -11,13 +12,28 @@ namespace BarberSaaS.API.Controllers.v1;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IAuthOptions _authOptions;
 
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    public AuthController(IMediator mediator, IAuthOptions authOptions)
+    {
+        _mediator = mediator;
+        _authOptions = authOptions;
+    }
 
+    /// <summary>
+    /// Auto-cadastro público — DESATIVADO por padrão (contas são criadas pelo super
+    /// admin em /super-admin). O endpoint e o RegisterTenantCommand ficam intactos de
+    /// propósito: a reativação futura (billing self-service) é só ligar a flag
+    /// Auth:PublicRegistrationEnabled, sem ressuscitar código.
+    /// </summary>
     [HttpPost("register")]
     [EnableRateLimiting("register")]
     public async Task<IActionResult> Register([FromBody] RegisterTenantCommand command, CancellationToken ct)
     {
+        if (!_authOptions.PublicRegistrationEnabled)
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<object>.Fail("O cadastro de novas barbearias está temporariamente desativado. Entre em contato com o Trimly."));
+
         var result = await _mediator.Send(command, ct);
         return Ok(ApiResponse<RegisterTenantResult>.Ok(result, "Barbearia registrada com sucesso!"));
     }
