@@ -22,12 +22,18 @@ public class SuperAdminRepository : ISuperAdminRepository
         return await _db.Tenants.IgnoreQueryFilters().AsNoTracking()
             .Where(t => !t.IsDeleted)
             .OrderBy(t => t.Name)
+            // Join explícito por TenantId (a navegação Tenant.Users não existe mais —
+            // ver TenantConfiguration): o dono é o usuário Owner mais antigo do tenant.
             .Select(t => new TenantAccountRow(
                 t.Id, t.Name, t.Slug, (byte)t.Status, t.CreatedAt,
-                t.Users.Where(u => u.Role == UserRole.Owner || u.Role == UserRole.SuperAdmin)
-                       .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Name).FirstOrDefault(),
-                t.Users.Where(u => u.Role == UserRole.Owner || u.Role == UserRole.SuperAdmin)
-                       .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Email).FirstOrDefault()))
+                _db.Users.IgnoreQueryFilters()
+                    .Where(u => u.TenantId == t.Id && !u.IsDeleted
+                                && (u.Role == UserRole.Owner || u.Role == UserRole.SuperAdmin))
+                    .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Name).FirstOrDefault(),
+                _db.Users.IgnoreQueryFilters()
+                    .Where(u => u.TenantId == t.Id && !u.IsDeleted
+                                && (u.Role == UserRole.Owner || u.Role == UserRole.SuperAdmin))
+                    .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Email).FirstOrDefault()))
             .ToListAsync(ct);
     }
 

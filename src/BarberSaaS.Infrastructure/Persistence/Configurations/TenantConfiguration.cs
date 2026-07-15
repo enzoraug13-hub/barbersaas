@@ -19,10 +19,10 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         // quando a coluna é adicionada pela migration.
         b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(TenantStatus.Active);
 
-        b.HasMany(x => x.Users)
-            .WithOne(x => x.Tenant)
-            .HasForeignKey(x => x.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Users NÃO tem relação configurada com Tenant de propósito: o super admin
+        // vive na tabela Users com TenantId = Guid.Empty (sem barbearia), e uma FK
+        // rejeitaria essa linha. O isolamento não depende da FK — é o filtro global
+        // por TenantId, como em todas as entidades.
 
         b.HasMany(x => x.Barbers)
             .WithOne(x => x.Tenant)

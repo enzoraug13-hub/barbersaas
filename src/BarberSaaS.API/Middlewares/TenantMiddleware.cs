@@ -17,8 +17,26 @@ public class TenantMiddleware
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var tenantClaim = context.User.FindFirst("tenant_id")?.Value;
-            if (!string.IsNullOrEmpty(tenantClaim) && Guid.TryParse(tenantClaim, out var tenantIdFromClaim))
+            // Guid.Empty parseia com sucesso, mas "tenant zerado" NÃO é um tenant:
+            // setá-lo desligaria o filtro global do EF do mesmo jeito que não setar.
+            if (!string.IsNullOrEmpty(tenantClaim)
+                && Guid.TryParse(tenantClaim, out var tenantIdFromClaim)
+                && tenantIdFromClaim != Guid.Empty)
                 currentTenant.SetTenant(tenantIdFromClaim);
+
+            // Fail-closed: roles de barbearia SEM tenant no token rodariam com o
+            // filtro global DESLIGADO (CurrentTenantId vazio = vê tudo). Isso só é
+            // legítimo pro super admin (endpoints próprios, cross-tenant deliberado)
+            // e pro client (portal do cliente resolve por slug/telefone). Qualquer
+            // owner/admin/barber sem tenant é um token malformado — barra aqui.
+            var role = context.User.FindFirst("role")?.Value;
+            if (currentTenant.Id == Guid.Empty
+                && role is "owner" or "admin" or "barber")
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { success = false, errors = new[] { "Sessão inválida. Entre novamente." } });
+                return;
+            }
         }
 
         await _next(context);

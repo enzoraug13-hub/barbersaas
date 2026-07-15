@@ -21,7 +21,10 @@ public class User : BaseEntity
     public int FailedLoginCount { get; set; } = 0;
     public DateTime? LockedUntil { get; set; }
 
-    public Tenant? Tenant { get; set; }
+    // SEM navigation para Tenant (e sem FK no banco): o super admin não pertence
+    // a barbearia nenhuma — o TenantId dele é Guid.Empty, que não existe na tabela
+    // Tenants. Para todos os demais usuários o vínculo segue sendo o TenantId
+    // (carimbado na criação e filtrado pelo filtro global), como nas outras entidades.
     public Barber? Barber { get; set; }
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

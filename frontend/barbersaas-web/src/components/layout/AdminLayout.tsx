@@ -97,13 +97,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     .filter(l => isActive(l.to, location.pathname))
     .sort((a, b) => b.to.length - a.to.length)[0]?.label ?? 'Painel'
 
-  // Aplica as cores da barbearia ao painel inteiro
+  // Super admin não tem barbearia: não consulta /settings (o endpoint é de
+  // barbearia e responderia 403 — ele não pertence a tenant nenhum) e não aplica
+  // tema de tenant — o painel dele fica com a identidade padrão do Trimly.
+  const superAdmin = isSuperAdmin(user?.role)
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => (await api.get('/settings')).data.data,
     staleTime: 5 * 60 * 1000,
+    enabled: !superAdmin,
   })
-  useEffect(() => { if (settings) applyTenantTheme(settings) }, [settings])
+  useEffect(() => { if (settings && !superAdmin) applyTenantTheme(settings) }, [settings, superAdmin])
 
   const handleLogout = () => { logout(); navigate('/login') }
 
@@ -116,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Super admin vê só o menu do Trimly; todos os demais veem o menu da barbearia
   // exatamente como antes.
-  const groups = isSuperAdmin(user?.role) ? superAdminGroups : navGroups
+  const groups = superAdmin ? superAdminGroups : navGroups
 
   return (
     // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
@@ -206,15 +210,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        {/* Barbearia + dono */}
+        {/* Rodapé: identidade do Trimly pro super admin (ele não é dono de
+            barbearia nenhuma); barbearia + dono pra todos os outros. */}
         <div className="ds-sidebar-footer px-3 py-4">
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="ds-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0">
-              {(settings?.businessName ?? user?.name)?.[0]?.toUpperCase()}
+              {superAdmin ? <ShieldCheck size={16} /> : (settings?.businessName ?? user?.name)?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="ds-user-name truncate">{settings?.businessName || 'Minha barbearia'}</p>
-              <p className="ds-user-role truncate">{user?.name}</p>
+              <p className="ds-user-name truncate">{superAdmin ? 'Trimly' : (settings?.businessName || 'Minha barbearia')}</p>
+              <p className="ds-user-role truncate">{superAdmin ? 'Super admin' : user?.name}</p>
               <p className="ds-user-role truncate">{user?.email}</p>
             </div>
           </div>

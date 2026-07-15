@@ -85,7 +85,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         user.LastLoginIp      = request.IpAddress;
         await _users.UpdateAsync(user, ct);
 
-        var tokens = _jwt.GenerateTokens(user.Id, user.Email, user.Name, user.Role.ToString().ToLower(), user.TenantId);
+        // Super admin não pertence a barbearia nenhuma (TenantId vazio): o claim
+        // tenant_id sai VAZIO explicitamente (null), em vez de um guid zerado.
+        Guid? tenantId = user.TenantId == Guid.Empty ? null : user.TenantId;
+        var tokens = _jwt.GenerateTokens(user.Id, user.Email, user.Name, user.Role.ToString().ToLower(), tenantId);
 
         await _refreshTokens.AddAsync(new Domain.Entities.RefreshToken
         {
@@ -99,7 +102,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         _logger.LogInformation("User {UserId} logged in successfully", user.Id);
 
         return new LoginResult(tokens.AccessToken, tokens.RefreshToken, tokens.ExpiresAt,
-            new UserDto(user.Id, user.Name, user.Email, user.Role.ToString(), user.TenantId));
+            new UserDto(user.Id, user.Name, user.Email, user.Role.ToString(), tenantId));
     }
 
     internal static string HashToken(string token)

@@ -93,11 +93,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(opt =>
 {
-    opt.AddPolicy("RequireOwnerOrAdmin", p => p.RequireClaim("role", "owner", "admin", "superadmin"));
-    opt.AddPolicy("RequireBarber",       p => p.RequireClaim("role", "owner", "admin", "barber", "superadmin"));
-    opt.AddPolicy("RequireOwner",        p => p.RequireClaim("role", "owner", "superadmin"));
+    // As policies de barbearia NÃO incluem "superadmin" de propósito: o super admin
+    // não tem tenant (TenantId vazio no JWT), e com tenant vazio o filtro global do
+    // EF fica DESLIGADO — se ele alcançasse um endpoint tenant-scoped, leria dados
+    // de todas as barbearias misturados e escreveria linhas órfãs. Fica fisicamente
+    // fora (403); o mundo dele é /super-admin, que cruza tenants de forma deliberada
+    // e controlada (IgnoreQueryFilters + filtros explícitos).
+    opt.AddPolicy("RequireOwnerOrAdmin", p => p.RequireClaim("role", "owner", "admin"));
+    opt.AddPolicy("RequireBarber",       p => p.RequireClaim("role", "owner", "admin", "barber"));
+    opt.AddPolicy("RequireOwner",        p => p.RequireClaim("role", "owner"));
     opt.AddPolicy("RequireSuperAdmin",   p => p.RequireClaim("role", "superadmin"));
     opt.AddPolicy("RequireClient",       p => p.RequireClaim("role", "client"));
+    // Exceção única: uploads não são dados tenant-scoped (só storage com prefixo) e
+    // o super admin precisa deles pra anexar comprovante de fatura.
+    opt.AddPolicy("RequireOwnerOrSuperAdmin", p => p.RequireClaim("role", "owner", "superadmin"));
 });
 
 // Rate Limiting

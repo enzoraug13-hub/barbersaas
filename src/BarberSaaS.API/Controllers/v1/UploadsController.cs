@@ -14,7 +14,9 @@ namespace BarberSaaS.API.Controllers.v1;
 /// </summary>
 [ApiController]
 [Route("api/v1/uploads")]
-[Authorize(Policy = "RequireOwner")]
+// Owner OU super admin: o super admin (sem tenant) usa uploads pra anexar
+// comprovante de fatura — o arquivo não é dado tenant-scoped, só storage.
+[Authorize(Policy = "RequireOwnerOrSuperAdmin")]
 public class UploadsController : ControllerBase
 {
     private readonly ICurrentTenant _tenant;
@@ -51,7 +53,10 @@ public class UploadsController : ControllerBase
         if (!AllowedTypes.TryGetValue(ext, out var contentType))
             return BadRequest(ApiResponse<object>.Fail("Formato inválido. Use JPG, PNG, WEBP ou GIF."));
 
-        var key = $"{_tenant.Id}/{Guid.NewGuid():N}{ext}";
+        // Super admin não tem tenant: os arquivos dele (comprovantes) vão pro
+        // prefixo "trimly" em vez de uma pasta de guid zerado.
+        var prefix = _tenant.Id == Guid.Empty ? "trimly" : _tenant.Id.ToString();
+        var key = $"{prefix}/{Guid.NewGuid():N}{ext}";
         await using var stream = file.OpenReadStream();
         var url = await _storage.SaveAsync(key, stream, contentType, ct);
 

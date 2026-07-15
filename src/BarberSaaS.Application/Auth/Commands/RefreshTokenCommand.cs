@@ -48,7 +48,9 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, LoginRes
         var user = await _users.GetByIdAsync(stored.UserId, ct)
             ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
 
-        var tokens = _jwt.GenerateTokens(user.Id, user.Email, user.Name, user.Role.ToString().ToLower(), user.TenantId);
+        // Mesmo tratamento do login: tenant vazio (super admin) → claim vazio.
+        Guid? tenantId = user.TenantId == Guid.Empty ? null : user.TenantId;
+        var tokens = _jwt.GenerateTokens(user.Id, user.Email, user.Name, user.Role.ToString().ToLower(), tenantId);
 
         await _refreshTokens.AddAsync(new Domain.Entities.RefreshToken
         {
@@ -61,6 +63,6 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, LoginRes
         }, ct);
 
         return new LoginResult(tokens.AccessToken, tokens.RefreshToken, tokens.ExpiresAt,
-            new UserDto(user.Id, user.Name, user.Email, user.Role.ToString(), user.TenantId));
+            new UserDto(user.Id, user.Name, user.Email, user.Role.ToString(), tenantId));
     }
 }
