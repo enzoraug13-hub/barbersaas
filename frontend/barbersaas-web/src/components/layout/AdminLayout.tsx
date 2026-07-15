@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone
+  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone,
+  LifeBuoy, MessagesSquare
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
@@ -11,6 +12,7 @@ import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
 import { AnnouncementsBell } from '../admin/AnnouncementsBell'
+import { useMySupportMessages } from '../../features/support/supportApi'
 
 // Um item de navegação é uma folha (link direto) ou um pai com filhos
 // (grupo expansível). Os destinos dos filhos são telas que já existem.
@@ -37,7 +39,8 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
     { to: '/admin/metas',      label: 'Metas',       icon: Target },
   ] },
   { label: 'Sistema', items: [
-    { to: '/admin/config', label: 'Configurações', icon: Settings },
+    { to: '/admin/config',  label: 'Configurações', icon: Settings },
+    { to: '/admin/suporte', label: 'Suporte',        icon: LifeBuoy },
   ] },
 ]
 
@@ -45,19 +48,20 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
 const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Contas', icon: ShieldCheck }
 const superAdminInvoicesLeaf: NavLeaf = { to: '/super-admin/faturas', label: 'Faturas', icon: Receipt }
 const superAdminAnnouncementsLeaf: NavLeaf = { to: '/super-admin/avisos', label: 'Avisos', icon: Megaphone }
+const superAdminSupportLeaf: NavLeaf = { to: '/super-admin/mensagens', label: 'Mensagens', icon: MessagesSquare }
 
 // Menu do super admin: só o que é do Trimly. Os itens de operação de UMA barbearia
 // (agenda, clientes, equipe, produtos, financeiro, metas, configurações) somem — ele
 // não opera barbearia nenhuma. É só UI: as rotas continuam existindo e funcionando
 // se ele digitar a URL.
 const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
-  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf] },
+  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf] },
 ]
 
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
 const allLeaves: NavLeaf[] = [
   ...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))),
-  superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf,
+  superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf,
 ]
 
 // '/admin' casa só na rota exata; os demais casam também em sub-rotas
@@ -102,6 +106,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => { if (settings) applyTenantTheme(settings) }, [settings])
 
   const handleLogout = () => { logout(); navigate('/login') }
+
+  // Pontinho de resposta não-lida no item "Suporte" — mesmo espírito do sino de
+  // avisos: só consulta quando o usuário é Owner (o endpoint é RequireOwner;
+  // barber/admin levariam 403). Some quando a página é aberta (ela marca como lido).
+  const isOwner = user?.role?.toLowerCase() === 'owner'
+  const { data: supportMessages } = useMySupportMessages(isOwner)
+  const supportUnread = supportMessages?.some(m => m.author === 'superadmin' && !m.readAt) ?? false
 
   // Super admin vê só o menu do Trimly; todos os demais veem o menu da barbearia
   // exatamente como antes.
@@ -183,6 +194,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     onClick={() => setSidebarOpen(false)}>
                     <Icon size={18} />
                     {label}
+                    {to === '/admin/suporte' && supportUnread && !active && (
+                      <span className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: 'var(--accent)' }} aria-label="Resposta não lida" />
+                    )}
                     {active && <ChevronRight size={14} className="ml-auto" />}
                   </Link>
                 )

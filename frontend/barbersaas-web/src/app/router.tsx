@@ -22,6 +22,8 @@ import ConfigPage   from '../pages/admin/ConfigPage'
 import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import SuperAdminInvoicesPage from '../pages/admin/SuperAdminInvoicesPage'
 import SuperAdminAnnouncementsPage from '../pages/admin/SuperAdminAnnouncementsPage'
+import SuperAdminSupportPage from '../pages/admin/SuperAdminSupportPage'
+import SupportPage from '../pages/admin/SupportPage'
 import { useAuthStore } from '../store/authStore'
 import { isSuperAdmin } from '../lib/roles'
 
@@ -87,9 +89,11 @@ export const router = createBrowserRouter([
   { path: '/admin/metas',        element: <AdminPage><GoalsPage /></AdminPage> },
   { path: '/admin/produtos',     element: <AdminPage><ProductsPage /></AdminPage> },
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
+  { path: '/admin/suporte',      element: <AdminPage><SupportPage /></AdminPage> },
   { path: '/super-admin',         element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/faturas', element: <AdminPage><SuperAdminRoute><SuperAdminInvoicesPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/avisos',  element: <AdminPage><SuperAdminRoute><SuperAdminAnnouncementsPage /></SuperAdminRoute></AdminPage> },
+  { path: '/super-admin/mensagens', element: <AdminPage><SuperAdminRoute><SuperAdminSupportPage /></SuperAdminRoute></AdminPage> },
 
   { path: '/', element: <RootRedirect /> },
   { path: '*', element: <Navigate to="/login" replace /> },

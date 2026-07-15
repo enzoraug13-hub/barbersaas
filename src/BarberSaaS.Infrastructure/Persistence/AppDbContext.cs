@@ -44,6 +44,7 @@ public class AppDbContext : DbContext
     public DbSet<Invoice>             Invoices             => Set<Invoice>();
     public DbSet<Announcement>        Announcements        => Set<Announcement>();
     public DbSet<AnnouncementRead>    AnnouncementReads    => Set<AnnouncementRead>();
+    public DbSet<SupportMessage>      SupportMessages      => Set<SupportMessage>();
     public DbSet<Product>             Products             => Set<Product>();
     public DbSet<ProductCategory>     ProductCategories    => Set<ProductCategory>();
     public DbSet<StockMovement>       StockMovements       => Set<StockMovement>();

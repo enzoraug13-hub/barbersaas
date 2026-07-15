@@ -105,6 +105,36 @@ public class SuperAdminController : ControllerBase
         => Ok(ApiResponse<bool>.Ok(
             await _mediator.Send(new DeleteAnnouncementCommand(id), ct), "Aviso removido."));
 
+    // ---------------- Suporte (mensagens das barbearias AO Trimly) ----------------
+    // Sentido inverso dos avisos: o dono escreve pelo SupportController (isolado no
+    // próprio tenant) e o super admin lê/responde por aqui.
+
+    /// <summary>Caixa de entrada: uma conversa por barbearia, com não-lidas e última mensagem.</summary>
+    [HttpGet("support/conversations")]
+    public async Task<IActionResult> ListSupportConversations(CancellationToken ct)
+        => Ok(ApiResponse<IReadOnlyList<SupportConversationDto>>.Ok(
+            await _mediator.Send(new ListSupportConversationsQuery(), ct)));
+
+    /// <summary>A conversa completa de uma barbearia, em ordem cronológica.</summary>
+    [HttpGet("support/conversations/{tenantId:guid}")]
+    public async Task<IActionResult> GetSupportConversation(Guid tenantId, CancellationToken ct)
+        => Ok(ApiResponse<SupportThreadDto>.Ok(
+            await _mediator.Send(new GetSupportConversationQuery(tenantId), ct)));
+
+    /// <summary>Responde na conversa da barbearia.</summary>
+    [HttpPost("support/conversations/{tenantId:guid}/messages")]
+    public async Task<IActionResult> ReplySupport(Guid tenantId, [FromBody] ReplySupportRequest body, CancellationToken ct)
+        => Ok(ApiResponse<Application.Support.SupportMessageDto>.Ok(
+            await _mediator.Send(new ReplySupportMessageCommand(tenantId, body.Body), ct),
+            "Resposta enviada."));
+
+    /// <summary>Marca as mensagens do dono como lidas (em massa, idempotente).</summary>
+    [HttpPost("support/conversations/{tenantId:guid}/read")]
+    public async Task<IActionResult> MarkSupportRead(Guid tenantId, CancellationToken ct)
+        => Ok(ApiResponse<object>.Ok(
+            new { marked = await _mediator.Send(new MarkSupportConversationReadCommand(tenantId), ct) },
+            "Conversa marcada como lida."));
+
     /// <summary>Resumo do painel: recebido, em aberto, contagens e série mensal.</summary>
     [HttpGet("billing/summary")]
     public async Task<IActionResult> BillingSummary(
@@ -117,3 +147,4 @@ public record SetStatusRequest(TenantStatus Status);
 public record ResetPasswordRequest(string NewPassword);
 public record MarkPaidRequest(bool Paid = true, DateTime? PaidAt = null);
 public record AttachReceiptRequest(string? ReceiptUrl);
+public record ReplySupportRequest(string Body);
