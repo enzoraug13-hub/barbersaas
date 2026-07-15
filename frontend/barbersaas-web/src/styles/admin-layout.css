@@ -195,6 +195,14 @@
   background: rgba(16,14,11,0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid #25211B;
+  /* O backdrop-filter cria um stacking context: sem z-index próprio, o header
+     pinta ATRÁS de todo o conteúdo do <main> (que vem depois no DOM), e qualquer
+     dropdown ancorado na topbar (sino de avisos) fica escondido pelos cards da
+     página — z-index alto no dropdown não escapa do contexto do pai. z 10 fica
+     acima do conteúdo (que não usa z-index) e abaixo do drawer mobile (overlay
+     z-20, sidebar z-30) e dos modais (z-50). */
+  position: relative;
+  z-index: 10;
 }
 .ds-topbar-title {
   font-family: var(--font-display);
