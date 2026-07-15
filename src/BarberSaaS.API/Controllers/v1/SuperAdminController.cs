@@ -84,6 +84,27 @@ public class SuperAdminController : ControllerBase
             await _mediator.Send(new AttachInvoiceReceiptCommand(id, body.ReceiptUrl), ct),
             "Comprovante atualizado."));
 
+    // ---------------- Avisos (comunicados do Trimly às barbearias) ----------------
+    // Broadcast (TenantId nulo) ou direcionado a uma barbearia. O dono lê pelo
+    // AnnouncementsController, isolado no próprio tenant.
+
+    /// <summary>Histórico de avisos publicados, com alvo e contagem de leituras.</summary>
+    [HttpGet("announcements")]
+    public async Task<IActionResult> ListAnnouncements(CancellationToken ct)
+        => Ok(ApiResponse<IReadOnlyList<AnnouncementDto>>.Ok(
+            await _mediator.Send(new ListAnnouncementsQuery(), ct)));
+
+    /// <summary>Publica um aviso. TenantId nulo = todas as barbearias.</summary>
+    [HttpPost("announcements")]
+    public async Task<IActionResult> CreateAnnouncement([FromBody] CreateAnnouncementCommand command, CancellationToken ct)
+        => Ok(ApiResponse<AnnouncementDto>.Ok(await _mediator.Send(command, ct), "Aviso publicado."));
+
+    /// <summary>Remove um aviso (some do painel de todas as barbearias).</summary>
+    [HttpDelete("announcements/{id:guid}")]
+    public async Task<IActionResult> DeleteAnnouncement(Guid id, CancellationToken ct)
+        => Ok(ApiResponse<bool>.Ok(
+            await _mediator.Send(new DeleteAnnouncementCommand(id), ct), "Aviso removido."));
+
     /// <summary>Resumo do painel: recebido, em aberto, contagens e série mensal.</summary>
     [HttpGet("billing/summary")]
     public async Task<IActionResult> BillingSummary(

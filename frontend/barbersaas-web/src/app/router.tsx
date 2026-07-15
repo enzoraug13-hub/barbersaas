@@ -18,6 +18,7 @@ import ProductsPage from '../pages/admin/ProductsPage'
 import ConfigPage   from '../pages/admin/ConfigPage'
 import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import SuperAdminInvoicesPage from '../pages/admin/SuperAdminInvoicesPage'
+import SuperAdminAnnouncementsPage from '../pages/admin/SuperAdminAnnouncementsPage'
 import { useAuthStore } from '../store/authStore'
 import { isSuperAdmin } from '../lib/roles'
 
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
   { path: '/super-admin',         element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/faturas', element: <AdminPage><SuperAdminRoute><SuperAdminInvoicesPage /></SuperAdminRoute></AdminPage> },
+  { path: '/super-admin/avisos',  element: <AdminPage><SuperAdminRoute><SuperAdminAnnouncementsPage /></SuperAdminRoute></AdminPage> },
 
   { path: '/', element: <RootRedirect /> },
   { path: '*', element: <Navigate to="/login" replace /> },

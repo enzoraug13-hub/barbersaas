@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt
+  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
+import { AnnouncementsBell } from '../admin/AnnouncementsBell'
 
 // Um item de navegação é uma folha (link direto) ou um pai com filhos
 // (grupo expansível). Os destinos dos filhos são telas que já existem.
@@ -43,19 +44,20 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
 // Entradas do super admin (dono do Trimly).
 const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Contas', icon: ShieldCheck }
 const superAdminInvoicesLeaf: NavLeaf = { to: '/super-admin/faturas', label: 'Faturas', icon: Receipt }
+const superAdminAnnouncementsLeaf: NavLeaf = { to: '/super-admin/avisos', label: 'Avisos', icon: Megaphone }
 
 // Menu do super admin: só o que é do Trimly. Os itens de operação de UMA barbearia
 // (agenda, clientes, equipe, produtos, financeiro, metas, configurações) somem — ele
 // não opera barbearia nenhuma. É só UI: as rotas continuam existindo e funcionando
 // se ele digitar a URL.
 const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
-  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf] },
+  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf] },
 ]
 
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
 const allLeaves: NavLeaf[] = [
   ...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))),
-  superAdminLeaf, superAdminInvoicesLeaf,
+  superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf,
 ]
 
 // '/admin' casa só na rota exata; os demais casam também em sub-rotas
@@ -218,6 +220,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex-1 lg:flex-none">
             <h1 className="ds-topbar-title">{pageTitle}</h1>
           </div>
+          {/* Avisos do Trimly — só pro dono (o endpoint é RequireOwner; barber/admin
+              levariam 403). Some sozinho quando não há aviso nenhum. */}
+          <AnnouncementsBell enabled={user?.role?.toLowerCase() === 'owner'} />
         </header>
 
         {/* Content — fade suave a cada troca de página */}

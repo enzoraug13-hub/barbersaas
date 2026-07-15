@@ -42,6 +42,8 @@ public class AppDbContext : DbContext
     public DbSet<Subscription>        Subscriptions        => Set<Subscription>();
     public DbSet<SubscriptionPayment> SubscriptionPayments => Set<SubscriptionPayment>();
     public DbSet<Invoice>             Invoices             => Set<Invoice>();
+    public DbSet<Announcement>        Announcements        => Set<Announcement>();
+    public DbSet<AnnouncementRead>    AnnouncementReads    => Set<AnnouncementRead>();
     public DbSet<Product>             Products             => Set<Product>();
     public DbSet<ProductCategory>     ProductCategories    => Set<ProductCategory>();
     public DbSet<StockMovement>       StockMovements       => Set<StockMovement>();
@@ -88,7 +90,11 @@ public class AppDbContext : DbContext
         // O Tenant é a RAIZ da hierarquia multi-tenant — o TenantId dele é vazio,
         // então não pode ser filtrado por tenant (senão a própria linha some).
         // Aplica-se apenas o soft-delete. As consultas de Tenant já são por Id/Slug.
-        if (typeof(T) == typeof(Tenant))
+        // O Announcement é um dado GLOBAL (comunicado do Trimly): a visibilidade é
+        // por TargetTenantId (null = broadcast), decidida no repositório — o filtro
+        // de tenant esconderia os broadcasts de todo mundo. AnnouncementRead NÃO
+        // entra aqui: o lido pertence à barbearia que leu e segue isolado.
+        if (typeof(T) == typeof(Tenant) || typeof(T) == typeof(Announcement))
         {
             builder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
             return;
