@@ -36,6 +36,10 @@ dist-ssr/
 *.log
 logs/
 
+# ============ Lixo de redirecionamento de output ============
+err.txt
+out.txt
+
 # ============ IDE / OS ============
 .vs/
 .idea/
