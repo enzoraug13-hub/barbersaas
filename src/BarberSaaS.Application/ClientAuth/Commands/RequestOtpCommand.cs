@@ -32,12 +32,13 @@ public class RequestOtpHandler : IRequestHandler<RequestOtpCommand, RequestOtpRe
     private readonly ISmsService _sms;
     private readonly IPasswordHasher _hasher;
     private readonly IOtpChallengeService _challenges;
+    private readonly IAppEnvironment _env;
     private readonly ILogger<RequestOtpHandler> _logger;
 
     public RequestOtpHandler(ITenantRepository tenants, IClientRepository clients, ISmsService sms,
-        IPasswordHasher hasher, IOtpChallengeService challenges, ILogger<RequestOtpHandler> logger)
+        IPasswordHasher hasher, IOtpChallengeService challenges, IAppEnvironment env, ILogger<RequestOtpHandler> logger)
     {
-        _tenants = tenants; _clients = clients; _sms = sms; _hasher = hasher; _challenges = challenges; _logger = logger;
+        _tenants = tenants; _clients = clients; _sms = sms; _hasher = hasher; _challenges = challenges; _env = env; _logger = logger;
     }
 
     public async Task<RequestOtpResult> Handle(RequestOtpCommand request, CancellationToken ct)
@@ -59,6 +60,10 @@ public class RequestOtpHandler : IRequestHandler<RequestOtpCommand, RequestOtpRe
         _logger.LogInformation("OTP gerado para telefone {Phone} (tenant {TenantId}, cliente existente: {ExistingClientId})",
             request.Phone, tenant.Id, existingClient?.Id);
 
-        return new RequestOtpResult(true, _sms.IsConfigured ? null : code);
+        // SEGURANÇA: o código só pode vazar na resposta em Development. Em produção
+        // DevCode é sempre null — inclusive com o provedor de SMS fora do ar; caso
+        // contrário qualquer um autenticaria como qualquer telefone.
+        var devCode = _env.IsDevelopment && !_sms.IsConfigured ? code : null;
+        return new RequestOtpResult(true, devCode);
     }
 }

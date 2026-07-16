@@ -113,9 +113,15 @@ public static class DependencyInjection
             services.AddSingleton<IFileStorage, BarberSaaS.Infrastructure.ExternalServices.Storage.LocalFileStorage>();
         }
 
-        // SMS (login do cliente por OTP): Twilio se configurado, senão stub de log (dev).
+        // Ambiente visto pela Application (ex.: DevCode do OTP só em Development).
+        services.AddSingleton<IAppEnvironment, AppEnvironment>();
+
+        // SMS (login do cliente por OTP): SmsDev > Twilio > stub de log (dev).
+        // Env var em produção: Sms__SmsDev__ApiKey.
         services.AddHttpClient();
-        if (!string.IsNullOrEmpty(config["Sms:Twilio:AccountSid"]))
+        if (!string.IsNullOrEmpty(config["Sms:SmsDev:ApiKey"]))
+            services.AddScoped<ISmsService, BarberSaaS.Infrastructure.ExternalServices.Sms.SmsDevSmsService>();
+        else if (!string.IsNullOrEmpty(config["Sms:Twilio:AccountSid"]))
             services.AddScoped<ISmsService, BarberSaaS.Infrastructure.ExternalServices.Sms.TwilioSmsService>();
         else
             services.AddScoped<ISmsService, BarberSaaS.Infrastructure.ExternalServices.Sms.LogSmsService>();

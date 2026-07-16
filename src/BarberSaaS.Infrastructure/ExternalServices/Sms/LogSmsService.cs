@@ -5,8 +5,9 @@ namespace BarberSaaS.Infrastructure.ExternalServices.Sms;
 
 /// <summary>
 /// Stub de desenvolvimento: NÃO envia SMS real, apenas registra no log do servidor.
-/// Ativo quando nenhum provedor (Twilio) está configurado. Como IsConfigured=false,
-/// a API devolve o código OTP na resposta para permitir testar o fluxo localmente.
+/// Ativo quando nenhum provedor (SmsDev/Twilio) está configurado. O código OTP só é
+/// devolvido na resposta da API quando ALÉM disso o ambiente é Development
+/// (IAppEnvironment) — em produção sem provedor, ninguém recebe o código.
 /// </summary>
 public class LogSmsService : ISmsService
 {

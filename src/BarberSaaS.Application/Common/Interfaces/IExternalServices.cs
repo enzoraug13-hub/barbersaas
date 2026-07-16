@@ -42,6 +42,16 @@ public interface IAuthOptions
     bool PublicRegistrationEnabled { get; }
 }
 
+/// <summary>
+/// Ambiente de execução visto pela Application (que não referencia ASP.NET/Hosting).
+/// Implementado na Infrastructure sobre IHostEnvironment. Use para decisões de
+/// segurança que só podem valer em dev — ex.: devolver o código OTP na resposta.
+/// </summary>
+public interface IAppEnvironment
+{
+    bool IsDevelopment { get; }
+}
+
 /// <summary>Resultado da consulta de CNPJ na Receita (via BrasilAPI).</summary>
 /// <param name="Found">False quando a Receita não conhece o CNPJ (404).</param>
 /// <param name="RazaoSocial">Razão social registrada, quando encontrada.</param>
