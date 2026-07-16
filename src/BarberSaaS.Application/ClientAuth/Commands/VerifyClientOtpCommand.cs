@@ -29,14 +29,15 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
 {
     private readonly ITenantRepository _tenants;
     private readonly IClientRepository _clients;
+    private readonly ILoyaltyRepository _loyalty;
     private readonly IJwtService _jwt;
     private readonly IPasswordHasher _hasher;
     private readonly IOtpChallengeService _challenges;
 
-    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, IJwtService jwt,
-        IPasswordHasher hasher, IOtpChallengeService challenges)
+    public VerifyClientOtpHandler(ITenantRepository tenants, IClientRepository clients, ILoyaltyRepository loyalty,
+        IJwtService jwt, IPasswordHasher hasher, IOtpChallengeService challenges)
     {
-        _tenants = tenants; _clients = clients; _jwt = jwt; _hasher = hasher; _challenges = challenges;
+        _tenants = tenants; _clients = clients; _loyalty = loyalty; _jwt = jwt; _hasher = hasher; _challenges = challenges;
     }
 
     public async Task<ClientAuthResult> Handle(VerifyClientOtpCommand request, CancellationToken ct)
@@ -70,8 +71,13 @@ public class VerifyClientOtpHandler : IRequestHandler<VerifyClientOtpCommand, Cl
             var tokens = _jwt.GenerateTokens(client.Id, client.Email ?? "", displayName, "client", tenant.Id, client.PhoneNumber);
             var profileComplete = !string.IsNullOrWhiteSpace(client.Name) && !string.IsNullOrWhiteSpace(client.Cpf);
 
+            // Wallet = fonte da verdade; visitas derivadas dos agendamentos Completed
+            // (os campos do Client estão aposentados — ver ILoyaltyRepository).
+            var wallet = await _loyalty.GetWalletAsync(client.Id, ct);
+            var visits = await _loyalty.CountCompletedVisitsAsync(client.Id, ct);
+
             return new ClientAuthResult(tokens.AccessToken, tokens.ExpiresAt,
-                new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Cpf, client.Email, client.LoyaltyPoints, client.TotalVisits),
+                new ClientProfileDto(client.Id, client.Name, client.PhoneNumber, client.Cpf, client.Email, wallet?.TotalPoints ?? 0, visits),
                 profileComplete);
         }
 

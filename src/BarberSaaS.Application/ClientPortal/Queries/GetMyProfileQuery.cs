@@ -11,11 +11,12 @@ public record MyProfileDto(Guid Id, string Name, string Phone, string? Cpf, stri
 public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, MyProfileDto?>
 {
     private readonly IClientRepository _clients;
+    private readonly ILoyaltyRepository _loyalty;
     private readonly ICurrentUser _user;
 
-    public GetMyProfileHandler(IClientRepository clients, ICurrentUser user)
+    public GetMyProfileHandler(IClientRepository clients, ILoyaltyRepository loyalty, ICurrentUser user)
     {
-        _clients = clients; _user = user;
+        _clients = clients; _loyalty = loyalty; _user = user;
     }
 
     public async Task<MyProfileDto?> Handle(GetMyProfileQuery request, CancellationToken ct)
@@ -30,6 +31,11 @@ public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, MyProfileD
             return new MyProfileDto(_user.Id, "", _user.Phone ?? "", null, null, 0, 0, false);
         }
         var complete = !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Cpf);
-        return new MyProfileDto(c.Id, c.Name, c.PhoneNumber, c.Cpf, c.Email, c.LoyaltyPoints, c.TotalVisits, complete);
+
+        // Fonte da verdade: wallet (pontos) e Appointments Completed (visitas).
+        // Client.LoyaltyPoints/TotalVisits estão aposentados — ver ILoyaltyRepository.
+        var wallet = await _loyalty.GetWalletAsync(c.Id, ct);
+        var visits = await _loyalty.CountCompletedVisitsAsync(c.Id, ct);
+        return new MyProfileDto(c.Id, c.Name, c.PhoneNumber, c.Cpf, c.Email, wallet?.TotalPoints ?? 0, visits, complete);
     }
 }

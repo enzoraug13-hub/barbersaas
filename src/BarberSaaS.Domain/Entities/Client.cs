@@ -11,9 +11,11 @@ public class Client : BaseEntity
     public DateOnly? BirthDate { get; set; }
     public string? PhotoUrl { get; set; }
 
+    // APOSENTADOS (colunas mantidas no banco, mas ninguém lê nem escreve):
+    // pontos = LoyaltyWallet.TotalPoints (fonte da verdade, com extrato);
+    // visitas = derivadas dos Appointments Completed. Ver ILoyaltyRepository.
     public int LoyaltyPoints { get; set; } = 0;
     public decimal WalletBalance { get; set; } = 0;
-
     public int TotalVisits { get; set; } = 0;
     public DateTime? LastVisitAt { get; set; }
     public bool IsBlocked { get; set; } = false;

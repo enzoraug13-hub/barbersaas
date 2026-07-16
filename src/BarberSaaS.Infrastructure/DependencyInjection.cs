@@ -72,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceRepository,     InvoiceRepository>();
         services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
         services.AddScoped<ISupportMessageRepository, SupportMessageRepository>();
+        services.AddScoped<ILoyaltyRepository,     LoyaltyRepository>();
         services.AddScoped<WorkScheduleRepository>();
         services.AddScoped<IWorkScheduleRepository>(sp => sp.GetRequiredService<WorkScheduleRepository>());
         services.AddScoped<IWorkScheduleWriteRepository>(sp => sp.GetRequiredService<WorkScheduleRepository>());

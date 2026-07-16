@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { Modal } from '../../components/ui/Modal'
 import { useClients, useCreateClient, useBlockClient, useUnblockClient } from '../../features/clients/clientsApi'
+import { useLoyaltyProgram } from '../../features/loyalty/loyaltyApi'
+import { useAuthStore } from '../../store/authStore'
 import { PhoneField } from '../../components/ui/PhoneField'
 import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Client } from '../../types'
@@ -23,6 +25,11 @@ export default function ClientsPage() {
   const createClient  = useCreateClient()
   const blockClient   = useBlockClient()
   const unblockClient = useUnblockClient()
+
+  // Fidelidade desligada = colunas Visitas/Pontos somem (regra do programa).
+  const role = useAuthStore(s => s.user?.role?.toLowerCase())
+  const { data: loyaltyProgram } = useLoyaltyProgram(role === 'owner' || role === 'admin')
+  const loyaltyOn = !!loyaltyProgram?.isEnabled
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,8 +98,8 @@ export default function ClientsPage() {
                 <tr>
                   <th>Cliente</th>
                   <th className="hidden sm:table-cell">Telefone</th>
-                  <th className="text-center hidden md:table-cell">Visitas</th>
-                  <th className="text-center hidden md:table-cell">Pontos</th>
+                  {loyaltyOn && <th className="text-center hidden md:table-cell">Visitas</th>}
+                  {loyaltyOn && <th className="text-center hidden md:table-cell">Pontos</th>}
                   <th className="text-center">Status</th>
                   <th className="text-center">Ações</th>
                 </tr>
@@ -115,12 +122,14 @@ export default function ClientsPage() {
                     <td className="ds-text-secondary hidden sm:table-cell">
                       <div className="flex items-center gap-1.5"><Phone size={13} />{formatPhoneBR(c.phoneNumber)}</div>
                     </td>
-                    <td className="ds-text-secondary text-center hidden md:table-cell">{c.totalVisits}</td>
-                    <td className="text-center hidden md:table-cell">
-                      <div className="ds-text-accent flex items-center justify-center gap-1">
-                        <Star size={13} />{c.loyaltyPoints}
-                      </div>
-                    </td>
+                    {loyaltyOn && <td className="ds-text-secondary text-center hidden md:table-cell">{c.totalVisits}</td>}
+                    {loyaltyOn && (
+                      <td className="text-center hidden md:table-cell">
+                        <div className="ds-text-accent flex items-center justify-center gap-1">
+                          <Star size={13} />{c.loyaltyPoints}
+                        </div>
+                      </td>
+                    )}
                     <td className="text-center">
                       {c.isBlocked
                         ? <Badge variant="error">Bloqueado</Badge>

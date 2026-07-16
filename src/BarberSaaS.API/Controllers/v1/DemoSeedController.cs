@@ -251,9 +251,9 @@ public class DemoSeedController : ControllerBase
             Name = name,
             PhoneNumber = $"+551199{(90000000 + i * 137):D8}",
             Email = $"{Slugify(name)}@exemplo.com",
-            LoyaltyPoints = rng.Next(0, 150),
-            WalletBalance = 0,
-            TotalVisits = 0
+            // Client.LoyaltyPoints/WalletBalance/TotalVisits estão APOSENTADOS (fonte da
+            // verdade: LoyaltyWallet + Appointments Completed — ver ILoyaltyRepository).
+            // Semear valores aqui criaria dado que a UI nunca lê e divergiria da wallet.
         }).ToList();
         _db.Clients.AddRange(clients);
         await _db.SaveChangesAsync(ct);

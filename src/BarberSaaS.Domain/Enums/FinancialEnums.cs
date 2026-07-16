@@ -86,6 +86,30 @@ public enum LoyaltyTransactionType : byte
     Expiration = 2
 }
 
+/// <summary>
+/// Regra de ganho do programa de fidelidade. A UNIDADE no banco é a mesma
+/// (LoyaltyWallet.TotalPoints); o modo só muda a regra de crédito e o label da UI:
+/// Points = FinalPrice × PointsPerReal por atendimento; Visits = 1 por atendimento.
+/// </summary>
+public enum LoyaltyMode : byte
+{
+    Points = 0,
+    Visits = 1
+}
+
+public enum LoyaltyRewardType : byte
+{
+    Service = 0,
+    Product = 1
+}
+
+public enum LoyaltyRedemptionStatus : byte
+{
+    Pending   = 0,
+    Delivered = 1,
+    Cancelled = 2
+}
+
 public enum DiscountType : byte
 {
     Percentage = 0,

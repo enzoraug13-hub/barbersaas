@@ -19,6 +19,7 @@ import FinancialPage from '../pages/admin/FinancialPage'
 import GoalsPage    from '../pages/admin/GoalsPage'
 import ProductsPage from '../pages/admin/ProductsPage'
 import ConfigPage   from '../pages/admin/ConfigPage'
+import LoyaltyPage  from '../pages/admin/LoyaltyPage'
 import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import SuperAdminInvoicesPage from '../pages/admin/SuperAdminInvoicesPage'
 import SuperAdminAnnouncementsPage from '../pages/admin/SuperAdminAnnouncementsPage'
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
   { path: '/admin/financeiro',   element: <AdminPage><FinancialPage /></AdminPage> },
   { path: '/admin/metas',        element: <AdminPage><GoalsPage /></AdminPage> },
   { path: '/admin/produtos',     element: <AdminPage><ProductsPage /></AdminPage> },
+  { path: '/admin/fidelidade',   element: <AdminPage><LoyaltyPage /></AdminPage> },
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
   { path: '/admin/suporte',      element: <AdminPage><SupportPage /></AdminPage> },
   { path: '/super-admin',         element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },

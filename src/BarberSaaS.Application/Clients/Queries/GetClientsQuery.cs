@@ -12,8 +12,13 @@ public record ClientListItemDto(
 public class GetClientsHandler : IRequestHandler<GetClientsQuery, IReadOnlyList<ClientListItemDto>>
 {
     private readonly IClientRepository _clients;
+    private readonly ILoyaltyRepository _loyalty;
+    private readonly ICurrentTenant _tenant;
 
-    public GetClientsHandler(IClientRepository clients) => _clients = clients;
+    public GetClientsHandler(IClientRepository clients, ILoyaltyRepository loyalty, ICurrentTenant tenant)
+    {
+        _clients = clients; _loyalty = loyalty; _tenant = tenant;
+    }
 
     public async Task<IReadOnlyList<ClientListItemDto>> Handle(GetClientsQuery request, CancellationToken ct)
     {
@@ -22,8 +27,17 @@ public class GetClientsHandler : IRequestHandler<GetClientsQuery, IReadOnlyList<
             all = all.Where(c => c.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase) ||
                                  c.PhoneNumber.Contains(request.Search)).ToList();
 
+        // Fonte da verdade: pontos da wallet, visitas derivadas dos Appointments
+        // Completed (os campos do Client estão aposentados — ver ILoyaltyRepository).
+        var balances = (await _loyalty.ListBalancesAsync(_tenant.Id, ct))
+            .ToDictionary(b => b.ClientId, b => b.TotalPoints);
+        var visits = await _loyalty.GetVisitStatsAsync(_tenant.Id, ct);
+
         return all.Select(c => new ClientListItemDto(
             c.Id, c.Name, c.PhoneNumber, c.Email,
-            c.TotalVisits, c.LastVisitAt, c.LoyaltyPoints, c.IsBlocked)).ToList();
+            visits.TryGetValue(c.Id, out var v) ? v.Visits : 0,
+            visits.TryGetValue(c.Id, out var lv) ? lv.LastVisitAt : null,
+            balances.GetValueOrDefault(c.Id),
+            c.IsBlocked)).ToList();
     }
 }

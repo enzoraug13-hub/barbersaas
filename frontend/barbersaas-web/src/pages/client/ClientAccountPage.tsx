@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, LogOut, Calendar, Star } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ChevronLeft, LogOut, Calendar, Star, Gift, Clock } from 'lucide-react'
 import { publicApi } from '../../lib/api'
 import { clientApi } from '../../lib/clientApi'
 import { useClientSession } from '../../store/clientAuthStore'
@@ -14,6 +14,19 @@ import { CompleteProfileStep } from '../../components/client/CompleteProfileStep
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { formatPhoneBR } from '../../lib/masks'
+import { unitLabel } from '../../features/loyalty/loyaltyApi'
+import type { LoyaltyMode, LoyaltyRedemptionStatus, LoyaltyRewardType } from '../../features/loyalty/loyaltyApi'
+import toast from 'react-hot-toast'
+
+// GET /client/loyalty — programa+saldo+catálogo+meus resgates numa chamada.
+interface MyLoyalty {
+  enabled: boolean
+  mode: LoyaltyMode
+  balance: number
+  totalVisits: number
+  rewards: { id: string; name: string; description: string | null; type: LoyaltyRewardType; cost: number }[]
+  redemptions: { id: string; rewardName: string; costPaid: number; status: LoyaltyRedemptionStatus; requestedAt: string }[]
+}
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -70,6 +83,7 @@ export default function ClientAccountPage() {
   const clearClientCache = () => {
     queryClient.removeQueries({ queryKey: ['client-me'] })
     queryClient.removeQueries({ queryKey: ['client-appointments'] })
+    queryClient.removeQueries({ queryKey: ['client-loyalty'] })
   }
   const handleLogout = () => { clearClientCache(); session.logout() }
 
@@ -121,6 +135,13 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
     queryKey: ['client-appointments', clientId],
     queryFn: async () => (await clientApi.get('/client/appointments')).data.data as any[],
   })
+  // Fidelidade: com o programa DESLIGADO (enabled:false), nem o chip de pontos
+  // nem a seção aparecem — a tela fica exatamente como era antes do programa.
+  const { data: loyalty } = useQuery({
+    queryKey: ['client-loyalty', clientId],
+    queryFn: async () => (await clientApi.get('/client/loyalty')).data.data as MyLoyalty,
+  })
+  const loyaltyOn = !!loyalty?.enabled
 
   return (
     <div className="space-y-6">
@@ -133,12 +154,116 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
           <p className="ds-text-primary font-bold truncate" style={{ fontSize: 'var(--text-lg)' }}>{me?.name || name || 'Cliente'}</p>
           <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{formatPhoneBR(me?.phone)}</p>
         </div>
-        <div className="ml-auto text-right flex-shrink-0">
-          <div className="ds-text-accent flex items-center gap-1 font-bold"><Star size={15} /> {me?.loyaltyPoints ?? 0}</div>
-          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{me?.totalVisits ?? 0} visitas</p>
-        </div>
+        {loyaltyOn && (
+          <div className="ml-auto text-right flex-shrink-0">
+            <div className="ds-text-accent flex items-center gap-1 font-bold">
+              <Star size={15} /> {loyalty.balance} {unitLabel(loyalty.mode, loyalty.balance)}
+            </div>
+            <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{loyalty.totalVisits} visitas</p>
+          </div>
+        )}
       </div>
 
+      {/* Fidelidade — só com o programa ligado */}
+      {loyaltyOn && <LoyaltySection loyalty={loyalty} clientId={clientId} />}
+
+      <Appointments appts={appts} isLoading={isLoading} slug={slug} />
+    </div>
+  )
+}
+
+/* ================= Fidelidade (cliente) ================= */
+const redemptionStatusLabel: Record<LoyaltyRedemptionStatus, string> = {
+  Pending: 'Aguardando entrega', Delivered: 'Entregue', Cancelled: 'Cancelado',
+}
+const redemptionStatusVariant: Record<LoyaltyRedemptionStatus, 'warning' | 'success' | 'error'> = {
+  Pending: 'warning', Delivered: 'success', Cancelled: 'error',
+}
+
+function LoyaltySection({ loyalty, clientId }: { loyalty: MyLoyalty; clientId?: string }) {
+  const queryClient = useQueryClient()
+  const redeem = useMutation({
+    mutationFn: async (rewardId: string) =>
+      (await clientApi.post('/client/loyalty/redeem', { rewardId })).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-loyalty', clientId] })
+      toast.success('Resgate solicitado! Mostre na barbearia pra retirar.')
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.errors?.[0] ?? 'Não foi possível resgatar.'),
+  })
+
+  const unit = (n: number) => unitLabel(loyalty.mode, n)
+  const visible = loyalty.redemptions.slice(0, 5)
+
+  return (
+    <div className="animate-slide-up">
+      <h2 className="ds-text-secondary font-semibold mb-3 px-1 flex items-center gap-1.5" style={{ fontSize: 'var(--text-sm)' }}>
+        <Gift size={14} /> Fidelidade
+      </h2>
+
+      {!loyalty.rewards.length ? (
+        <div className="ds-card">
+          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
+            Você tem <span className="ds-text-accent font-bold">{loyalty.balance} {unit(loyalty.balance)}</span>.
+            As recompensas disponíveis vão aparecer aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {loyalty.rewards.map(r => {
+            const affordable = loyalty.balance >= r.cost
+            return (
+              <div key={r.id} className="ds-card flex items-center gap-4">
+                <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 40, height: 40 }}>
+                  <Gift size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="ds-text-primary font-semibold truncate">{r.name}</p>
+                  {r.description && <p className="ds-text-secondary truncate" style={{ fontSize: 'var(--text-xs)' }}>{r.description}</p>}
+                  <p className="ds-text-accent font-medium mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>
+                    {r.cost} {unit(r.cost)}
+                  </p>
+                </div>
+                <Button onClick={() => redeem.mutate(r.id)} loading={redeem.isPending}
+                  disabled={!affordable || redeem.isPending}
+                  style={{ height: 34, padding: '0 var(--space-4)', fontSize: 'var(--text-xs)', flexShrink: 0, opacity: affordable ? 1 : 0.5 }}>
+                  {affordable ? 'Resgatar' : `Faltam ${r.cost - loyalty.balance}`}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {visible.length > 0 && (
+        <div className="mt-4">
+          <p className="ds-text-disabled mb-2 px-1 flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)' }}>
+            <Clock size={12} /> Meus resgates
+          </p>
+          <div className="ds-card space-y-2.5" style={{ padding: 'var(--space-4)' }}>
+            {visible.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="ds-text-primary truncate" style={{ fontSize: 'var(--text-sm)' }}>{r.rewardName}</p>
+                  <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>
+                    {format(parseISO(r.requestedAt), "dd/MM 'às' HH:mm", { locale: ptBR })} · {r.costPaid} {unit(r.costPaid)}
+                  </p>
+                </div>
+                <Badge variant={redemptionStatusVariant[r.status]}>{redemptionStatusLabel[r.status]}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ================= Agendamentos ================= */
+function Appointments({ appts, isLoading, slug }: { appts?: any[]; isLoading: boolean; slug: string }) {
+  return (
+    <>
       {/* Agendamentos */}
       <div>
         <h2 className="ds-text-secondary font-semibold mb-3 px-1" style={{ fontSize: 'var(--text-sm)' }}>Meus agendamentos</h2>
@@ -183,6 +308,6 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

@@ -41,8 +41,10 @@ public class CreateClientHandler : IRequestHandler<CreateClientCommand, ClientLi
         };
         await _clients.AddAsync(client, ct);
 
+        // Cliente recém-criado: sem visitas nem pontos (wallet nasce sob demanda no
+        // primeiro crédito — Client.LoyaltyPoints/TotalVisits estão aposentados).
         return new ClientListItemDto(
             client.Id, client.Name, client.PhoneNumber, client.Email,
-            client.TotalVisits, client.LastVisitAt, client.LoyaltyPoints, client.IsBlocked);
+            0, null, 0, client.IsBlocked);
     }
 }

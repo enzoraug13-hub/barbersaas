@@ -42,6 +42,17 @@ public class ClientController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<MyAppointmentDto>>.Ok(list));
     }
 
+    // Fidelidade: programa+saldo+catálogo+meus resgates numa chamada. Programa
+    // desligado → enabled:false e o front esconde a seção.
+    [HttpGet("loyalty")]
+    public async Task<IActionResult> MyLoyalty(CancellationToken ct)
+        => Ok(ApiResponse<MyLoyaltyDto>.Ok(await _mediator.Send(new GetMyLoyaltyQuery(), ct)));
+
+    [HttpPost("loyalty/redeem")]
+    public async Task<IActionResult> Redeem([FromBody] RedeemRewardCommand command, CancellationToken ct)
+        => Ok(ApiResponse<Guid>.Ok(await _mediator.Send(command, ct),
+            "Resgate solicitado! A barbearia foi avisada."));
+
     // Confirma o agendamento reservado no fluxo público (POST /public/{slug}/reserve).
     // Exige perfil completo (nome+CPF) — ver IRequireCompleteClientProfile.
     [HttpPost("appointments")]

@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
   Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone,
-  LifeBuoy, MessagesSquare
+  LifeBuoy, MessagesSquare, Gift
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
@@ -13,6 +13,7 @@ import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
 import { AnnouncementsBell } from '../admin/AnnouncementsBell'
 import { useMySupportMessages } from '../../features/support/supportApi'
+import { useLoyaltyProgram } from '../../features/loyalty/loyaltyApi'
 
 // Um item de navegação é uma folha (link direto) ou um pai com filhos
 // (grupo expansível). Os destinos dos filhos são telas que já existem.
@@ -44,6 +45,12 @@ const navGroups: { label: string | null; items: NavEntry[] }[] = [
   ] },
 ]
 
+// Aba Fidelidade: só entra no menu quando o programa do tenant está LIGADO
+// (LoyaltyProgram.IsEnabled) — desligado, a fidelidade some do painel inteiro.
+const loyaltyLeaf: NavLeaf = { to: '/admin/fidelidade', label: 'Fidelidade', icon: Gift }
+const navGroupsWithLoyalty: { label: string | null; items: NavEntry[] }[] = navGroups.map(g =>
+  g.label === 'Gestão' ? { ...g, items: [g.items[0], loyaltyLeaf, ...g.items.slice(1)] } : g)
+
 // Entradas do super admin (dono do Trimly).
 const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Contas', icon: ShieldCheck }
 const superAdminInvoicesLeaf: NavLeaf = { to: '/super-admin/faturas', label: 'Faturas', icon: Receipt }
@@ -61,7 +68,7 @@ const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
 // Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
 const allLeaves: NavLeaf[] = [
   ...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))),
-  superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf,
+  loyaltyLeaf, superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf,
 ]
 
 // '/admin' casa só na rota exata; os demais casam também em sub-rotas
@@ -118,9 +125,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data: supportMessages } = useMySupportMessages(isOwner)
   const supportUnread = supportMessages?.some(m => m.author === 'superadmin' && !m.readAt) ?? false
 
+  // Programa de fidelidade: decide se a aba aparece. Só owner/admin consultam
+  // (endpoint RequireOwnerOrAdmin; barber levaria 403). Sem programa = desligado.
+  const role = user?.role?.toLowerCase()
+  const canSeeLoyalty = !superAdmin && (role === 'owner' || role === 'admin')
+  const { data: loyaltyProgram } = useLoyaltyProgram(canSeeLoyalty)
+  const loyaltyOn = canSeeLoyalty && !!loyaltyProgram?.isEnabled
+
   // Super admin vê só o menu do Trimly; todos os demais veem o menu da barbearia
-  // exatamente como antes.
-  const groups = superAdmin ? superAdminGroups : navGroups
+  // exatamente como antes (com Fidelidade quando o programa está ligado).
+  const groups = superAdmin ? superAdminGroups : loyaltyOn ? navGroupsWithLoyalty : navGroups
 
   return (
     // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
@@ -240,9 +254,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex-1 lg:flex-none">
             <h1 className="ds-topbar-title">{pageTitle}</h1>
           </div>
-          {/* Avisos do Trimly — só pro dono (o endpoint é RequireOwner; barber/admin
-              levariam 403). Some sozinho quando não há aviso nenhum. */}
-          <AnnouncementsBell enabled={user?.role?.toLowerCase() === 'owner'} />
+          {/* Sino do dono: avisos do Trimly + resgates de fidelidade pendentes
+              (duas fontes agregadas no componente — resgate NÃO é Announcement).
+              Some sozinho quando não há nada. */}
+          <AnnouncementsBell enabled={isOwner} loyaltyEnabled={loyaltyOn} />
         </header>
 
         {/* Content — fade suave a cada troca de página */}

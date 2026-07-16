@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock, Check, Scissors } from 'lucide-react'
+import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock, Check, Scissors, Gift } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, assetUrl } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
@@ -10,6 +10,8 @@ import { NumberField } from '../../components/ui/NumberField'
 import { PublicLinkButtons } from '../../components/admin/PublicLinkButtons'
 import { PhoneField } from '../../components/ui/PhoneField'
 import { brDigitsFromStored, toE164BR } from '../../lib/masks'
+import { useLoyaltyProgram, useUpdateLoyaltyProgram, unitLabel } from '../../features/loyalty/loyaltyApi'
+import type { LoyaltyMode } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
 
 interface BusinessHour { dayOfWeek: number; isOpen: boolean; openTime: string | null; closeTime: string | null }
@@ -27,13 +29,14 @@ interface SettingsForm {
 
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-type Tab = 'aparencia' | 'fotos' | 'identidade' | 'agenda' | 'horarios'
+type Tab = 'aparencia' | 'fotos' | 'identidade' | 'agenda' | 'horarios' | 'fidelidade'
 const tabs = [
   { id: 'aparencia',  label: 'Aparência',  icon: Palette },
   { id: 'fotos',      label: 'Fotos',      icon: ImageIcon },
   { id: 'identidade', label: 'Identidade', icon: Store },
   { id: 'agenda',     label: 'Agenda',     icon: CalendarClock },
   { id: 'horarios',   label: 'Horários',   icon: Clock },
+  { id: 'fidelidade', label: 'Fidelidade', icon: Gift },
 ] as const
 
 const toNum = (v: number | string | undefined): number | undefined =>
@@ -257,6 +260,8 @@ export default function ConfigPage() {
             </SectionCard>
           )}
 
+          {tab === 'fidelidade' && <LoyaltySection />}
+
           {tab === 'horarios' && (
             <SectionCard icon={Clock} title="Horários de funcionamento" desc="Dias e horários em que a barbearia abre — mostrados na página pública.">
               <div className="space-y-2">
@@ -287,6 +292,91 @@ export default function ConfigPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/* ---------- Fidelidade (programa por tenant — salvar próprio, PUT /loyalty/program) ---------- */
+function LoyaltySection() {
+  const { data: program, isLoading } = useLoyaltyProgram()
+  const update = useUpdateLoyaltyProgram()
+
+  const [enabled, setEnabled] = useState(false)
+  const [mode, setMode]       = useState<LoyaltyMode>('Points')
+  const [rate, setRate]       = useState('1')
+
+  useEffect(() => {
+    if (program) {
+      setEnabled(program.isEnabled)
+      setMode(program.mode)
+      setRate(String(program.pointsPerReal))
+    }
+  }, [program])
+
+  const save = async () => {
+    const pointsPerReal = Number(rate.replace(',', '.'))
+    if (mode === 'Points' && (!pointsPerReal || pointsPerReal <= 0)) {
+      toast.error('Informe quantos pontos o cliente ganha por real gasto.')
+      return
+    }
+    try {
+      await update.mutateAsync({ isEnabled: enabled, mode, pointsPerReal: pointsPerReal || 1 })
+      toast.success(enabled ? 'Programa de fidelidade ativado!' : 'Programa de fidelidade salvo.')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao salvar fidelidade.')
+    }
+  }
+
+  if (isLoading)
+    return <div className="flex justify-center py-10"><Loader2 size={22} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
+
+  const exampleEarn = mode === 'Points'
+    ? `Ex.: corte de R$ 45 × ${rate || '1'} = ${Math.floor(45 * (Number(rate.replace(',', '.')) || 0))} ${unitLabel('Points', 2)} (arredonda pra baixo)`
+    : 'Cada atendimento concluído vale 1 corte no cartão do cliente.'
+
+  return (
+    <SectionCard icon={Gift} title="Fidelidade" desc="Recompense clientes que voltam. Com o programa ligado, a aba Fidelidade aparece no menu e os clientes acumulam e resgatam sozinhos na área deles.">
+      <Toggle label="Ativar programa de fidelidade" desc="Desligado, nada de pontos aparece — nem pro cliente, nem no painel." checked={enabled} onChange={setEnabled} />
+
+      {enabled && (
+        <>
+          <div className="ds-field">
+            <label className="ds-label">Como o cliente acumula</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                { id: 'Points', title: 'Por pontos', desc: 'Ganha pontos pelo valor gasto em cada atendimento.' },
+                { id: 'Visits', title: 'Por cortes',  desc: 'Ganha 1 corte por atendimento concluído (cartãozinho).' },
+              ] as const).map(opt => (
+                <button key={opt.id} type="button" onClick={() => setMode(opt.id)}
+                  className="text-left transition-colors ds-hoverable-field"
+                  style={{
+                    borderRadius: 'var(--radius-md)', padding: 'var(--space-4)',
+                    border: mode === opt.id ? '2px solid var(--tenant-primary)' : '1px solid var(--border-subtle)',
+                    background: 'var(--bg-base)', cursor: 'pointer',
+                  }}>
+                  <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{opt.title}</p>
+                  <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {mode === 'Points' && (
+            <div className="ds-field" style={{ maxWidth: 280 }}>
+              <label className="ds-label">Pontos por real gasto</label>
+              <input type="number" inputMode="decimal" min="0.01" step="0.1" className="ds-input"
+                value={rate} onChange={e => setRate(e.target.value)} />
+            </div>
+          )}
+          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{exampleEarn}</p>
+        </>
+      )}
+
+      <div className="pt-2">
+        <Button onClick={save} loading={update.isPending}>
+          {!update.isPending && <Save size={15} />} Salvar fidelidade
+        </Button>
+      </div>
+    </SectionCard>
   )
 }
 

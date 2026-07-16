@@ -53,6 +53,8 @@ public class AppDbContext : DbContext
     public DbSet<LoyaltyProgram>      LoyaltyPrograms      => Set<LoyaltyProgram>();
     public DbSet<LoyaltyWallet>       LoyaltyWallets       => Set<LoyaltyWallet>();
     public DbSet<LoyaltyTransaction>  LoyaltyTransactions  => Set<LoyaltyTransaction>();
+    public DbSet<LoyaltyReward>       LoyaltyRewards       => Set<LoyaltyReward>();
+    public DbSet<LoyaltyRedemption>   LoyaltyRedemptions   => Set<LoyaltyRedemption>();
     public DbSet<Coupon>              Coupons              => Set<Coupon>();
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<NotificationQueue>   NotificationQueue    => Set<NotificationQueue>();
