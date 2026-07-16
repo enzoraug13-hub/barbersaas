@@ -180,6 +180,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Provedor de SMS efetivo no boot — diagnóstico rápido de env var ausente
+// (Sms__SmsDev__ApiKey / Sms__Twilio__AccountSid). LogSmsService fora de
+// Development é modo degradado: o OTP de cliente não chega em ninguém.
+using (var scope = app.Services.CreateScope())
+{
+    var smsProvider = scope.ServiceProvider.GetRequiredService<ISmsService>().GetType().Name;
+    if (smsProvider == nameof(BarberSaaS.Infrastructure.ExternalServices.Sms.LogSmsService) && !app.Environment.IsDevelopment())
+        app.Logger.LogWarning("SMS em modo degradado: nenhum provedor configurado, usando {SmsProvider} — OTP de cliente NÃO será enviado. Configure Sms__SmsDev__ApiKey.", smsProvider);
+    else
+        app.Logger.LogInformation("SMS: provedor registrado = {SmsProvider}", smsProvider);
+}
+
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
