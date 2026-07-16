@@ -12,7 +12,8 @@ public record TenantAccountDto(
     string Status,        // "Active" | "Suspended" — string pra UI não depender do byte
     DateTime CreatedAt,
     string? OwnerName,
-    string? OwnerEmail);
+    string? OwnerEmail,
+    decimal OpenAmount);  // soma das faturas em aberto — 0 = "em dia" na lista
 
 public class ListTenantAccountsHandler : IRequestHandler<ListTenantAccountsQuery, IReadOnlyList<TenantAccountDto>>
 {
@@ -25,6 +26,6 @@ public class ListTenantAccountsHandler : IRequestHandler<ListTenantAccountsQuery
         return rows.Select(r => new TenantAccountDto(
             r.TenantId, r.Name, r.Slug,
             ((Domain.Enums.TenantStatus)r.Status).ToString(),
-            r.CreatedAt, r.OwnerName, r.OwnerEmail)).ToList();
+            r.CreatedAt, r.OwnerName, r.OwnerEmail, r.OpenAmount)).ToList();
     }
 }

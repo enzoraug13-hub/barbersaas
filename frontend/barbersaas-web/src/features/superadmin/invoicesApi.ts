@@ -34,11 +34,14 @@ export interface InvoiceFilters {
   tenantId?: string
 }
 
-// Invalidar faturas invalida também o resumo — os cards e o gráfico do painel
-// derivam das mesmas faturas, e ficariam defasados após marcar uma como paga.
+// Invalidar faturas invalida também o resumo, a lista de contas e o detalhe da
+// barbearia — o "em aberto" da lista e o card financeiro do detalhe derivam das
+// mesmas faturas, e ficariam defasados após criar/pagar/reabrir uma.
 const invalidateBilling = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ['super-admin-invoices'] })
   qc.invalidateQueries({ queryKey: ['super-admin-billing-summary'] })
+  qc.invalidateQueries({ queryKey: ['super-admin-tenants'] })
+  qc.invalidateQueries({ queryKey: ['super-admin-tenant'] })
 }
 
 export const useInvoices = (filters: InvoiceFilters = {}) =>

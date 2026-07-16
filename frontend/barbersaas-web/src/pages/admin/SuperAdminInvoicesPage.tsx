@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react'
-import { Plus, Check, Undo2, Paperclip, ExternalLink, Receipt, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Check, Undo2, Receipt } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
 import {
-  useInvoices, useBillingSummary, useCreateInvoice, useMarkInvoicePaid, useAttachReceipt,
+  useInvoices, useBillingSummary, useCreateInvoice, useMarkInvoicePaid,
   type Invoice, type InvoiceStatus,
 } from '../../features/superadmin/invoicesApi'
 import { useSuperAdminTenants } from '../../features/superadmin/superAdminApi'
@@ -17,10 +17,9 @@ import { Badge } from '../../components/ui/Badge'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { NumberField } from '../../components/ui/NumberField'
-import { uploadImage } from '../../components/ui/ImageField'
+import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButton'
 import { chartAxisTick, chartGridStroke } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
-import { assetUrl } from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -35,46 +34,6 @@ const emptyForm = () => ({
   dueDate: format(new Date(now.getFullYear(), now.getMonth(), 10), 'yyyy-MM-dd'),
   notes: '',
 })
-
-/* ---------- Botão de anexar comprovante (reusa o uploadImage de /uploads) ---------- */
-function ReceiptButton({ invoice }: { invoice: Invoice }) {
-  const attach = useAttachReceipt()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy(true)
-    try {
-      const url = await uploadImage(file)
-      await attach.mutateAsync({ id: invoice.id, receiptUrl: url })
-      toast.success('Comprovante anexado.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao anexar o comprovante.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <>
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onFile} />
-      {invoice.receiptUrl ? (
-        <Button variant="ghost" onClick={() => window.open(assetUrl(invoice.receiptUrl!), '_blank', 'noopener')}
-          style={{ fontSize: 'var(--text-xs)', height: 30 }}>
-          <ExternalLink size={13} /> Comprovante
-        </Button>
-      ) : (
-        <Button variant="ghost" onClick={() => inputRef.current?.click()} disabled={busy}
-          style={{ fontSize: 'var(--text-xs)', height: 30 }}>
-          {busy ? <Loader2 size={13} className="animate-spin" /> : <Paperclip size={13} />} Anexar
-        </Button>
-      )}
-    </>
-  )
-}
 
 export default function SuperAdminInvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all')
@@ -234,7 +193,7 @@ export default function SuperAdminInvoicesPage() {
                         style={{ fontSize: 'var(--text-xs)', height: 30, color: i.status === 'Paid' ? undefined : 'var(--color-success)' }}>
                         {i.status === 'Paid' ? <><Undo2 size={13} /> Reabrir</> : <><Check size={13} /> Marcar paga</>}
                       </Button>
-                      <ReceiptButton invoice={i} />
+                      <InvoiceReceiptButton invoice={i} />
                     </div>
                   </td>
                 </tr>

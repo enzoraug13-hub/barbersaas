@@ -33,7 +33,13 @@ public class SuperAdminRepository : ISuperAdminRepository
                 _db.Users.IgnoreQueryFilters()
                     .Where(u => u.TenantId == t.Id && !u.IsDeleted
                                 && (u.Role == UserRole.Owner || u.Role == UserRole.SuperAdmin))
-                    .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Email).FirstOrDefault()))
+                    .OrderBy(u => u.CreatedAt).Select(u => (string?)u.Email).FirstOrDefault(),
+                // Total em aberto por barbearia — subconsulta correlacionada na MESMA
+                // query (uma ida ao banco pra lista inteira, sem N+1).
+                _db.Invoices.IgnoreQueryFilters()
+                    .Where(i => i.TenantId == t.Id && !i.IsDeleted
+                                && i.Status == InvoiceStatus.Open)
+                    .Sum(i => (decimal?)i.Amount) ?? 0m))
             .ToListAsync(ct);
     }
 

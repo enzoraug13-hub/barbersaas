@@ -33,6 +33,12 @@ public class SuperAdminController : ControllerBase
         => Ok(ApiResponse<IReadOnlyList<TenantAccountDto>>.Ok(
             await _mediator.Send(new ListTenantAccountsQuery(), ct)));
 
+    /// <summary>O "mundo" de uma barbearia: cabeçalho da conta + resumo financeiro histórico.</summary>
+    [HttpGet("tenants/{id:guid}")]
+    public async Task<IActionResult> GetTenant(Guid id, CancellationToken ct)
+        => Ok(ApiResponse<TenantAccountDetailDto>.Ok(
+            await _mediator.Send(new GetTenantAccountQuery(id), ct)));
+
     /// <summary>Criação administrativa: barbearia + dono com senha provisória. Sem trial.</summary>
     [HttpPost("tenants")]
     public async Task<IActionResult> CreateTenant([FromBody] CreateTenantAccountCommand command, CancellationToken ct)

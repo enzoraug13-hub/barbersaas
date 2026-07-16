@@ -9,6 +9,17 @@ export interface TenantAccount {
   createdAt: string
   ownerName: string | null
   ownerEmail: string | null
+  /** Soma das faturas em aberto — 0 = "em dia". */
+  openAmount: number
+}
+
+/** Cabeçalho + resumo financeiro histórico da página de detalhe da barbearia. */
+export interface TenantAccountDetail extends Omit<TenantAccount, 'openAmount'> {
+  totalPaid: number
+  totalOpen: number
+  lastCompetence: string | null // "07/2026" — null se nunca houve fatura
+  lastStatus: 'Open' | 'Paid' | null
+  lastAmount: number | null
 }
 
 export const useSuperAdminTenants = () =>
@@ -18,6 +29,16 @@ export const useSuperAdminTenants = () =>
       const res = await api.get('/super-admin/tenants')
       return res.data.data as TenantAccount[]
     },
+  })
+
+export const useTenantAccount = (id: string | undefined) =>
+  useQuery({
+    queryKey: ['super-admin-tenant', id],
+    queryFn: async () => {
+      const res = await api.get(`/super-admin/tenants/${id}`)
+      return res.data.data as TenantAccountDetail
+    },
+    enabled: !!id,
   })
 
 export const useCreateTenantAccount = () => {
@@ -38,7 +59,11 @@ export const useSetTenantStatus = () => {
       const res = await api.patch(`/super-admin/tenants/${id}/status`, { status })
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['super-admin-tenants'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['super-admin-tenants'] })
+      // Prefixo pega o detalhe de qualquer tenant aberto (a ação também vive lá).
+      qc.invalidateQueries({ queryKey: ['super-admin-tenant'] })
+    },
   })
 }
 

@@ -10,7 +10,8 @@ public record TenantAccountRow(
     byte Status,
     DateTime CreatedAt,
     string? OwnerName,
-    string? OwnerEmail);
+    string? OwnerEmail,
+    decimal OpenAmount);
 
 /// <summary>
 /// ÚNICO ponto do sistema autorizado a consultar dados CRUZANDO tenants — e apenas

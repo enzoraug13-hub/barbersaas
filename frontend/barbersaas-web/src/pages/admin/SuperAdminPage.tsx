@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, KeyRound, ShieldCheck, Ban, CheckCircle2, Copy, Building2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, KeyRound, ShieldCheck, Ban, CheckCircle2, Copy, Building2, ChevronRight } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import {
   useSuperAdminTenants, useCreateTenantAccount, useSetTenantStatus, useResetTenantPassword,
@@ -15,6 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import toast from 'react-hot-toast'
 
 const EMPTY_FORM = { businessName: '', ownerName: '', ownerEmail: '', provisionalPassword: '' }
+const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export default function SuperAdminPage() {
   const { data: tenants, isLoading } = useSuperAdminTenants()
@@ -101,6 +103,7 @@ export default function SuperAdminPage() {
                 <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Barbearia</th>
                 <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Dono</th>
                 <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Status</th>
+                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Financeiro</th>
                 <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Criada em</th>
                 <th style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right' }}>Ações</th>
               </tr>
@@ -109,7 +112,11 @@ export default function SuperAdminPage() {
               {tenants.map(t => (
                 <tr key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <p className="ds-text-primary font-medium">{t.name}</p>
+                    {/* O nome abre o "mundo" da barbearia (detalhe da conta). */}
+                    <Link to={`/super-admin/contas/${t.id}`}
+                      className="ds-text-primary font-medium hover:underline inline-flex items-center gap-1">
+                      {t.name} <ChevronRight size={13} style={{ color: 'var(--text-secondary)' }} />
+                    </Link>
                     <button onClick={() => copyLink(t.slug)} className="flex items-center gap-1 ds-text-secondary hover:underline"
                       style={{ fontSize: 'var(--text-xs)', fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       /b/{t.slug} <Copy size={11} />
@@ -123,6 +130,12 @@ export default function SuperAdminPage() {
                     <Badge variant={t.status === 'Active' ? 'success' : 'error'}>
                       {t.status === 'Active' ? 'Ativa' : 'Suspensa'}
                     </Badge>
+                  </td>
+                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
+                    {/* Bate-olho de cobrança: quem deve aparece em amarelo com o valor. */}
+                    {t.openAmount > 0
+                      ? <Badge variant="warning">{fmt(t.openAmount)} em aberto</Badge>
+                      : <Badge variant="success">Em dia</Badge>}
                   </td>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-secondary">
                     {format(parseISO(t.createdAt), 'dd/MM/yyyy')}

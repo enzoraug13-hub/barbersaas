@@ -23,6 +23,7 @@ import SuperAdminPage from '../pages/admin/SuperAdminPage'
 import SuperAdminInvoicesPage from '../pages/admin/SuperAdminInvoicesPage'
 import SuperAdminAnnouncementsPage from '../pages/admin/SuperAdminAnnouncementsPage'
 import SuperAdminSupportPage from '../pages/admin/SuperAdminSupportPage'
+import SuperAdminTenantDetailPage from '../pages/admin/SuperAdminTenantDetailPage'
 import SupportPage from '../pages/admin/SupportPage'
 import { useAuthStore } from '../store/authStore'
 import { isSuperAdmin } from '../lib/roles'
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
   { path: '/admin/config',       element: <AdminPage><ConfigPage /></AdminPage> },
   { path: '/admin/suporte',      element: <AdminPage><SupportPage /></AdminPage> },
   { path: '/super-admin',         element: <AdminPage><SuperAdminRoute><SuperAdminPage /></SuperAdminRoute></AdminPage> },
+  { path: '/super-admin/contas/:id', element: <AdminPage><SuperAdminRoute><SuperAdminTenantDetailPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/faturas', element: <AdminPage><SuperAdminRoute><SuperAdminInvoicesPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/avisos',  element: <AdminPage><SuperAdminRoute><SuperAdminAnnouncementsPage /></SuperAdminRoute></AdminPage> },
   { path: '/super-admin/mensagens', element: <AdminPage><SuperAdminRoute><SuperAdminSupportPage /></SuperAdminRoute></AdminPage> },
