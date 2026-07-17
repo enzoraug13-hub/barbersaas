@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Trimly" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Manifest: injetado no build pelo vite-plugin-pwa (manifest.webmanifest) -->
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
@@ -20,19 +20,14 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script type="module">
-      // Só registra em produção — em dev o "cache first" do sw.js servia
-      // chunks antigos do Vite depois de cada restart/troca de dependência,
-      // causando o "duas cópias de React" (useContext/useCallback em null).
-      if ('serviceWorker' in navigator) {
-        if (import.meta.env.PROD) {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch(() => {})
-          })
-        } else {
-          // Limpa qualquer SW/cache de sessões anteriores em dev.
-          navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))
-          if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
-        }
+      // O registro do SW em produção é injetado pelo vite-plugin-pwa (autoUpdate),
+      // que publica em /sw.js — mesmo endereço do SW manual antigo, então clientes
+      // com o SW antigo instalado são atualizados na próxima visita.
+      // Em dev o plugin não roda: limpa qualquer SW/cache de sessões anteriores
+      // (o "cache first" antigo servia chunks velhos do Vite → "duas cópias de React").
+      if ('serviceWorker' in navigator && !import.meta.env.PROD) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))
+        if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
       }
     </script>
   </body>
