@@ -7,11 +7,8 @@ import { PhoneField, COUNTRIES } from '../ui/PhoneField'
 import { OtpInput } from '../ui/OtpInput'
 import { isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import toast from 'react-hot-toast'
+import { apiErrorMessage, apiErrorStatus } from '../../lib/apiError'
 
-function apiErrorMessage(e: any, fallback: string): string {
-  if (e?.response?.status === 429) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
-  return e?.response?.data?.errors?.[0] ?? e?.response?.data?.message ?? fallback
-}
 
 /* Cabeçalho com a cara da barbearia — logo real quando existe, ícone genérico
    só como fallback (antes mostrava sempre o ícone, mesmo com logo configurado). */
@@ -97,8 +94,8 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
       if (res.devCode) toast.success(`Código (modo teste): ${res.devCode}`, { duration: 8000 })
       else toast.success('Código enviado por SMS.')
       setStage('otp'); setCode(''); setCodeError(false); setCooldown(59)
-    } catch (e: any) {
-      if (e?.response?.status === 403) setBlocked(apiErrorMessage(e, 'Sua conta está bloqueada.'))
+    } catch (e) {
+      if (apiErrorStatus(e) === 403) setBlocked(apiErrorMessage(e, 'Sua conta está bloqueada.'))
       else toast.error(apiErrorMessage(e, 'Erro ao enviar código.'))
     } finally { setBusy(false) }
   }
@@ -109,8 +106,8 @@ export function PhoneOtpStep({ slug, businessName, logoUrl, businessPhone, expir
       const res = (await publicApi.post('/client-auth/verify-otp', { tenantSlug: slug, phone: fullPhone, code: otp })).data.data
       onVerified(res.accessToken, res.client, res.profileComplete)
       toast.success('Bem-vindo!')
-    } catch (e: any) {
-      if (e?.response?.status === 403) setBlocked(apiErrorMessage(e, 'Sua conta está bloqueada.'))
+    } catch (e) {
+      if (apiErrorStatus(e) === 403) setBlocked(apiErrorMessage(e, 'Sua conta está bloqueada.'))
       else { setCodeError(true); toast.error(apiErrorMessage(e, 'Código inválido.')) }
     } finally { setBusy(false) }
   }

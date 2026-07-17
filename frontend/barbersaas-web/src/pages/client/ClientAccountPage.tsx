@@ -17,6 +17,7 @@ import { formatPhoneBR } from '../../lib/masks'
 import { unitLabel } from '../../features/loyalty/loyaltyApi'
 import type { LoyaltyMode, LoyaltyRedemptionStatus, LoyaltyRewardType } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 // GET /client/loyalty — programa+saldo+catálogo+meus resgates numa chamada.
 interface MyLoyalty {
@@ -26,6 +27,12 @@ interface MyLoyalty {
   totalVisits: number
   rewards: { id: string; name: string; description: string | null; type: LoyaltyRewardType; cost: number }[]
   redemptions: { id: string; rewardName: string; costPaid: number; status: LoyaltyRedemptionStatus; requestedAt: string }[]
+}
+
+// Campos dos agendamentos do cliente usados na listagem.
+interface MyAppointment {
+  id: string; date: string; startTime?: string
+  service: string; barber: string; status: string; finalPrice: number
 }
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -133,7 +140,7 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
   })
   const { data: appts, isLoading } = useQuery({
     queryKey: ['client-appointments', clientId],
-    queryFn: async () => (await clientApi.get('/client/appointments')).data.data as any[],
+    queryFn: async () => (await clientApi.get('/client/appointments')).data.data as MyAppointment[],
   })
   // Fidelidade: com o programa DESLIGADO (enabled:false), nem o chip de pontos
   // nem a seção aparecem — a tela fica exatamente como era antes do programa.
@@ -189,8 +196,8 @@ function LoyaltySection({ loyalty, clientId }: { loyalty: MyLoyalty; clientId?: 
       queryClient.invalidateQueries({ queryKey: ['client-loyalty', clientId] })
       toast.success('Resgate solicitado! Mostre na barbearia pra retirar.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Não foi possível resgatar.'),
+    onError: (err) =>
+      toast.error(apiErrorMessage(err, 'Não foi possível resgatar.')),
   })
 
   const unit = (n: number) => unitLabel(loyalty.mode, n)
@@ -261,7 +268,7 @@ function LoyaltySection({ loyalty, clientId }: { loyalty: MyLoyalty; clientId?: 
 }
 
 /* ================= Agendamentos ================= */
-function Appointments({ appts, isLoading, slug }: { appts?: any[]; isLoading: boolean; slug: string }) {
+function Appointments({ appts, isLoading, slug }: { appts?: MyAppointment[]; isLoading: boolean; slug: string }) {
   return (
     <>
       {/* Agendamentos */}

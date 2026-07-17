@@ -21,6 +21,7 @@ import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButto
 import { chartAxisTick, chartGridStroke } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
@@ -63,8 +64,8 @@ export default function SuperAdminInvoicesPage() {
       })
       toast.success('Fatura criada.')
       setShowCreate(false); setForm(emptyForm())
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao criar a fatura.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao criar a fatura.'))
     }
   }
 
@@ -73,8 +74,8 @@ export default function SuperAdminInvoicesPage() {
     try {
       await markPaid.mutateAsync({ id: i.id, paid })
       toast.success(paid ? 'Fatura marcada como paga.' : 'Fatura reaberta.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao alterar a fatura.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao alterar a fatura.'))
     }
   }
 

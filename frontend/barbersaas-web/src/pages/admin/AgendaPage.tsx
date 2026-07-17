@@ -15,6 +15,7 @@ import { PhoneField } from '../../components/ui/PhoneField'
 import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Appointment } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const PAYMENT_METHODS = [
   { value: 0, label: 'Dinheiro' },
@@ -91,8 +92,8 @@ export default function AgendaPage() {
       toast.success('Agendamento criado!')
       setShowNew(false)
       setNewAppt(EMPTY_APPT)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao criar agendamento.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao criar agendamento.'))
     }
   }
 

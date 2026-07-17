@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button'
 import { PhoneField } from '../../components/ui/PhoneField'
 import { toE164BR, isValidBRPhone, onlyDigits, maskCPF, maskCNPJ, isValidCPF, isValidCNPJ } from '../../lib/masks'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 type PersonType = 'PF' | 'PJ'
 
@@ -61,8 +62,8 @@ export default function RegisterPage() {
       }
       toast.success('Barbearia criada! Bem-vindo!')
       navigate('/admin')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao criar barbearia.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao criar barbearia.'))
     }
   }
 

@@ -12,6 +12,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -47,8 +48,8 @@ export default function SuperAdminSupportPage() {
     try {
       await reply.mutateAsync({ tenantId: selected, body: body.trim() })
       setBody('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao enviar a resposta.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao enviar a resposta.'))
     }
   }
 

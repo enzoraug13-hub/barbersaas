@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { uploadImage } from '../ui/ImageField'
 import { assetUrl } from '../../lib/api'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 /**
  * Anexar/ver comprovante de uma fatura (reusa o uploadImage de /uploads).
@@ -24,8 +25,8 @@ export function InvoiceReceiptButton({ invoice }: { invoice: Invoice }) {
       const url = await uploadImage(file)
       await attach.mutateAsync({ id: invoice.id, receiptUrl: url })
       toast.success('Comprovante anexado.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao anexar o comprovante.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao anexar o comprovante.'))
     } finally {
       setBusy(false)
     }

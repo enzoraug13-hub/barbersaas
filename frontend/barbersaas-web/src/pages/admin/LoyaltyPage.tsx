@@ -18,6 +18,7 @@ import { useProducts } from '../../features/products/productsApi'
 import { formatPhoneBR } from '../../lib/masks'
 import type { Service, Product } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -83,8 +84,8 @@ function RedemptionsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
     try {
       await resolve.mutateAsync({ id, deliver })
       toast.success(deliver ? 'Resgate entregue!' : 'Resgate cancelado — pontos devolvidos.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao resolver o resgate.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao resolver o resgate.'))
     }
   }
 
@@ -176,8 +177,8 @@ function RewardsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
       await save.mutateAsync(editing)
       toast.success(editing.id ? 'Recompensa atualizada.' : 'Recompensa criada!')
       setEditing(null)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao salvar recompensa.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao salvar recompensa.'))
     }
   }
 

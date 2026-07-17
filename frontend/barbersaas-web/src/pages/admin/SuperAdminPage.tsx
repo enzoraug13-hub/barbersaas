@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const EMPTY_FORM = { businessName: '', ownerName: '', ownerEmail: '', provisionalPassword: '' }
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -44,8 +45,8 @@ export default function SuperAdminPage() {
       })
       toast.success(`Conta criada — slug: ${res.slug}`)
       setShowCreate(false); setForm(EMPTY_FORM)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao criar a conta.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao criar a conta.'))
     }
   }
 
@@ -56,8 +57,8 @@ export default function SuperAdminPage() {
     try {
       await setStatus.mutateAsync({ id: t.id, status: next })
       toast.success(next === 'Suspended' ? 'Conta suspensa.' : 'Conta reativada.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao alterar o status.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao alterar o status.'))
     }
   }
 
@@ -69,8 +70,8 @@ export default function SuperAdminPage() {
       await resetPass.mutateAsync({ id: resetTarget.id, newPassword })
       toast.success(`Senha do dono de "${resetTarget.name}" redefinida.`)
       setResetTarget(null); setNewPassword('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao redefinir a senha.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao redefinir a senha.'))
     }
   }
 

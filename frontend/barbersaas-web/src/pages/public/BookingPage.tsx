@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User, MapPin, Calendar as CalendarIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { publicApi, assetUrl } from '../../lib/api'
 import { usePublicBarbers } from '../../features/barbers/barbersApi'
@@ -15,6 +16,7 @@ import type { TenantPublicInfo, Barber, Service } from '../../types'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phone' | 'profile' | 'done'
 // Identificação (OTP) é a PRIMEIRA etapa: o cliente só escolhe barbeiro/serviço/
@@ -22,6 +24,9 @@ type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phon
 // mostra a 1ª etapa preenchida = "identificado"). 'profile' (cadastro de telefone
 // novo) fica fora da barra, entre 'phone' e 'barber'.
 const MAIN_STEPS: Step[] = ['phone', 'barber', 'service', 'date', 'slots', 'confirm']
+
+// Campos do agendamento confirmado exibidos na tela de sucesso.
+interface BookingResult { barberName: string; serviceName: string; date: string; startTime: string }
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 /* ---- Estados de carregamento (skeleton com shimmer) ---- */
@@ -45,7 +50,7 @@ const GridSkeleton = ({ cells = 9, h = 'h-12' }: { cells?: number; h?: string })
 )
 
 /* ---- Estado vazio (ícone + texto) ---- */
-const EmptyState = ({ icon: Icon, text }: { icon: any; text: string }) => (
+const EmptyState = ({ icon: Icon, text }: { icon: LucideIcon; text: string }) => (
   <div className="ds-card text-center py-10 animate-fade-in">
     <Icon size={34} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
     <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{text}</p>
@@ -66,7 +71,7 @@ export default function BookingPage() {
   const [date, setDate]         = useState('')
   const [slot, setSlot]         = useState('')
   const [reservation, setReservation] = useState<{ id: string; expiresAtUtc: string } | null>(null)
-  const [result, setResult]     = useState<any>(null)
+  const [result, setResult]     = useState<BookingResult | null>(null)
 
   // loggedIn aqui SEMPRE exige cadastro completo (useClientSession) — token
   // sozinho nunca conta como logado.
@@ -105,8 +110,8 @@ export default function BookingPage() {
       setResult(res)
       setReservation(null)
       setStep('done')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Não foi possível confirmar. Escolha o horário de novo.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Não foi possível confirmar. Escolha o horário de novo.'))
       setReservation(null)
       setStep('slots')
     }
@@ -120,8 +125,8 @@ export default function BookingPage() {
       // rede de segurança para sessão expirada no meio do caminho.
       if (loggedIn) await finalizeBooking(res.reservationId)
       else setStep('phone')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Esse horário acabou de ser reservado por outra pessoa.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Esse horário acabou de ser reservado por outra pessoa.'))
       setStep('slots')
     }
   }
@@ -142,7 +147,7 @@ export default function BookingPage() {
   }
 
   const back = () => {
-    const i = MAIN_STEPS.indexOf(step as any)
+    const i = MAIN_STEPS.indexOf(step)
     if (i > 0) setStep(MAIN_STEPS[i - 1])
   }
 

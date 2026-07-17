@@ -12,6 +12,7 @@ import { PhoneField } from '../../components/ui/PhoneField'
 import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Client } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 export default function ClientsPage() {
   const [search, setSearch]       = useState('')
@@ -43,8 +44,8 @@ export default function ClientsPage() {
       toast.success('Cliente cadastrado!')
       setShowForm(false)
       setForm({ name: '', phone: '', email: '' })
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao cadastrar cliente.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao cadastrar cliente.'))
     }
   }
 

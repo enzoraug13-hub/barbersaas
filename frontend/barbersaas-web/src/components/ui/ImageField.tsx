@@ -3,12 +3,13 @@ import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
 import { api, assetUrl } from '../../lib/api'
 import { Button } from './Button'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 // Sobe a imagem para /uploads e devolve a URL pública.
 export async function uploadImage(file: File): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
-  const res = await api.post('/uploads', fd, { headers: { 'Content-Type': undefined } as any })
+  const res = await api.post('/uploads', fd, { headers: { 'Content-Type': undefined } })
   return res.data.data.url as string
 }
 
@@ -24,7 +25,7 @@ export function ImageField({ label, hint, value, onChange, tall }: {
   const send = async (file: File) => {
     setBusy(true)
     try { onChange(await uploadImage(file)); toast.success('Imagem enviada — clique em Salvar para aplicar.') }
-    catch (err: any) { toast.error(err?.response?.data?.message ?? 'Erro ao enviar imagem.') }
+    catch (err) { toast.error(apiErrorMessage(err, 'Erro ao enviar imagem.')) }
     finally { setBusy(false) }
   }
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {

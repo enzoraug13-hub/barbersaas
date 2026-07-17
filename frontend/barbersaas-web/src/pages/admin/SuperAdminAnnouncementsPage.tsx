@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
 
@@ -40,8 +41,8 @@ export default function SuperAdminAnnouncementsPage() {
       })
       toast.success('Aviso publicado.')
       setForm(emptyForm())
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao publicar o aviso.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao publicar o aviso.'))
     }
   }
 
@@ -50,8 +51,8 @@ export default function SuperAdminAnnouncementsPage() {
     try {
       await remove.mutateAsync(a.id)
       toast.success('Aviso removido.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao remover o aviso.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao remover o aviso.'))
     }
   }
 

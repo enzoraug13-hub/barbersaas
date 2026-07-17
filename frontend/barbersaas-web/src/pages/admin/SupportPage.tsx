@@ -9,6 +9,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Skeleton } from '../../components/ui/Skeleton'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -44,8 +45,8 @@ export default function SupportPage() {
     try {
       await send.mutateAsync(body.trim())
       setBody('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao enviar a mensagem.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao enviar a mensagem.'))
     }
   }
 

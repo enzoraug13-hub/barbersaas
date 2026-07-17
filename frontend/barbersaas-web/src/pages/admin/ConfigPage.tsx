@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock, Check, Scissors, Gift } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, assetUrl } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
@@ -13,6 +14,7 @@ import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import { useLoyaltyProgram, useUpdateLoyaltyProgram, unitLabel } from '../../features/loyalty/loyaltyApi'
 import type { LoyaltyMode } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 interface BusinessHour { dayOfWeek: number; isOpen: boolean; openTime: string | null; closeTime: string | null }
 
@@ -53,7 +55,7 @@ function fgFor(hex?: string): string {
 }
 
 function SectionCard({ icon: Icon, title, desc, children }: {
-  icon: any; title: string; desc?: string; children: React.ReactNode
+  icon: LucideIcon; title: string; desc?: string; children: React.ReactNode
 }) {
   return (
     <Card className="space-y-5" style={{ padding: 'var(--space-6)' }}>
@@ -159,7 +161,7 @@ export default function ConfigPage() {
 
   const set = (k: keyof SettingsForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
-  const setVal = (k: keyof SettingsForm, v: any) => setForm(f => ({ ...f, [k]: v }))
+  const setVal = (k: keyof SettingsForm, v: SettingsForm[keyof SettingsForm]) => setForm(f => ({ ...f, [k]: v }))
 
   if (isLoading)
     return <div className="flex justify-center py-20"><Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
@@ -321,8 +323,8 @@ function LoyaltySection() {
     try {
       await update.mutateAsync({ isEnabled: enabled, mode, pointsPerReal: pointsPerReal || 1 })
       toast.success(enabled ? 'Programa de fidelidade ativado!' : 'Programa de fidelidade salvo.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao salvar fidelidade.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao salvar fidelidade.'))
     }
   }
 

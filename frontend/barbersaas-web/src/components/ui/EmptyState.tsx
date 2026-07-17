@@ -1,8 +1,9 @@
+import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 /* Estado vazio padronizado: ícone + título + dica (+ ação opcional). */
 export function EmptyState({ icon: Icon, title, hint, action, className = '' }: {
-  icon: any; title: string; hint?: string; action?: ReactNode; className?: string
+  icon: LucideIcon; title: string; hint?: string; action?: ReactNode; className?: string
 }) {
   return (
     <div className={`ds-card ds-empty-state ${className}`}>

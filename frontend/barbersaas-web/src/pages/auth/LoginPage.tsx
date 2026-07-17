@@ -6,6 +6,7 @@ import { homeRouteFor } from '../../lib/roles'
 import { Button } from '../../components/ui/Button'
 import { RainCanvas } from '../../components/ui/RainCanvas'
 import facade from '../../assets/login-facade.jpg'
+import { apiErrorMessage, apiErrorStatus } from '../../lib/apiError'
 
 /* Cena cinematográfica: fachada da barbearia à noite (asset local otimizado) +
    chuva leve em canvas + brilho pulsante de letreiro + card de vidro fosco.
@@ -28,11 +29,11 @@ export default function LoginPage() {
       // risco de ler o estado anterior.
       const data = await login.mutateAsync(form)
       navigate(homeRouteFor(data?.user?.role))
-    } catch (err: any) {
+    } catch (err) {
       // Sem resposta = problema de rede; com resposta, usa a mensagem do backend
       // (cobre bloqueio temporário e confirmação de e-mail pendente).
-      if (!err?.response) setError('Sem conexão com o servidor. Verifique sua internet e tente novamente.')
-      else setError(err.response?.data?.errors?.[0] ?? 'E-mail ou senha incorretos.')
+      if (apiErrorStatus(err) === undefined) setError('Sem conexão com o servidor. Verifique sua internet e tente novamente.')
+      else setError(apiErrorMessage(err, 'E-mail ou senha incorretos.'))
     }
   }
 

@@ -26,6 +26,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { NumberField } from '../../components/ui/NumberField'
 import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButton'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
@@ -93,8 +94,8 @@ export default function SuperAdminTenantDetailPage() {
     try {
       await setStatus.mutateAsync({ id, status: next })
       toast.success(next === 'Suspended' ? 'Conta suspensa.' : 'Conta reativada.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao alterar o status.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao alterar o status.'))
     }
   }
 
@@ -106,8 +107,8 @@ export default function SuperAdminTenantDetailPage() {
       await resetPass.mutateAsync({ id, newPassword })
       toast.success('Senha do dono redefinida.')
       setShowReset(false); setNewPassword('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao redefinir a senha.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao redefinir a senha.'))
     }
   }
 
@@ -126,8 +127,8 @@ export default function SuperAdminTenantDetailPage() {
       })
       toast.success('Fatura criada.')
       setShowCreate(false); setForm(emptyInvoiceForm())
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao criar a fatura.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao criar a fatura.'))
     }
   }
 
@@ -136,8 +137,8 @@ export default function SuperAdminTenantDetailPage() {
     try {
       await markPaid.mutateAsync({ id: i.id, paid })
       toast.success(paid ? 'Fatura marcada como paga.' : 'Fatura reaberta.')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao alterar a fatura.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao alterar a fatura.'))
     }
   }
 
@@ -148,8 +149,8 @@ export default function SuperAdminTenantDetailPage() {
     try {
       await reply.mutateAsync({ tenantId: id, body: replyBody.trim() })
       setReplyBody('')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.errors?.[0] ?? 'Erro ao enviar a resposta.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao enviar a resposta.'))
     }
   }
 

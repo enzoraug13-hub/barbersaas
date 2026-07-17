@@ -8,11 +8,8 @@ import { CpfField } from '../ui/CpfField'
 import { ClientFlowHeader } from './PhoneOtpStep'
 import { isValidCPF } from '../../lib/masks'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
-function apiErrorMessage(e: any, fallback: string): string {
-  if (e?.response?.status === 429) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
-  return e?.response?.data?.errors?.[0] ?? e?.response?.data?.message ?? fallback
-}
 
 /* Completa o cadastro (só o que falta) — compartilhado entre "Minha conta" e
    o agendamento (cliente novo, depois do OTP). */
@@ -56,7 +53,7 @@ export function CompleteProfileStep({ client, logoUrl, businessName, subtitle, o
       // cliente fica travado na tela mesmo depois de salvar com sucesso.
       await queryClient.invalidateQueries({ queryKey: ['client-me'] })
       toast.success('Perfil atualizado!')
-    } catch (e: any) {
+    } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao salvar perfil.'))
     } finally { setBusy(false) }
   }

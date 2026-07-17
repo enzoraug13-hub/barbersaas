@@ -9,6 +9,7 @@ import { NumberField } from '../ui/NumberField'
 import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
 // Modal de edição do barbeiro (Parte C). Reusado na lista (BarbersPage) e no perfil (Parte D).
 export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: () => void }) {
@@ -52,8 +53,8 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
       setSaved(true)
       toast.success('Barbeiro atualizado!')
       setTimeout(onClose, 800)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? 'Erro ao salvar.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao salvar.'))
     }
   }
 
