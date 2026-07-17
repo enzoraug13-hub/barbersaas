@@ -35,8 +35,12 @@ public class CreateTransactionValidator : AbstractValidator<CreateTransactionCom
 public class CreateTransactionHandler : IRequestHandler<CreateTransactionCommand, TransactionDto>
 {
     private readonly IFinancialRepository _financial;
+    private readonly ICacheService _cache;
 
-    public CreateTransactionHandler(IFinancialRepository financial) => _financial = financial;
+    public CreateTransactionHandler(IFinancialRepository financial, ICacheService cache)
+    {
+        _financial = financial; _cache = cache;
+    }
 
     public async Task<TransactionDto> Handle(CreateTransactionCommand request, CancellationToken ct)
     {
@@ -54,6 +58,12 @@ public class CreateTransactionHandler : IRequestHandler<CreateTransactionCommand
             Notes           = request.Notes
         };
         await _financial.AddAsync(tx, ct);
+
+        // Mesmo motivo do AppointmentCompletedFinancialHandler/Backfill: o resumo do
+        // dashboard fica 5 min em cache — sem limpar, o lançamento manual (ex.: despesa)
+        // não aparece nos números até o TTL vencer.
+        await _cache.RemoveByPatternAsync($"dashboard:{request.TenantId}:*");
+
         return new TransactionDto(tx.Id, tx.Type, tx.Category, tx.Description, tx.Amount, tx.PaidAmount, tx.Status, tx.DueDate, tx.TransactionDate);
     }
 }

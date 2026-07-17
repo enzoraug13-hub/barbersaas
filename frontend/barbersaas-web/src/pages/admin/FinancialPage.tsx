@@ -78,6 +78,12 @@ export default function FinancialPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['financial'] })
       qc.invalidateQueries({ queryKey: ['financial-summary'] })
+      // O Dashboard lê as mesmas transações por outras chaves — sem invalidar,
+      // a despesa criada só aparecia lá depois do staleTime (números "velhos").
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-monthly'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-by-barber'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-payment-methods'] })
       toast.success('Lançamento criado!'); setShowForm(false)
     },
     onError: () => toast.error('Erro ao criar lançamento.')
