@@ -1,12 +1,2 @@
-<!-- Marca do Trimly: tesoura dourada sobre o fundo do app (#030712) — mesma
-     identidade dos ícones do PWA (icon-192/512.png) e da sidebar. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <rect width="48" height="48" rx="9" fill="#030712"/>
-  <g transform="translate(11.5 11.5) scale(1.042)" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="6" cy="6" r="3"/>
-    <path d="M8.12 8.12 12 12"/>
-    <path d="M20 4 8.12 15.88"/>
-    <circle cx="6" cy="18" r="3"/>
-    <path d="M14.8 14.8 20 20"/>
-  </g>
-</svg>
+<!-- Marca do Trimly: o "t" do logotipo com o corte diagonal, sobre o azul-petróleo. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0F4C5C"/><path fill="#FFFFFF" d="M26.4 40.3Q24.2 40.3 22.7 39.6Q21.2 39 20.4 37.7Q19.7 36.3 19.7 34.3V21.6H16.8V16.2H19.9L21.4 9.3H27V16.2H31.2V21.6H27V32.4Q27 33.6 27.4 34.3Q27.9 34.9 29 34.9H31.2V39.5Q30.6 39.8 29.7 39.9Q28.8 40.1 28 40.2Q27.1 40.3 26.4 40.3Z"/><path fill="#0F4C5C" d="M12 33.9L36 25.9L36 28.9L12 36.9Z"/></svg>

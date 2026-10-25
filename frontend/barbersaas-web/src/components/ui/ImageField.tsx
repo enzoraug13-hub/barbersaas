@@ -1,21 +1,14 @@
 import { useState, useRef } from 'react'
-import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
-import { api, assetUrl } from '../../lib/api'
+import { ImageUp, Loader2 } from 'lucide-react'
+import { assetUrl } from '../../lib/api'
+import { uploadImage } from '../../lib/upload'
 import { Button } from './Button'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 
-// Sobe a imagem para /uploads e devolve a URL pública.
-export async function uploadImage(file: File): Promise<string> {
-  const fd = new FormData()
-  fd.append('file', file)
-  const res = await api.post('/uploads', fd, { headers: { 'Content-Type': undefined } })
-  return res.data.data.url as string
-}
-
-/* ---------- Campo de upload de imagem (preview + trocar + remover) ---------- */
-export function ImageField({ label, hint, value, onChange, tall }: {
-  label: string; hint?: string; value?: string; onChange: (url: string) => void; tall?: boolean
+/* ---------- Campo de imagem: prévia + trocar + remover (arrastar e soltar) ---------- */
+export function ImageField({ label, hint, value, onChange, tall, round }: {
+  label: string; hint?: string; value?: string; onChange: (url: string) => void; tall?: boolean; round?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -24,8 +17,8 @@ export function ImageField({ label, hint, value, onChange, tall }: {
   const pick = () => inputRef.current?.click()
   const send = async (file: File) => {
     setBusy(true)
-    try { onChange(await uploadImage(file)); toast.success('Imagem enviada — clique em Salvar para aplicar.') }
-    catch (err) { toast.error(apiErrorMessage(err, 'Erro ao enviar imagem.')) }
+    try { onChange(await uploadImage(file)); toast.success('Imagem enviada. Salve para aplicar.') }
+    catch (err) { toast.error(apiErrorMessage(err, 'Não foi possível enviar a imagem.')) }
     finally { setBusy(false) }
   }
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,35 +32,42 @@ export function ImageField({ label, hint, value, onChange, tall }: {
     const file = e.dataTransfer.files?.[0]
     if (file?.type.startsWith('image/')) await send(file)
   }
-  const dragHandlers = {
+  const drag = {
     onDragOver: (e: React.DragEvent<HTMLElement>) => { e.preventDefault(); setDragOver(true) },
     onDragLeave: () => setDragOver(false),
     onDrop,
   }
 
-  const boxStyle: React.CSSProperties = { width: '100%', height: tall ? 144 : 112, borderRadius: 'var(--radius-md)' }
+  const h = tall ? 148 : 112
 
   return (
     <div className="ds-field">
-      {label && <label className="ds-label">{label}</label>}
+      <span className="ds-label">{label}</span>
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onFile} />
       {value ? (
-        <div className="relative group" {...dragHandlers}>
-          <img src={assetUrl(value)} alt={label} style={{ ...boxStyle, objectFit: 'cover', border: `1px solid ${dragOver ? 'var(--accent)' : 'var(--border-default)'}`, background: 'var(--bg-elevated)' }} />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-md)' }}>
-            <Button type="button" variant="ghost" onClick={pick} loading={busy} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}>{!busy && <Upload size={13} />} Trocar</Button>
-            <Button type="button" variant="danger" onClick={() => onChange('')} style={{ fontSize: 'var(--text-xs)', height: 32, padding: '0 var(--space-3)' }}><X size={13} /> Remover</Button>
+        <div className="flex items-center gap-3" {...drag}>
+          <img src={assetUrl(value)} alt={label}
+            className="object-cover flex-shrink-0 border border-line bg-surface-2"
+            style={{ width: round ? 72 : tall ? 168 : 96, height: round ? 72 : tall ? 96 : 96, borderRadius: round ? '50%' : 8 }} />
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" size="sm" onClick={pick} loading={busy}>Trocar imagem</Button>
+            <Button variant="danger-ghost" size="sm" onClick={() => onChange('')}>Remover</Button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={pick} disabled={busy} {...dragHandlers}
-          className="w-full flex flex-col items-center justify-center gap-1 transition-colors"
-          style={{ ...boxStyle, border: `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border-default)'}`, background: dragOver ? 'var(--accent-soft)' : 'none', color: 'var(--text-disabled)', cursor: 'pointer' }}>
-          {busy ? <Loader2 size={20} className="animate-spin" style={{ color: 'var(--accent)' }} /> : <ImageIcon size={22} />}
-          <span style={{ fontSize: 'var(--text-xs)' }}>{busy ? 'Enviando…' : dragOver ? 'Solte a imagem aqui' : 'Clique ou arraste a imagem aqui'}</span>
+        <button type="button" onClick={pick} disabled={busy} {...drag}
+          className="w-full flex flex-col items-center justify-center gap-1.5 rounded-control text-13 text-ink-2 transition-colors"
+          style={{
+            height: h,
+            border: `1px dashed ${dragOver ? 'var(--accent-ink)' : 'var(--line-strong)'}`,
+            background: dragOver ? 'var(--accent-soft)' : 'var(--surface-2)',
+          }}>
+          {busy ? <Loader2 size={20} className="animate-spin" /> : <ImageUp size={20} strokeWidth={1.75} />}
+          <span>{busy ? 'Enviando…' : dragOver ? 'Solte a imagem aqui' : 'Escolher imagem'}</span>
+          {!busy && !dragOver && <span className="text-xs text-ink-3">ou arraste o arquivo para cá</span>}
         </button>
       )}
-      {hint && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{hint}</p>}
+      {hint && <p className="ds-hint">{hint}</p>}
     </div>
   )
 }

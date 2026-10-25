@@ -1,122 +1,38 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Loader2, User, Clock, ToggleLeft, ToggleRight, X, Pencil, ChevronRight } from 'lucide-react'
-import { ListSkeleton } from '../../components/ui/Skeleton'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { Card } from '../../components/ui/Card'
+import { useNavigate, Link } from 'react-router-dom'
+import { Plus, Scissors, ChevronRight, Clock, Pencil } from 'lucide-react'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
+import { Input, Select, Textarea, Field } from '../../components/ui/Input'
+import { Pill } from '../../components/ui/Badge'
+import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
-import { EditBarberModal } from '../../components/admin/EditBarberModal'
-import { useBarbers, useCreateBarber, useToggleBarber, useBarberSchedule, useUpdateSchedule } from '../../features/barbers/barbersApi'
-import { assetUrl } from '../../lib/api'
+import { Switch, SwitchRow } from '../../components/ui/Controls'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ListSkeleton } from '../../components/ui/Skeleton'
 import { PhoneField } from '../../components/ui/PhoneField'
 import { NumberField } from '../../components/ui/NumberField'
+import { EditBarberModal } from '../../components/admin/EditBarberModal'
+import { ScheduleModal } from '../../components/admin/ScheduleModal'
+import { useBarbers, useCreateBarber, useToggleBarber } from '../../features/barbers/barbersApi'
+import { useIsDesktop } from '../../lib/useMediaQuery'
 import { toE164BR, formatPhoneBR } from '../../lib/masks'
+import { payModel } from '../../lib/barber'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
-const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-
-const DEFAULT_SHIFTS = [1,2,3,4,5].flatMap(d => [
-  { dayOfWeek: d, startTime: '09:00', endTime: '12:00', isActive: true },
-  { dayOfWeek: d, startTime: '13:00', endTime: '19:00', isActive: true },
-])
-
-function ScheduleModal({ barber, onClose }: { barber: Barber; onClose: () => void }) {
-  const { data: schedule, isLoading } = useBarberSchedule(barber.id)
-  const update = useUpdateSchedule(barber.id)
-  const [shifts, setShifts] = useState<Array<{ dayOfWeek: number; startTime: string; endTime: string; isActive: boolean }> | null>(null)
-
-  const currentShifts = shifts ?? (schedule?.shifts ?? DEFAULT_SHIFTS)
-
-  const updateShift = (idx: number, field: string, value: string | boolean) =>
-    setShifts(currentShifts.map((s, i) => i === idx ? { ...s, [field]: value } : s))
-
-  const addShift = (dayOfWeek: number) =>
-    setShifts([...currentShifts, { dayOfWeek, startTime: '09:00', endTime: '18:00', isActive: true }])
-
-  const removeShift = (idx: number) =>
-    setShifts(currentShifts.filter((_, i) => i !== idx))
-
-  const handleSave = async () => {
-    try {
-      await update.mutateAsync(currentShifts)
-      toast.success('Horários salvos!')
-      onClose()
-    } catch { toast.error('Erro ao salvar horários.') }
-  }
-
-  const byDay = DAYS.map((_, d) => currentShifts.filter(s => s.dayOfWeek === d))
-
-  return (
-    <Modal isOpen onClose={onClose} title={`Horários — ${barber.name}`} subtitle="Configure os turnos de trabalho"
-      panelClassName="max-w-2xl" panelStyle={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-      {isLoading ? (
-        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
-      ) : (
-        <div className="overflow-y-auto flex-1 space-y-4 pr-1">
-          {DAYS.map((dayName, day) => (
-            <div key={day} style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{dayName}</span>
-                <button onClick={() => addShift(day)} className="ds-text-accent flex items-center gap-1" style={{ fontSize: 'var(--text-xs)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                  <Plus size={12} /> Turno
-                </button>
-              </div>
-
-              {byDay[day].length === 0 ? (
-                <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>Folga / sem atendimento</p>
-              ) : (
-                <div className="space-y-2">
-                  {byDay[day].map((shift) => {
-                    const globalIdx = currentShifts.indexOf(shift)
-                    return (
-                      <div key={globalIdx} className="flex items-center gap-2" style={{ opacity: shift.isActive ? 1 : 0.5 }}>
-                        <input
-                          type="checkbox"
-                          checked={shift.isActive}
-                          onChange={e => updateShift(globalIdx, 'isActive', e.target.checked)}
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ accentColor: 'var(--accent)' }}
-                        />
-                        <input type="time" className="ds-input flex-shrink-0" style={{ width: 112, height: 32, fontSize: 'var(--text-sm)' }}
-                          value={shift.startTime}
-                          onChange={e => updateShift(globalIdx, 'startTime', e.target.value)} />
-                        <span className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>→</span>
-                        <input type="time" className="ds-input flex-shrink-0" style={{ width: 112, height: 32, fontSize: 'var(--text-sm)' }}
-                          value={shift.endTime}
-                          onChange={e => updateShift(globalIdx, 'endTime', e.target.value)} />
-                        <button onClick={() => removeShift(globalIdx)} className="ml-auto flex-shrink-0" style={{ color: 'var(--text-disabled)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex gap-3 mt-4 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-        <Button variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
-        <Button className="flex-1" onClick={handleSave} loading={update.isPending}>Salvar Horários</Button>
-      </div>
-    </Modal>
-  )
-}
+const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, chairRentEnabled: false, chairRentAmount: 0, chairRentPeriod: 1 }
 
 export default function BarbersPage() {
   const navigate = useNavigate()
+  const desktop = useIsDesktop()
   const { data: barbers, isLoading } = useBarbers()
   const create = useCreateBarber()
   const toggle = useToggleBarber()
   const [showForm, setShowForm] = useState(false)
   const [scheduleBarber, setScheduleBarber] = useState<Barber | null>(null)
   const [editBarber, setEditBarber] = useState<Barber | null>(null)
-  // Google Calendar não entra mais aqui: a conexão é por OAuth no perfil do barbeiro.
-  const EMPTY_FORM = { name: '', phone: '', bio: '', commissionType: 0, commissionValue: 50, chairRentEnabled: false, chairRentAmount: 0, chairRentPeriod: 1 }
   const [form, setForm] = useState(EMPTY_FORM)
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -129,136 +45,133 @@ export default function BarbersPage() {
         chairRentAmount: chairRentEnabled && chairRentAmount > 0 ? chairRentAmount : null,
         chairRentPeriod: chairRentEnabled && chairRentAmount > 0 ? chairRentPeriod : null,
       })
-      toast.success('Barbeiro cadastrado!')
+      toast.success('Barbeiro cadastrado.')
       setShowForm(false)
       setForm(EMPTY_FORM)
-    } catch { toast.error('Erro ao cadastrar.') }
+    } catch (err) { toast.error(apiErrorMessage(err, 'Não foi possível cadastrar.')) }
   }
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [k]: k === 'commissionType' ? +e.target.value : e.target.value }))
+  const onToggle = (b: Barber) =>
+    toggle.mutate(b.id, {
+      onSuccess: () => toast.success(b.isActive ? `${b.name} desativado.` : `${b.name} ativado.`),
+      onError: () => toast.error('Não foi possível alterar o status.'),
+    })
+
+  const sorted = [...(barbers ?? [])].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.displayOrder - b.displayOrder)
+  const activeCount = sorted.filter(b => b.isActive).length
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="ds-page-title">Barbeiros</h2>
-        <Button onClick={() => setShowForm(true)}><Plus size={18} /> Novo Barbeiro</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Barbeiros"
+        subtitle={barbers ? `${activeCount} ${activeCount === 1 ? 'ativo' : 'ativos'} na equipe` : undefined}
+        actions={<Button onClick={() => { setForm(EMPTY_FORM); setShowForm(true) }}><Plus size={16} /> <span className="lbl-long">Novo barbeiro</span><span className="lbl-short">Novo</span></Button>} />
 
-      {isLoading ? (
-        <ListSkeleton rows={3} />
-      ) : !barbers?.length ? (
-        <EmptyState icon={User} title="Nenhum barbeiro cadastrado"
-          action={<Button onClick={() => setShowForm(true)}>Cadastrar primeiro barbeiro</Button>} />
+      {isLoading ? <ListSkeleton rows={3} /> : !sorted.length ? (
+        <EmptyState boxed icon={Scissors} title="Nenhum barbeiro cadastrado"
+          hint="Cadastre a equipe para abrir a agenda e receber agendamentos pelo link."
+          action={<Button variant="secondary" onClick={() => setShowForm(true)}><Plus size={16} /> Cadastrar barbeiro</Button>} />
+      ) : desktop ? (
+        <Panel pad={false}>
+          <div className="ds-table-scroll">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Barbeiro</th>
+                  <th>Remuneração</th>
+                  <th>Página de agendamento</th>
+                  <th>Ativo</th>
+                  <th className="ds-right"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(b => (
+                  <tr key={b.id}>
+                    <td>
+                      <Link to={`/admin/barbeiros/${b.id}`} className="flex items-center gap-3 group">
+                        <Avatar name={b.name} src={b.photoUrl} size={36} />
+                        <div className="min-w-0">
+                          <p className="font-semibold group-hover:underline underline-offset-2">{b.name}</p>
+                          <p className="text-13 text-ink-3 t-num">{b.phone ? formatPhoneBR(b.phone) : 'Sem telefone'}</p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="ds-muted">{payModel(b)}</td>
+                    <td>{b.showInPublicPage ? <Pill tone="ok">Aparece</Pill> : <Pill tone="neutral">Oculto</Pill>}</td>
+                    <td><Switch checked={b.isActive} onChange={() => onToggle(b)} label={`${b.name} ativo`} disabled={toggle.isPending} /></td>
+                    <td>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setScheduleBarber(b)}><Clock size={15} /> Horários</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditBarber(b)}><Pencil size={15} /> Editar</Button>
+                        <Button variant="ghost" size="sm" icon onClick={() => navigate(`/admin/barbeiros/${b.id}`)} aria-label={`Abrir perfil de ${b.name}`}><ChevronRight size={16} /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {barbers.map((b, i) => (
-            <Card key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="animate-slide-up">
-              <div role="button" tabIndex={0} onClick={() => navigate(`/admin/barbeiros/${b.id}`)}
-                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/admin/barbeiros/${b.id}`) }}
-                className="flex items-center gap-4 group" style={{ cursor: 'pointer' }}>
-                {b.photoUrl ? (
-                  <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <div className="ds-icon-chip ds-icon-chip-accent" style={{ width: 56, height: 56, borderRadius: '50%' }}>
-                    <User size={24} />
+        <Panel pad={false}>
+          <ul className="ds-list">
+            {sorted.map(b => (
+              <li key={b.id}>
+                <Link to={`/admin/barbeiros/${b.id}`} className="ds-row">
+                  <Avatar name={b.name} src={b.photoUrl} size={40} />
+                  <div className="ds-row-main">
+                    <p className="ds-row-title">{b.name}</p>
+                    <p className="ds-row-sub">{payModel(b)}</p>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="ds-text-primary font-semibold truncate group-hover:ds-text-accent transition-colors">{b.name}</p>
-                  {b.phone && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{formatPhoneBR(b.phone)}</p>}
-                  <div className="flex items-center gap-2 mt-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggle.mutate(b.id) }}
-                      className="flex items-center gap-1 font-medium"
-                      style={{ fontSize: 'var(--text-xs)', color: b.isActive ? 'var(--color-success)' : 'var(--text-disabled)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                      {b.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                      {b.isActive ? 'Ativo' : 'Inativo'}
-                    </button>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="flex-shrink-0 ds-text-disabled group-hover:ds-text-accent transition-colors" />
-              </div>
-
-              {b.bio && <p className="ds-text-disabled mt-3 line-clamp-2" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
-
-              <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                <Button variant="ghost" className="flex-1" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setEditBarber(b)}>
-                  <Pencil size={14} /> Editar
-                </Button>
-                <Button variant="ghost" className="flex-1" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setScheduleBarber(b)}>
-                  <Clock size={14} /> Horários
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+                  {!b.isActive && <Pill tone="neutral">Inativo</Pill>}
+                  <ChevronRight size={16} className="text-ink-3 flex-shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       )}
 
-      {/* Modal novo barbeiro */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo Barbeiro" panelClassName="max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={set('name')} required /></div>
-          <PhoneField label="Telefone (opcional)" value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
-          <div className="ds-field"><label className="ds-label">Bio</label><input className="ds-input" value={form.bio} onChange={set('bio')} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="ds-field">
-              <label className="ds-label">Comissão</label>
-              <select className="ds-input" value={form.commissionType} onChange={set('commissionType')}>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Novo barbeiro" size="lg"
+        footer={<>
+          <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
+          <Button type="submit" form="new-barber" loading={create.isPending}>Cadastrar barbeiro</Button>
+        </>}>
+        <form id="new-barber" onSubmit={handleCreate} className="space-y-5">
+          <Input label="Nome" value={form.name} required onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          <PhoneField label="Telefone" optional value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
+          <Textarea label="Apresentação" optional rows={2} value={form.bio} placeholder="Especialidades, tempo de profissão…"
+            onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+          <fieldset className="space-y-3">
+            <legend className="ds-label mb-2">Remuneração</legend>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="Comissão" value={form.commissionType} onChange={e => setForm(f => ({ ...f, commissionType: +e.target.value }))}>
                 <option value={0}>Percentual (%)</option>
-                <option value={1}>Fixo (R$)</option>
-              </select>
+                <option value={1}>Valor fixo (R$)</option>
+              </Select>
+              <Field label={form.commissionType === 1 ? 'Valor por atendimento' : 'Percentual'}>
+                <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
+              </Field>
             </div>
-            <div className="ds-field">
-              <label className="ds-label">Valor</label>
-              <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
-            </div>
-          </div>
-          {/* Aluguel de cadeira — modelo adicional, combinável com a comissão. */}
-          <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={form.chairRentEnabled}
-                onChange={e => setForm(f => ({ ...f, chairRentEnabled: e.target.checked }))}
-                className="w-4 h-4 flex-shrink-0" style={{ accentColor: 'var(--accent)' }} />
-              <span>
-                <span className="ds-text-primary block" style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Valor fixo por cadeira</span>
-                <span className="ds-text-disabled block" style={{ fontSize: 'var(--text-xs)' }}>O barbeiro paga um valor fixo pelo espaço — pode ser combinado com a comissão.</span>
-              </span>
-            </label>
+            <SwitchRow title="Cobrar aluguel de cadeira" description="O barbeiro paga um valor fixo pelo espaço. Pode somar com a comissão."
+              checked={form.chairRentEnabled} onChange={v => setForm(f => ({ ...f, chairRentEnabled: v }))} />
             {form.chairRentEnabled && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div className="ds-field">
-                  <label className="ds-label">Valor (R$)</label>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Valor (R$)">
                   <NumberField min={0} step="0.01" placeholder="0,00" value={form.chairRentAmount}
                     onChange={v => setForm(f => ({ ...f, chairRentAmount: v }))} required />
-                </div>
-                <div className="ds-field">
-                  <label className="ds-label">Periodicidade</label>
-                  <select className="ds-input" value={form.chairRentPeriod}
-                    onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
-                    <option value={0}>Semanal</option>
-                    <option value={1}>Mensal</option>
-                  </select>
-                </div>
+                </Field>
+                <Select label="Cobrança" value={form.chairRentPeriod} onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
+                  <option value={0}>Semanal</option>
+                  <option value={1}>Mensal</option>
+                </Select>
               </div>
             )}
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1" loading={create.isPending}>Criar</Button>
-          </div>
+          </fieldset>
         </form>
       </Modal>
 
-      {/* Modal editar barbeiro */}
-      {editBarber && (
-        <EditBarberModal barber={editBarber} onClose={() => setEditBarber(null)} />
-      )}
-
-      {/* Modal de horários */}
-      {scheduleBarber && (
-        <ScheduleModal barber={scheduleBarber} onClose={() => setScheduleBarber(null)} />
-      )}
+      {editBarber && <EditBarberModal barber={editBarber} onClose={() => setEditBarber(null)} />}
+      {scheduleBarber && <ScheduleModal barber={scheduleBarber} onClose={() => setScheduleBarber(null)} />}
     </div>
   )
 }

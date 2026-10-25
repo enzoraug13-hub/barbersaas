@@ -1,324 +1,327 @@
-import { TrendingUp, TrendingDown, Calendar, Users, DollarSign, Percent, Scissors, ArrowUp, ArrowDown } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { useDashboard, useMonthlyRevenue, useBarberPerformance } from '../../features/dashboard/dashboardApi'
-import { useAppointments } from '../../features/appointments/appointmentsApi'
-import { CardGridSkeleton, ListSkeleton } from '../../components/ui/Skeleton'
-import { Card } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts'
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { Link, useNavigate } from 'react-router-dom'
+import { CalendarDays, Plus, Scissors, CalendarX2 } from 'lucide-react'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { format, startOfMonth, endOfMonth, subMonths, subDays, isSameDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
+import { useDashboard, useMonthlyRevenue, useBarberPerformance, type BarberPerformance } from '../../features/dashboard/dashboardApi'
+import { useAppointments } from '../../features/appointments/appointmentsApi'
+import { PageHeader, Panel } from '../../components/ui/Panel'
+import { Ledger } from '../../components/ui/Ledger'
+import { Pill } from '../../components/ui/Badge'
+import { Avatar } from '../../components/ui/Avatar'
+import { btnClass } from '../../components/ui/btnClass'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { LedgerSkeleton, ListSkeleton, BlockSkeleton } from '../../components/ui/Skeleton'
+import { chartAxisTick, chartGridStroke, chartBarCursor, barFills, CHART_MAIN, CHART_SECOND } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
-import { assetUrl } from '../../lib/api'
 import { PublicLinkButtons } from '../../components/admin/PublicLinkButtons'
+import { useIsDesktop } from '../../lib/useMediaQuery'
+import { brl, brlCompact, num, hhmm, toMinutes, capFirst } from '../../lib/format'
+import { StatusMark } from '../../components/ui/StatusMark'
+import type { Appointment } from '../../types'
 
-const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const fmtN = (n: number) => n.toLocaleString('pt-BR')
+const pctChange = (curr: number, prev: number | undefined) =>
+  prev === undefined || prev === 0 ? undefined : ((curr - prev) / prev) * 100
 
-const statusLabel: Record<string, string> = {
-  Pending: 'Pendente', Confirmed: 'Confirmado', Completed: 'Concluído', Cancelled: 'Cancelado', NoShow: 'Não compareceu',
-}
-const statusVariant: Record<string, 'warning' | 'info' | 'success' | 'error'> = {
-  Pending: 'warning', Confirmed: 'info', Completed: 'success', Cancelled: 'error', NoShow: 'error',
-}
-
-const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-
-function BarberPerformanceCard({ b, i }: { b: import('../../features/dashboard/dashboardApi').BarberPerformance; i: number }) {
-  const chartData = weekdayLabels.map((label, idx) => ({ label, count: b.weeklyAppointments[idx] ?? 0 }))
-  return (
-    <Card className="animate-slide-up" style={{ animationDelay: `${i * 45}ms` }}>
-      <div className="flex items-center gap-3 mb-4">
-        {b.photoUrl
-          ? <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-          : <div className="ds-icon-chip ds-icon-chip-accent font-bold flex-shrink-0" style={{ width: 40, height: 40, borderRadius: '50%' }}>{b.name[0]?.toUpperCase()}</div>}
-        <div className="flex-1 min-w-0">
-          <p className="ds-text-primary font-semibold truncate" style={{ fontSize: 'var(--text-sm)' }}>{b.name}</p>
-        </div>
-        <Badge variant={b.isActive ? 'success' : 'default'}>{b.isActive ? 'Ativo' : 'Inativo'}</Badge>
-      </div>
-
-      <ResponsiveContainer width="100%" height={90}>
-        <BarChart data={chartData}>
-          <defs>{accentBarGradient(`chairBars-${b.id}`)}</defs>
-          <XAxis dataKey="label" tick={{ ...chartAxisTick, fontSize: 10 }} axisLine={false} tickLine={false} />
-          <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{ count: { label: 'Agendamentos', color: 'var(--accent)', fmt: fmtN } }} />} />
-          <Bar dataKey="count" fill={`url(#chairBars-${b.id})`} radius={[4, 4, 0, 0]} maxBarSize={26}>
-            {barCells(chartData, 'count')}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-
-      <div className="grid grid-cols-3 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-        <div>
-          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>Agend.</p>
-          <p className="ds-text-primary font-semibold" style={{ fontSize: 'var(--text-sm)' }}>{fmtN(b.totalAppointments)}</p>
-        </div>
-        <div>
-          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>Receita</p>
-          <p className="ds-text-accent font-semibold" style={{ fontSize: 'var(--text-sm)' }}>{fmt(b.revenue)}</p>
-        </div>
-        <div>
-          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>Ocupação</p>
-          <p className="ds-text-primary font-semibold" style={{ fontSize: 'var(--text-sm)' }}>{b.occupancyRate.toFixed(0)}%</p>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-const kpiColors: Record<string, string> = {
-  success: 'var(--color-success)', error: 'var(--color-error)',
-  warning: 'var(--color-warning)', info: 'var(--color-info)', accent: 'var(--accent)',
-}
-
-function KPICard({ title, value, sub, icon: Icon, chip, trend, i = 0 }: {
-  title: string; value: string; sub?: string; icon: LucideIcon; chip: string; trend?: number; i?: number
-}) {
-  const color = kpiColors[chip] ?? 'var(--accent)'
-  return (
-    <Card className="animate-slide-up" style={{
-      animationDelay: `${i * 45}ms`,
-      borderBottom: `2px solid ${color}`,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-    }}>
-      <div className="flex items-start gap-4">
-        <div className="flex items-center justify-center flex-shrink-0" style={{
-          width: 44, height: 44, borderRadius: '50%',
-          background: `color-mix(in srgb, ${color} 15%, transparent)`,
-          color,
-        }}>
-          <Icon size={20} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="ds-text-secondary" style={{ fontSize: '12px' }}>{title}</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)', marginTop: 6, lineHeight: 1 }}>{value}</p>
-          <div className="flex items-center gap-2 mt-1.5">
-            {sub && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{sub}</p>}
-            {trend !== undefined && (
-              <span className="inline-flex items-center gap-0.5 font-medium" style={{ fontSize: '12px', color: trend >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                {trend >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-                {Math.abs(trend).toFixed(1)}%
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </Card>
-  )
-}
+// índice 0 = segunda … 6 = domingo (mesmo do backend)
+const mondayFirst = (d: Date) => (d.getDay() + 6) % 7
+const ACTIVE = new Set(['Pending', 'Confirmed'])
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
+  const desktop = useIsDesktop()
   const today = new Date()
-  const start = format(startOfMonth(today), 'yyyy-MM-dd')
-  const end   = format(endOfMonth(today), 'yyyy-MM-dd')
   const todayStr = format(today, 'yyyy-MM-dd')
-  const { data, isLoading } = useDashboard(start, end)
+  const monthName = format(today, 'MMMM', { locale: ptBR })
+
+  const { data, isLoading } = useDashboard(format(startOfMonth(today), 'yyyy-MM-dd'), format(endOfMonth(today), 'yyyy-MM-dd'))
   const prevMonth = subMonths(today, 1)
   const { data: prevData } = useDashboard(format(startOfMonth(prevMonth), 'yyyy-MM-dd'), format(endOfMonth(prevMonth), 'yyyy-MM-dd'))
-  const pctChange = (curr: number, prev: number | undefined) =>
-    prev === undefined || prev === 0 ? undefined : ((curr - prev) / prev) * 100
-  const { data: todayAppts, isLoading: loadingTodayAppts } = useAppointments(todayStr)
+  const { data: todayAppts, isLoading: loadingToday } = useAppointments(todayStr)
   const { data: monthly } = useMonthlyRevenue(6)
-  const monthlyChartData = monthly?.map(m => ({ ...m, label: format(new Date(`${m.month}-01`), 'MMM', { locale: ptBR }) }))
-  const last7 = format(new Date(today.getTime() - 6 * 86400000), 'yyyy-MM-dd')
-  const { data: barberPerf, isLoading: loadingBarberPerf } = useBarberPerformance(last7, todayStr)
+  const { data: barberPerf, isLoading: loadingPerf } = useBarberPerformance(format(subDays(today, 6), 'yyyy-MM-dd'), todayStr)
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="ds-page-title">Dashboard</h2>
-          <p className="ds-page-sub">{format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}</p>
-        </div>
-        <CardGridSkeleton cells={4} />
-        <CardGridSkeleton cells={3} />
-      </div>
-    )
+  // Últimos 7 dias, um ponto por dia terminando hoje. Para uma janela de 7 dias,
+  // cada dia da semana aparece uma vez — então a soma do "weeklyAppointments" de
+  // todos os barbeiros é exatamente o total de agendamentos daquele dia.
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = subDays(today, 6 - i)
+    const idx = mondayFirst(d)
+    return {
+      label: format(d, 'EEEEEE', { locale: ptBR }),
+      full: format(d, "EEEE, d 'de' MMMM", { locale: ptBR }),
+      isToday: isSameDay(d, today),
+      count: (barberPerf ?? []).reduce((s, b) => s + (b.weeklyAppointments[idx] ?? 0), 0),
+    }
+  })
+  const hasWeek = week.some(d => d.count > 0)
 
-  if (!data) return null
+  const monthlyData = monthly?.map(m => ({ ...m, label: format(new Date(`${m.month}-01T12:00:00`), 'MMM', { locale: ptBR }) }))
+  const hasMonthly = monthlyData?.some(m => m.revenue > 0 || m.expense > 0) ?? false
 
-  const hasWeeklyAppointments = data.dailyRevenue.slice(-7).some(d => d.appointments > 0)
-  const hasMonthlyRevenue = monthlyChartData?.some(m => m.revenue > 0 || m.expense > 0) ?? false
+  // Hoje: ordenado por horário; o próximo atendimento ainda por vir ganha destaque.
+  const nowMin = today.getHours() * 60 + today.getMinutes()
+  const sortedToday = [...(todayAppts ?? [])].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime))
+  const nextId = sortedToday.find(a => ACTIVE.has(a.status) && toMinutes(a.endTime) > nowMin)?.id
+  const doneToday = sortedToday.filter(a => a.status === 'Completed').length
+  // No Início interessa o que ainda vem: horários em aberto a partir de agora
+  // (a agenda completa do dia fica na Agenda). Sem nada por vir, mostra o dia todo.
+  const upcoming = sortedToday.filter(a => ACTIVE.has(a.status) && toMinutes(a.endTime) > nowMin)
+  const shownToday = (upcoming.length ? upcoming : sortedToday).slice(0, 6)
+  const hiddenToday = sortedToday.length - shownToday.length
 
   return (
     <div className="space-y-6">
-      <div className="pb-4 flex items-end justify-between gap-3 flex-wrap" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', color: 'var(--text-primary)' }}>Dashboard</h2>
-          <p className="ds-text-secondary mt-1" style={{ fontSize: '13px' }}>
-            {format(startOfMonth(today), "MMMM 'de' yyyy", { locale: ptBR })}
-          </p>
-        </div>
-        <PublicLinkButtons />
-      </div>
+      <PageHeader title="Início" subtitle={capFirst(format(today, "EEEE, d 'de' MMMM", { locale: ptBR }))}
+        actions={<>
+          <Link to="/admin/agenda" className={btnClass('secondary', 'md', 'desktop-only')}><CalendarDays size={16} /> Agenda</Link>
+          <button type="button" className={btnClass('primary')} onClick={() => navigate('/admin/agenda?novo=1')}>
+            <Plus size={16} /> <span className="lbl-long">Novo agendamento</span><span className="lbl-short">Novo</span>
+          </button>
+        </>} />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KPICard i={0} title="Faturamento"  value={fmt(data.totalRevenue)}  icon={TrendingUp}   chip="success" trend={pctChange(data.totalRevenue, prevData?.totalRevenue)} />
-        <KPICard i={1} title="Despesas"     value={fmt(data.totalExpense)}   icon={TrendingDown} chip="error" trend={pctChange(data.totalExpense, prevData?.totalExpense)} />
-        <KPICard i={2} title="Lucro"        value={fmt(data.netProfit)}      icon={DollarSign}   chip="accent" trend={pctChange(data.netProfit, prevData?.netProfit)} />
-        <KPICard i={3} title="Ticket Médio" value={fmt(data.averageTicket)}  icon={Percent}      chip="info" trend={pctChange(data.averageTicket, prevData?.averageTicket)} />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KPICard i={4} title="Agendamentos"     value={fmtN(data.totalAppointments)} icon={Calendar} chip="accent" sub={`${data.completedCount} concluídos`} />
-        <KPICard i={5} title="Cancelamentos"    value={fmtN(data.cancelledCount)}    icon={Calendar} chip="error"    sub={`${data.cancellationRate.toFixed(1)}% de taxa`} />
-        <KPICard i={6} title="Clientes Únicos"  value={fmtN(data.uniqueClients)}     icon={Users}    chip="info" />
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Card>
-          <h3 className="ds-section-title mb-4">Agendamentos (últimos 7 dias)</h3>
-          {!hasWeeklyAppointments ? (
-            <EmptyState icon={Calendar} title="Nenhum dado ainda" hint="Os agendamentos da semana aparecem aqui." />
-          ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data.dailyRevenue.slice(-7)} barCategoryGap="22%">
-              <defs>{accentBarGradient('apptBars')}</defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="date" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false}
-                tickFormatter={d => format(new Date(d), 'dd/MM')} />
-              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
-              <Tooltip cursor={chartBarCursor}
-                content={<ChartTooltip
-                  labelFmt={d => format(new Date(d), "dd 'de' MMM", { locale: ptBR })}
-                  series={{ appointments: { label: 'Agendamentos', color: 'var(--accent)', fmt: fmtN } }} />} />
-              <Bar dataKey="appointments" fill="url(#apptBars)" radius={[5, 5, 0, 0]} maxBarSize={46}>
-                {barCells(data.dailyRevenue.slice(-7), 'appointments')}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          )}
-        </Card>
-
-        <Card>
-          <h3 className="ds-section-title mb-4">Receita vs Despesas</h3>
-          {!hasMonthlyRevenue ? (
-            <EmptyState icon={DollarSign} title="Nenhum dado ainda" hint="A receita e as despesas dos últimos meses aparecem aqui." />
-          ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={monthlyChartData}>
-              <defs>
-                <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-error)" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="var(--color-error)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false} />
-              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={48} tickFormatter={v => fmt(v)} />
-              <Tooltip content={<ChartTooltip series={{
-                revenue: { label: 'Receita', color: 'var(--accent)', fmt },
-                expense: { label: 'Despesas', color: 'var(--color-error)', fmt },
-              }} />} />
-              <Legend
-                formatter={(value: string) => value === 'revenue' ? 'Receita' : 'Despesas'}
-                wrapperStyle={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)' }} />
-              <Area type="monotone" dataKey="revenue" name="revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#revenueFill)" />
-              <Area type="monotone" dataKey="expense" name="expense" stroke="var(--color-error)" strokeWidth={2} fill="url(#expenseFill)" />
-            </AreaChart>
-          </ResponsiveContainer>
-          )}
-        </Card>
-      </div>
-
-      {/* Performance por cadeira */}
-      <div>
-        <h3 className="mb-4" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-xl)', color: 'var(--text-primary)' }}>
-          Performance por Cadeira
-        </h3>
-        {loadingBarberPerf ? (
-          <CardGridSkeleton cells={3} />
-        ) : !barberPerf?.length ? (
-          <EmptyState icon={Scissors} title="Nenhum barbeiro cadastrado" hint="Cadastre barbeiros para ver a performance por cadeira." />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {barberPerf.map((b, i) => <BarberPerformanceCard key={b.id} b={b} i={i} />)}
-          </div>
+      {/* Resultado do mês */}
+      <section aria-labelledby="mes">
+        <h2 id="mes" className="text-md font-semibold mb-3">Resultado de {monthName}</h2>
+        {isLoading || !data ? <LedgerSkeleton /> : (
+          <Ledger items={[
+            { label: 'Faturamento', value: brl(data.totalRevenue), delta: { pct: pctChange(data.totalRevenue, prevData?.totalRevenue) } },
+            { label: 'Despesas', value: brl(data.totalExpense), delta: { pct: pctChange(data.totalExpense, prevData?.totalExpense), goodWhenUp: false } },
+            { label: 'Lucro', value: brl(data.netProfit), tone: data.netProfit < 0 ? 'bad' : undefined, delta: { pct: pctChange(data.netProfit, prevData?.netProfit) } },
+            { label: 'Ticket médio', value: brl(data.averageTicket), delta: { pct: pctChange(data.averageTicket, prevData?.averageTicket) } },
+          ]} />
         )}
-      </div>
+      </section>
 
-      {/* Próximos agendamentos de hoje */}
-      <Card>
-        <h3 className="ds-section-title mb-4">Agendamentos de hoje</h3>
-        {loadingTodayAppts ? (
-          <ListSkeleton rows={3} />
-        ) : !todayAppts?.length ? (
-          <EmptyState icon={Calendar} title="Nada agendado pra hoje" hint="Os próximos agendamentos do dia aparecem aqui." />
-        ) : (
-          <div className="space-y-3">
-            {todayAppts.map((a, i) => (
-              <div key={a.id} style={{ animationDelay: `${i * 50}ms` }} className="flex items-center gap-4 animate-slide-up">
-                <div className="text-center w-14 flex-shrink-0">
-                  <p className="ds-text-primary font-bold leading-none" style={{ fontSize: 'var(--text-lg)' }}>{a.startTime?.slice(0, 5)}</p>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="ds-text-primary font-semibold truncate" style={{ fontSize: 'var(--text-sm)' }}>{a.clientName}</p>
-                  <p className="ds-text-secondary" style={{ fontSize: 'var(--text-xs)' }}>{a.serviceName} · {a.barberName}</p>
-                </div>
-                <Badge variant={statusVariant[a.status] ?? 'warning'}>{statusLabel[a.status] ?? a.status}</Badge>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-6 items-start">
+        {/* Hoje */}
+        <Panel title={upcoming.length ? 'Próximos horários de hoje' : 'Hoje'} split pad={false}
+          description={todayAppts?.length ? `${todayAppts.length} ${todayAppts.length === 1 ? 'agendamento' : 'agendamentos'} no dia, ${doneToday} ${doneToday === 1 ? 'concluído' : 'concluídos'}` : undefined}
+          actions={<Link to="/admin/agenda" className={btnClass('ghost', 'sm')}>Abrir agenda</Link>}>
+          {loadingToday ? <ListSkeleton rows={3} boxed={false} /> : !sortedToday.length ? (
+            <EmptyState icon={CalendarX2} title="Nenhum horário marcado para hoje"
+              hint="Quando um cliente agendar pelo link ou você marcar pela agenda, ele aparece aqui."
+              action={<button type="button" className={btnClass('secondary', 'sm')} onClick={() => navigate('/admin/agenda?novo=1')}><Plus size={14} /> Marcar horário</button>} />
+          ) : (
+            <>
+              <ul className="ds-list">
+                {shownToday.map(a => <TodayRow key={a.id} a={a} next={a.id === nextId} />)}
+              </ul>
+              {hiddenToday > 0 && (
+                <Link to="/admin/agenda" className="flex items-center justify-center h-11 border-t border-line text-13 font-medium text-ink-2 hover:text-ink hover:bg-surface-2 rounded-b-panel">
+                  Ver os {sortedToday.length} horários do dia na agenda
+                </Link>
+              )}
+            </>
+          )}
+        </Panel>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Top Serviços */}
-        <Card>
-          <h3 className="ds-section-title mb-4">Serviços Mais Vendidos</h3>
-          <div className="space-y-3">
-            {data.topServices.length === 0 && (
-              <p className="ds-text-disabled text-center py-4" style={{ fontSize: 'var(--text-sm)' }}>Sem dados ainda</p>
+        <div className="space-y-6">
+          <Panel title="Link de agendamento" description="Envie para os clientes marcarem sozinhos, pelo celular.">
+            <PublicLinkButtons />
+          </Panel>
+
+          <Panel title={`Agenda de ${monthName}`}>
+            {isLoading || !data ? <BlockSkeleton height={132} /> : (
+              <dl className="ds-dl">
+                <div><dt>Agendamentos</dt><dd className="t-num">{num(data.totalAppointments)}</dd></div>
+                <div><dt>Concluídos</dt><dd className="t-num">{num(data.completedCount)}</dd></div>
+                <div><dt>Cancelamentos</dt><dd className="t-num">{num(data.cancelledCount)} <span className="text-ink-3 font-normal">({data.cancellationRate.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)</span></dd></div>
+                <div><dt>Clientes atendidos</dt><dd className="t-num">{num(data.uniqueClients)}</dd></div>
+              </dl>
             )}
-            {data.topServices.map((s, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="ds-badge ds-badge-accent" style={{ width: 24, height: 24, borderRadius: 'var(--radius-full)', justifyContent: 'center' }}>{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="ds-text-primary font-medium truncate" style={{ fontSize: 'var(--text-sm)' }}>{s.name}</span>
-                    <span className="ds-text-accent font-semibold ml-2" style={{ fontSize: 'var(--text-sm)' }}>{fmt(s.revenue)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="ds-progress-track">
-                      <div className="ds-progress-fill" style={{ width: `${Math.min(100, (s.revenue / (data.topServices[0]?.revenue || 1)) * 100)}%` }} />
-                    </div>
-                    <span className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{s.count}x</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Resumo Financeiro */}
-        <Card>
-          <h3 className="ds-section-title mb-4">Resumo Financeiro</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Receitas', value: data.totalRevenue, color: 'var(--color-success)' },
-              { label: 'Despesas', value: data.totalExpense, color: 'var(--color-error)' },
-              { label: 'Lucro',    value: data.netProfit,    color: 'var(--tenant-primary)' },
-            ].map(row => (
-              <div key={row.label} className="ds-divider flex items-center justify-between py-2 last:border-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <div className="flex items-center gap-2">
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: row.color }} />
-                  <span className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{row.label}</span>
-                </div>
-                <span className="ds-text-primary font-semibold" style={{ fontSize: 'var(--text-sm)' }}>{fmt(row.value)}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+          </Panel>
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Panel title="Receita e despesas" description="Últimos 6 meses"
+          actions={hasMonthly ? <Legend items={[['Receita', CHART_MAIN], ['Despesas', CHART_SECOND]]} /> : undefined}>
+          {!monthly ? <BlockSkeleton height={220} /> : !hasMonthly ? (
+            <EmptyState title="Sem lançamentos nos últimos meses" hint="A receita entra sozinha quando um atendimento é concluído. Despesas você lança no Financeiro." />
+          ) : (
+            <ResponsiveContainer width="100%" height={232}>
+              <BarChart data={monthlyData} barGap={3} barCategoryGap="28%" margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke={chartGridStroke} vertical={false} />
+                <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false} />
+                <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={72} tickFormatter={v => brlCompact(v)} />
+                <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{
+                  revenue: { label: 'Receita', color: CHART_MAIN, fmt: brl },
+                  expense: { label: 'Despesas', color: CHART_SECOND, fmt: brl },
+                }} />} />
+                <Bar dataKey="revenue" fill={CHART_MAIN} radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="expense" fill={CHART_SECOND} radius={[3, 3, 0, 0]} maxBarSize={28} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Panel>
+
+        <Panel title="Agendamentos por dia" description="Últimos 7 dias">
+          {loadingPerf ? <BlockSkeleton height={220} /> : !hasWeek ? (
+            <EmptyState title="Nenhum agendamento nos últimos 7 dias" hint="Os atendimentos de cada dia aparecem aqui." />
+          ) : (
+            <ResponsiveContainer width="100%" height={232}>
+              <BarChart data={week} barCategoryGap="30%" margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke={chartGridStroke} vertical={false} />
+                <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false}
+                  tickFormatter={(v: string) => v.charAt(0).toUpperCase() + v.slice(1)} />
+                <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                <Tooltip cursor={chartBarCursor} content={<ChartTooltip
+                  labelFmt={(l) => week.find(w => w.label === l)?.full ?? String(l)}
+                  series={{ count: { label: 'Agendamentos', color: CHART_MAIN, fmt: num } }} />} />
+                <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={40}>
+                  {barFills(week, row => (row as { isToday: boolean }).isToday)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-6 items-start">
+      <Panel title="Desempenho por barbeiro" description="Últimos 7 dias, sem cancelados" split pad={false}>
+        {loadingPerf ? <ListSkeleton rows={3} boxed={false} /> : !barberPerf?.length ? (
+          <EmptyState icon={Scissors} title="Nenhum barbeiro cadastrado"
+            hint="Cadastre a equipe para acompanhar atendimentos, receita e ocupação de cada um."
+            action={<Link to="/admin/barbeiros" className={btnClass('secondary', 'sm')}>Cadastrar barbeiro</Link>} />
+        ) : desktop ? (
+          <div className="ds-table-scroll">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Barbeiro</th>
+                  <th className="ds-right">Atendimentos</th>
+                  <th className="ds-right">Receita</th>
+                  <th style={{ width: '22%' }}>Ocupação</th>
+                  <th style={{ width: 128 }}>Semana</th>
+                </tr>
+              </thead>
+              <tbody>
+                {barberPerf.map(b => (
+                  <tr key={b.id} className="ds-row-link" onClick={() => navigate(`/admin/barbeiros/${b.id}`)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={b.name} src={b.photoUrl} size={32} />
+                        <span className="font-medium">{b.name}</span>
+                        {!b.isActive && <Pill tone="neutral">Inativo</Pill>}
+                      </div>
+                    </td>
+                    <td className="ds-num">{num(b.totalAppointments)}</td>
+                    <td className="ds-num font-medium">{brl(b.revenue)}</td>
+                    <td><Occupancy pct={b.occupancyRate} /></td>
+                    <td><WeekBars b={b} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <ul className="ds-list">
+            {barberPerf.map(b => (
+              <li key={b.id}>
+                <Link to={`/admin/barbeiros/${b.id}`} className="ds-row">
+                  <Avatar name={b.name} src={b.photoUrl} size={36} />
+                  <div className="ds-row-main">
+                    <p className="ds-row-title">{b.name}</p>
+                    <p className="ds-row-sub">{num(b.totalAppointments)} atendimentos, {b.occupancyRate.toFixed(0)}% ocupado</p>
+                  </div>
+                  <span className="t-num font-semibold">{brl(b.revenue)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel title="Serviços mais vendidos" description={`Em ${monthName}, por receita`} split={!!data?.topServices.length} pad={false}>
+        {!data ? <ListSkeleton rows={3} boxed={false} /> : !data.topServices.length ? (
+          <EmptyState title="Nenhum serviço vendido este mês" hint="O ranking aparece conforme os atendimentos são concluídos." />
+        ) : (
+          <ol className="ds-list">
+            {data.topServices.map((s, i) => (
+              <li key={s.name + i} className="ds-row">
+                <span className="w-6 text-ink-3 t-num font-semibold text-sm">{i + 1}</span>
+                <div className="ds-row-main">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="ds-row-title">{s.name}</p>
+                    <span className="t-num font-semibold whitespace-nowrap">{brl(s.revenue)}</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <div className="ds-progress flex-1">
+                      <span style={{ width: `${Math.max(2, Math.min(100, (s.revenue / (data.topServices[0]?.revenue || 1)) * 100))}%` }} />
+                    </div>
+                    <span className="text-xs text-ink-3 t-num w-[68px] text-right">{num(s.count)} {s.count === 1 ? 'venda' : 'vendas'}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Panel>
+      </div>
+    </div>
+  )
+}
+
+function TodayRow({ a, next }: { a: Appointment; next: boolean }) {
+  const muted = a.status === 'Cancelled' || a.status === 'NoShow'
+  return (
+    <li className="ds-row relative" style={next ? { background: 'var(--accent-soft)' } : undefined}>
+      {next && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: 'var(--accent)' }} aria-hidden />}
+      <div className="w-[52px] flex-shrink-0">
+        <p className={`t-num font-semibold text-md leading-5 ${muted ? 'text-ink-3 line-through' : ''}`}>{hhmm(a.startTime)}</p>
+        <p className="t-num text-xs text-ink-3">{hhmm(a.endTime)}</p>
+      </div>
+      <div className="ds-row-main">
+        <p className="ds-row-title">{a.clientName || 'Cliente'}</p>
+        <p className="ds-row-sub">{a.serviceName} com {a.barberName}</p>
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        {next ? <Pill tone="accent">Próximo</Pill> : <StatusMark status={a.status} />}
+        <span className="t-num text-13 text-ink-2">{brl(a.finalPrice)}</span>
+      </div>
+    </li>
+  )
+}
+
+function Occupancy({ pct }: { pct: number }) {
+  const v = Math.max(0, Math.min(100, pct))
+  return (
+    <div className="flex items-center gap-3">
+      <div className="ds-progress flex-1"><span style={{ width: `${v}%` }} /></div>
+      <span className="t-num text-13 text-ink-2 w-10 text-right">{v.toFixed(0)}%</span>
+    </div>
+  )
+}
+
+const DAY_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']
+
+/* Mini barras seg→dom: quantos atendimentos o barbeiro teve em cada dia. */
+function WeekBars({ b }: { b: BarberPerformance }) {
+  const max = Math.max(1, ...b.weeklyAppointments)
+  return (
+    <div className="flex items-end gap-1 h-8" aria-label={`Atendimentos por dia: ${b.weeklyAppointments.join(', ')}`}>
+      {DAY_LETTERS.map((l, i) => {
+        const v = b.weeklyAppointments[i] ?? 0
+        return (
+          <div key={i} className="flex flex-col items-center gap-0.5 flex-1" title={`${v}`}>
+            <span className="w-full rounded-[2px]" style={{ height: Math.max(2, (v / max) * 22), background: v ? 'var(--chart-1)' : 'var(--line)' }} />
+            <span className="text-[9px] leading-none text-ink-3">{l}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Legend({ items }: { items: [string, string][] }) {
+  return (
+    <div className="flex items-center gap-4">
+      {items.map(([label, color]) => (
+        <span key={label} className="flex items-center gap-1.5 text-xs text-ink-2">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />{label}
+        </span>
+      ))}
     </div>
   )
 }

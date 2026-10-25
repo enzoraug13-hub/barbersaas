@@ -10,15 +10,15 @@ export default defineConfig({
     // cache seria informação errada; o app depende do backend.
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Trimly',
         short_name: 'Trimly',
-        description: 'Gestão e agendamento para barbearias',
+        description: 'Agenda, clientes e caixa da barbearia num só lugar.',
         start_url: '/admin',
         display: 'standalone',
-        background_color: '#030712',
-        theme_color: '#eab308',
+        background_color: '#F3F5F6',
+        theme_color: '#FFFFFF',
         orientation: 'portrait-primary',
         lang: 'pt-BR',
         categories: ['business', 'productivity'],

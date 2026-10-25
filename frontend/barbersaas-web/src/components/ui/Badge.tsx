@@ -1,13 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 
-interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'accent' | 'success' | 'error' | 'warning' | 'info'
-  children: ReactNode
-}
+export type Tone = 'neutral' | 'ok' | 'warn' | 'bad' | 'info' | 'accent'
 
-export function Badge({ variant = 'default', children, className = '', ...rest }: BadgeProps) {
+/* Etiqueta de status: ponto + texto sobre fundo suave do tom. */
+export function Pill({ tone = 'neutral', plain, children, className = '', ...rest }: {
+  tone?: Tone; plain?: boolean; children: ReactNode
+} & HTMLAttributes<HTMLSpanElement>) {
   return (
-    <span className={`ds-badge ds-badge-${variant} ${className}`} {...rest}>
+    <span className={`ds-pill ds-pill-${tone} ${plain ? 'ds-pill-plain' : ''} ${className}`} {...rest}>
       {children}
     </span>
   )

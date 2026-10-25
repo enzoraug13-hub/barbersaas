@@ -1,33 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Check, MailCheck, User, Building2, ArrowLeft } from 'lucide-react'
+import { MailCheck } from 'lucide-react'
 import { useRegister } from '../../features/auth/authApi'
-import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { btnClass } from '../../components/ui/btnClass'
+import { Field, Input } from '../../components/ui/Input'
+import { Segmented } from '../../components/ui/Controls'
 import { PhoneField } from '../../components/ui/PhoneField'
+import { resetTenantTheme } from '../../lib/theme-tenant'
 import { toE164BR, isValidBRPhone, onlyDigits, maskCPF, maskCNPJ, isValidCPF, isValidCNPJ } from '../../lib/masks'
+import { AuthLayout } from './AuthLayout'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 
 type PersonType = 'PF' | 'PJ'
 
+// Auto-cadastro público está DESLIGADO no router (contas criadas pelo super admin).
+// A tela fica pronta para a reativação com billing self-service.
 export default function RegisterPage() {
   const navigate  = useNavigate()
   const register  = useRegister()
-  const [form, setForm] = useState({
-    businessName: '', ownerName: '', email: '', password: ''
-  })
+  const [form, setForm] = useState({ businessName: '', ownerName: '', email: '', password: '' })
   const [personType, setPersonType] = useState<PersonType>('PF')
   const [docDigits, setDocDigits]   = useState('')
   const [docError, setDocError]     = useState<string | null>(null)
   const [phoneDigits, setPhoneDigits] = useState('')
   const [phoneError, setPhoneError]   = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
-  const passwordOk = form.password.length >= 8
+  useEffect(() => { resetTenantTheme(); document.title = 'Criar conta | Trimly' }, [])
+
   const isPF = personType === 'PF'
 
-  // Trocar PF<->PJ limpa o documento (tamanhos e máscaras diferentes).
+  // Trocar PF/PJ limpa o documento (tamanhos e máscaras diferentes).
   const switchType = (t: PersonType) => {
     if (t === personType) return
     setPersonType(t); setDocDigits(''); setDocError(null)
@@ -35,167 +41,90 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    let invalid = false
     if (isPF ? !isValidCPF(docDigits) : !isValidCNPJ(docDigits)) {
-      setDocError(isPF
-        ? 'CPF inválido. Confira os números digitados.'
-        : 'CNPJ inválido. Confira os números digitados.')
-      return
-    }
-    setDocError(null)
-    if (!isValidBRPhone(phoneDigits)) {
-      setPhoneError('Telefone inválido. Informe DDD + número.')
-      return
-    }
-    setPhoneError(null)
-    if (!passwordOk) {
-      toast.error('A senha deve ter no mínimo 8 caracteres.')
-      return
-    }
+      setDocError(isPF ? 'CPF inválido. Confira os números.' : 'CNPJ inválido. Confira os números.')
+      invalid = true
+    } else setDocError(null)
+    if (!isValidBRPhone(phoneDigits)) { setPhoneError('Telefone inválido. Informe DDD e número.'); invalid = true }
+    else setPhoneError(null)
+    if (form.password.length < 8) { setPasswordError('A senha precisa ter pelo menos 8 caracteres.'); invalid = true }
+    else setPasswordError(null)
+    if (invalid) return
+
     try {
       const data = await register.mutateAsync({
         ...form, phone: toE164BR(phoneDigits), personType, document: docDigits,
       })
       if (data.requiresEmailConfirmation) {
-        // Conta criada pendente: sem auto-login até clicar no link do e-mail.
+        // Conta criada pendente: sem login automático até clicar no link do e-mail.
         setPendingEmail(form.email)
         return
       }
-      toast.success('Barbearia criada! Bem-vindo!')
+      toast.success('Barbearia criada.')
       navigate('/admin')
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao criar barbearia.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível criar a conta.'))
     }
   }
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(f => ({ ...f, [k]: e.target.value }))
+    if (k === 'password' && passwordError) setPasswordError(null)
+  }
 
   if (pendingEmail) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
-        <div className="w-full max-w-md">
-          <Card className="text-center py-10 space-y-4">
-            <MailCheck size={40} className="mx-auto" style={{ color: 'var(--accent)' }} />
-            <h1 className="ds-section-title" style={{ fontSize: 'var(--text-lg)' }}>Confirme seu e-mail</h1>
-            <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-              Enviamos um link de confirmação para <b>{pendingEmail}</b>.<br />
-              Clique no link para ativar sua conta e fazer login.
-            </p>
-            <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>
-              Não chegou? Verifique a caixa de spam.
-            </p>
-            <Link to="/login" className="ds-text-accent font-medium hover:underline" style={{ fontSize: 'var(--text-sm)' }}>
-              Ir para o login
-            </Link>
-          </Card>
-        </div>
-      </div>
+      <AuthLayout>
+        <span className="w-12 h-12 rounded-full bg-accent-soft text-accent-ink flex items-center justify-center"><MailCheck size={22} /></span>
+        <h1 className="t-display text-[28px] leading-8 mt-5">Confirme seu e-mail</h1>
+        <p className="text-sm text-ink-2 mt-1.5">
+          Enviamos um link para <span className="font-medium text-ink">{pendingEmail}</span>. Abra o link para ativar a conta e entrar.
+        </p>
+        <p className="text-13 text-ink-3 mt-3">Não chegou em alguns minutos? Veja a caixa de spam.</p>
+        <Link to="/login" className={btnClass('secondary', 'lg', 'w-full mt-7')}>Ir para o login</Link>
+      </AuthLayout>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
-      <div className="w-full max-w-md">
-        <Link to="/login" className="inline-flex items-center gap-1.5 mb-6 transition-colors hover:underline"
-          style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
-          <ArrowLeft size={16} /> Voltar para o login
-        </Link>
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 flex items-center justify-center mb-4" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
-            <Scissors size={28} style={{ color: 'var(--bg-base)' }} />
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>Criar sua Barbearia</h1>
-          <p className="ds-page-sub">14 dias grátis, sem cartão de crédito</p>
-        </div>
+    <AuthLayout wide>
+      <h1 className="t-display text-[28px] leading-8">Criar conta</h1>
+      <p className="text-sm text-ink-2 mt-1.5">14 dias grátis, sem cartão de crédito.</p>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Seletor PF / PJ */}
-            <div className="ds-field">
-              <label className="ds-label">Tipo de cadastro</label>
-              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de cadastro">
-                {([
-                  { type: 'PF' as const, icon: User,      label: 'Pessoa Física' },
-                  { type: 'PJ' as const, icon: Building2, label: 'Pessoa Jurídica' },
-                ]).map(({ type, icon: Icon, label }) => {
-                  const active = personType === type
-                  return (
-                    <button key={type} type="button" role="radio" aria-checked={active}
-                      onClick={() => switchType(type)}
-                      className="flex items-center justify-center gap-2 font-medium transition-colors"
-                      style={{
-                        padding: '10px 8px', fontSize: 'var(--text-sm)', cursor: 'pointer',
-                        borderRadius: 'var(--radius-md)',
-                        border: `1px solid ${active ? 'var(--accent)' : 'var(--border-default)'}`,
-                        background: active ? 'var(--accent-soft, rgba(201,168,76,0.12))' : 'var(--bg-base)',
-                        color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                      }}>
-                      <Icon size={15} /> {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
+        <Field label="Tipo de cadastro">
+          <Segmented value={personType} onChange={switchType} ariaLabel="Tipo de cadastro" options={[
+            { value: 'PF', label: 'Pessoa física' }, { value: 'PJ', label: 'Pessoa jurídica' },
+          ]} />
+        </Field>
 
-            <div className="ds-field">
-              <label className="ds-label">{isPF ? 'CPF' : 'CNPJ'}</label>
-              <input
-                className={`ds-input ${docError ? 'ds-input-error' : ''}`}
-                inputMode="numeric"
-                placeholder={isPF ? '000.000.000-00' : '00.000.000/0000-00'}
-                value={isPF ? maskCPF(docDigits) : maskCNPJ(docDigits)}
-                onChange={e => {
-                  setDocDigits(onlyDigits(e.target.value).slice(0, isPF ? 11 : 14))
-                  if (docError) setDocError(null)
-                }}
-                required
-              />
-              {docError && <span className="ds-error-text">{docError}</span>}
-              {!isPF && !docError && (
-                <span className="ds-text-disabled mt-1" style={{ fontSize: 'var(--text-xs)' }}>
-                  Validamos o CNPJ na Receita Federal.
-                </span>
-              )}
-            </div>
+        <Input label={isPF ? 'CPF' : 'CNPJ'} inputMode="numeric" required error={docError}
+          placeholder={isPF ? '000.000.000-00' : '00.000.000/0000-00'}
+          hint={!isPF ? 'Conferimos o CNPJ na Receita Federal.' : undefined}
+          value={isPF ? maskCPF(docDigits) : maskCNPJ(docDigits)}
+          onChange={e => {
+            setDocDigits(onlyDigits(e.target.value).slice(0, isPF ? 11 : 14))
+            if (docError) setDocError(null)
+          }} />
 
-            <div className="ds-field">
-              <label className="ds-label">Nome do responsável</label>
-              <input className="ds-input" placeholder="João Silva" value={form.ownerName} onChange={set('ownerName')} required />
-            </div>
-            <div className="ds-field">
-              <label className="ds-label">Nome da Barbearia</label>
-              <input className="ds-input" placeholder="Barbearia do João" value={form.businessName} onChange={set('businessName')} required />
-            </div>
-            <div className="ds-field">
-              <label className="ds-label">E-mail</label>
-              <input type="email" className="ds-input" placeholder="joao@email.com" value={form.email} onChange={set('email')} required />
-            </div>
-            <PhoneField label="WhatsApp" value={phoneDigits} required
-              onChange={d => { setPhoneDigits(d); if (phoneError) setPhoneError(null) }}
-              error={phoneError ?? undefined} />
-            <div className="ds-field">
-              <label className="ds-label">Senha</label>
-              <input type="password" className="ds-input" placeholder="Mínimo 8 caracteres" value={form.password} onChange={set('password')} minLength={8} required />
-              {form.password.length > 0 && (
-                <span className="flex items-center gap-1.5 mt-1.5" style={{
-                  fontSize: 'var(--text-xs)',
-                  color: passwordOk ? 'var(--color-success)' : 'var(--color-error)',
-                }}>
-                  <Check size={13} />
-                  {passwordOk ? 'Senha com o tamanho mínimo.' : `Mínimo 8 caracteres (faltam ${8 - form.password.length}).`}
-                </span>
-              )}
-            </div>
+        <Input label="Seu nome" autoComplete="name" value={form.ownerName} onChange={set('ownerName')} required />
+        <Input label="Nome da barbearia" autoComplete="organization" value={form.businessName} onChange={set('businessName')} required />
+        <Input label="E-mail" type="email" autoComplete="email" inputMode="email" value={form.email} onChange={set('email')} required
+          hint="É com ele que você entra no painel." />
+        <PhoneField label="WhatsApp" value={phoneDigits} required
+          onChange={d => { setPhoneDigits(d); if (phoneError) setPhoneError(null) }}
+          error={phoneError ?? undefined} />
+        <Input label="Senha" type="password" autoComplete="new-password" value={form.password} onChange={set('password')}
+          minLength={8} required error={passwordError}
+          hint={form.password.length > 0 && form.password.length < 8 ? `Faltam ${8 - form.password.length} caracteres.` : 'Mínimo de 8 caracteres.'} />
 
-            <Button type="submit" className="w-full mt-2" loading={register.isPending}>{register.isPending ? 'Criando...' : 'Criar barbearia grátis'}</Button>
-          </form>
+        <Button type="submit" size="lg" block loading={register.isPending} className="!mt-6">Criar conta</Button>
+      </form>
 
-          <p className="ds-text-disabled text-center mt-4" style={{ fontSize: 'var(--text-sm)' }}>
-            Já tem conta?{' '}
-            <Link to="/login" className="ds-text-accent font-medium hover:underline">Entrar</Link>
-          </p>
-        </Card>
-      </div>
-    </div>
+      <p className="text-13 text-ink-2 mt-6">
+        Já tem conta? <Link to="/login" className="ds-link">Entrar</Link>
+      </p>
+    </AuthLayout>
   )
 }

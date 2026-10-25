@@ -1,113 +1,76 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone,
-  LifeBuoy, MessagesSquare, Gift
+  House, CalendarDays, Users, Scissors, Tag, Wallet, Target, Package, Settings, LogOut,
+  Building2, Receipt, Megaphone, LifeBuoy, MessagesSquare, Gift, Ellipsis, ExternalLink,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
 import { applyTenantTheme } from '../../lib/theme-tenant'
+import { useIsDesktop } from '../../lib/useMediaQuery'
 import { AnnouncementsBell } from '../admin/AnnouncementsBell'
 import { useMySupportMessages } from '../../features/support/supportApi'
-import { useLoyaltyProgram } from '../../features/loyalty/loyaltyApi'
+import { useLoyaltyProgram, useLoyaltyRedemptions } from '../../features/loyalty/loyaltyApi'
+import { Logo, LogoMark } from '../ui/Logo'
+import { Avatar } from '../ui/Avatar'
+import { Modal } from '../ui/Modal'
+import { Skeleton, LedgerSkeleton, ListSkeleton } from '../ui/Skeleton'
 
-// Um item de navegação é uma folha (link direto) ou um pai com filhos
-// (grupo expansível). Os destinos dos filhos são telas que já existem.
 type NavLeaf = { to: string; label: string; icon: LucideIcon }
-type NavParent = { label: string; icon: LucideIcon; children: NavLeaf[] }
-type NavEntry = NavLeaf | NavParent
-const isParent = (e: NavEntry): e is NavParent => 'children' in e
+type NavGroup = { label: string | null; items: NavLeaf[] }
 
-const navGroups: { label: string | null; items: NavEntry[] }[] = [
-  { label: null, items: [
-    { to: '/admin',          label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/agenda',   label: 'Agenda',     icon: Calendar },
-  ] },
-  { label: 'Gestão', items: [
-    { to: '/admin/clientes',  label: 'Clientes',  icon: Users },
-    { label: 'Equipe', icon: UsersRound, children: [
-      { to: '/admin/barbeiros', label: 'Barbeiros',        icon: Scissors },
-      { to: '/admin/servicos',  label: 'Serviços & Preços', icon: Tag },
-    ] },
-    { to: '/admin/produtos',  label: 'Produtos',  icon: Package },
-  ] },
-  { label: 'Financeiro', items: [
-    { to: '/admin/financeiro', label: 'Financeiro', icon: DollarSign },
-    { to: '/admin/metas',      label: 'Metas',       icon: Target },
-  ] },
-  { label: 'Sistema', items: [
-    { to: '/admin/config',  label: 'Configurações', icon: Settings },
-    { to: '/admin/suporte', label: 'Suporte',        icon: LifeBuoy },
-  ] },
-]
+const home: NavLeaf      = { to: '/admin',            label: 'Início',            icon: House }
+const agenda: NavLeaf    = { to: '/admin/agenda',     label: 'Agenda',            icon: CalendarDays }
+const clients: NavLeaf   = { to: '/admin/clientes',   label: 'Clientes',          icon: Users }
+const barbers: NavLeaf   = { to: '/admin/barbeiros',  label: 'Barbeiros',         icon: Scissors }
+const services: NavLeaf  = { to: '/admin/servicos',   label: 'Serviços e preços', icon: Tag }
+const products: NavLeaf  = { to: '/admin/produtos',   label: 'Produtos',          icon: Package }
+const loyalty: NavLeaf   = { to: '/admin/fidelidade', label: 'Fidelidade',        icon: Gift }
+const financial: NavLeaf = { to: '/admin/financeiro', label: 'Financeiro',        icon: Wallet }
+const goals: NavLeaf     = { to: '/admin/metas',      label: 'Metas',             icon: Target }
+const config: NavLeaf    = { to: '/admin/config',     label: 'Configurações',     icon: Settings }
+const support: NavLeaf   = { to: '/admin/suporte',    label: 'Suporte',           icon: LifeBuoy }
 
-// Aba Fidelidade: só entra no menu quando o programa do tenant está LIGADO
-// (LoyaltyProgram.IsEnabled) — desligado, a fidelidade some do painel inteiro.
-const loyaltyLeaf: NavLeaf = { to: '/admin/fidelidade', label: 'Fidelidade', icon: Gift }
-const navGroupsWithLoyalty: { label: string | null; items: NavEntry[] }[] = navGroups.map(g =>
-  g.label === 'Gestão' ? { ...g, items: [g.items[0], loyaltyLeaf, ...g.items.slice(1)] } : g)
+const saAccounts: NavLeaf = { to: '/super-admin',           label: 'Barbearias', icon: Building2 }
+const saInvoices: NavLeaf = { to: '/super-admin/faturas',   label: 'Faturas',    icon: Receipt }
+const saNotices: NavLeaf  = { to: '/super-admin/avisos',    label: 'Avisos',     icon: Megaphone }
+const saMessages: NavLeaf = { to: '/super-admin/mensagens', label: 'Mensagens',  icon: MessagesSquare }
 
-// Entradas do super admin (dono do Trimly).
-const superAdminLeaf: NavLeaf = { to: '/super-admin', label: 'Contas', icon: ShieldCheck }
-const superAdminInvoicesLeaf: NavLeaf = { to: '/super-admin/faturas', label: 'Faturas', icon: Receipt }
-const superAdminAnnouncementsLeaf: NavLeaf = { to: '/super-admin/avisos', label: 'Avisos', icon: Megaphone }
-const superAdminSupportLeaf: NavLeaf = { to: '/super-admin/mensagens', label: 'Mensagens', icon: MessagesSquare }
+// Menu da barbearia. Fidelidade só entra com o programa LIGADO.
+function tenantGroups(loyaltyOn: boolean): NavGroup[] {
+  return [
+    { label: null, items: [home, agenda] },
+    { label: 'Clientes e equipe', items: [clients, ...(loyaltyOn ? [loyalty] : []), barbers, services, products] },
+    { label: 'Finanças', items: [financial, goals] },
+    { label: 'Conta', items: [config, support] },
+  ]
+}
 
-// Menu do super admin: só o que é do Trimly. Os itens de operação de UMA barbearia
-// (agenda, clientes, equipe, produtos, financeiro, metas, configurações) somem — ele
-// não opera barbearia nenhuma. É só UI: as rotas continuam existindo e funcionando
-// se ele digitar a URL.
-const superAdminGroups: { label: string | null; items: NavEntry[] }[] = [
-  { label: 'Trimly', items: [superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf] },
-]
+// Super admin é dono do Trimly, não de uma barbearia: só vê o que é do Trimly.
+// (As rotas da barbearia continuam existindo se ele digitar a URL.)
+const superAdminGroups: NavGroup[] = [{ label: null, items: [saAccounts, saInvoices, saNotices, saMessages] }]
 
-// Todas as folhas (achatando os submenus) — usado pra resolver o título da topbar.
-const allLeaves: NavLeaf[] = [
-  ...navGroups.flatMap(g => g.items.flatMap(i => (isParent(i) ? i.children : [i]))),
-  loyaltyLeaf, superAdminLeaf, superAdminInvoicesLeaf, superAdminAnnouncementsLeaf, superAdminSupportLeaf,
-]
-
-// '/admin' casa só na rota exata; os demais casam também em sub-rotas
-// (ex.: '/admin/barbeiros/:id' destaca "Barbeiros").
+// '/admin' e '/super-admin' casam só na rota exata (e o detalhe da conta); os demais também em sub-rotas.
 const isActive = (to: string, pathname: string) =>
-  to === '/admin' ? pathname === '/admin' : pathname === to || pathname.startsWith(to + '/')
+  to === '/admin' ? pathname === to
+    : to === '/super-admin' ? pathname === to || pathname.startsWith('/super-admin/contas/')
+    : pathname === to || pathname.startsWith(to + '/')
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [moreOpen, setMoreOpen] = useState(false)
   const location = useLocation()
-  const navigate  = useNavigate()
+  const navigate = useNavigate()
+  const desktop = useIsDesktop()
   const { user, logout } = useAuthStore()
-
-  // Abre automaticamente o submenu que contém a rota atual (sem fechar os que
-  // o usuário abriu manualmente). Não força fechamento.
-  useEffect(() => {
-    navGroups.forEach(g => g.items.forEach(item => {
-      if (isParent(item) && item.children.some(c => isActive(c.to, location.pathname))) {
-        setOpenGroups(prev => (prev.has(item.label) ? prev : new Set(prev).add(item.label)))
-      }
-    }))
-  }, [location.pathname])
-
-  const toggleGroup = (label: string) =>
-    setOpenGroups(prev => {
-      const next = new Set(prev)
-      if (next.has(label)) next.delete(label); else next.add(label)
-      return next
-    })
-
-  const pageTitle = allLeaves
-    .filter(l => isActive(l.to, location.pathname))
-    .sort((a, b) => b.to.length - a.to.length)[0]?.label ?? 'Painel'
-
-  // Super admin não tem barbearia: não consulta /settings (o endpoint é de
-  // barbearia e responderia 403 — ele não pertence a tenant nenhum) e não aplica
-  // tema de tenant — o painel dele fica com a identidade padrão do Trimly.
   const superAdmin = isSuperAdmin(user?.role)
+  const role = user?.role?.toLowerCase()
+  const isOwner = role === 'owner'
+
+  // Super admin não tem barbearia: não consulta /settings (responderia 403) e não
+  // aplica tema de barbearia — o painel dele fica com a identidade do Trimly.
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => (await api.get('/settings')).data.data,
@@ -116,155 +79,178 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   })
   useEffect(() => { if (settings && !superAdmin) applyTenantTheme(settings) }, [settings, superAdmin])
 
-  const handleLogout = () => { logout(); navigate('/login') }
-
-  // Pontinho de resposta não-lida no item "Suporte" — mesmo espírito do sino de
-  // avisos: só consulta quando o usuário é Owner (o endpoint é RequireOwner;
-  // barber/admin levariam 403). Some quando a página é aberta (ela marca como lido).
-  const isOwner = user?.role?.toLowerCase() === 'owner'
+  // Ponto de resposta não lida em "Suporte" (endpoint só do dono).
   const { data: supportMessages } = useMySupportMessages(isOwner)
   const supportUnread = supportMessages?.some(m => m.author === 'superadmin' && !m.readAt) ?? false
 
-  // Programa de fidelidade: decide se a aba aparece. Só owner/admin consultam
-  // (endpoint RequireOwnerOrAdmin; barber levaria 403). Sem programa = desligado.
-  const role = user?.role?.toLowerCase()
+  // Fidelidade: decide se a aba aparece e conta os resgates a entregar.
   const canSeeLoyalty = !superAdmin && (role === 'owner' || role === 'admin')
   const { data: loyaltyProgram } = useLoyaltyProgram(canSeeLoyalty)
   const loyaltyOn = canSeeLoyalty && !!loyaltyProgram?.isEnabled
+  const { data: redemptions } = useLoyaltyRedemptions(loyaltyOn)
+  const pendingRedemptions = redemptions?.filter(r => r.status === 'Pending').length ?? 0
 
-  // Super admin vê só o menu do Trimly; todos os demais veem o menu da barbearia
-  // exatamente como antes (com Fidelidade quando o programa está ligado).
-  const groups = superAdmin ? superAdminGroups : loyaltyOn ? navGroupsWithLoyalty : navGroups
+  const groups = superAdmin ? superAdminGroups : tenantGroups(loyaltyOn)
+  const leaves = groups.flatMap(g => g.items)
+
+  // Título da aba do navegador acompanha a seção.
+  const current = leaves.filter(l => isActive(l.to, location.pathname)).sort((a, b) => b.to.length - a.to.length)[0]
+  useEffect(() => { document.title = current ? `${current.label} | Trimly` : 'Trimly' }, [current])
+
+  const handleLogout = () => { logout(); navigate('/login') }
+
+  const businessName: string = settings?.businessName || 'Minha barbearia'
+  const publicUrl = settings?.publicSlug ? `/b/${settings.publicSlug}` : null
+
+  // Indicador ao lado do item (resgates a entregar / resposta não lida).
+  const trailing = (to: string) => {
+    if (to === loyalty.to && pendingRedemptions > 0)
+      return <span className="side-count" aria-label={`${pendingRedemptions} resgate(s) a entregar`}>{pendingRedemptions > 9 ? '9+' : pendingRedemptions}</span>
+    if (to === support.to && supportUnread) return <span className="side-dot" aria-label="Resposta não lida" />
+    return null
+  }
+
+  // ---------- Navegação inferior (mobile) ----------
+  const tabs: NavLeaf[] = superAdmin ? [saAccounts, saInvoices, saNotices, saMessages] : [home, agenda, clients, financial]
+  const overflow = leaves.filter(l => !tabs.includes(l))
+  const overflowActive = overflow.some(l => isActive(l.to, location.pathname))
+  const overflowAlert = supportUnread || pendingRedemptions > 0
 
   return (
-    // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
-    // área atrás da barra de endereço, o documento fica rolável e o header (com o
-    // botão ☰) some ao rolar. h-screen permanece como fallback pra navegadores
-    // sem suporte a dvh. No desktop dvh === vh — nada muda.
-    <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      {/* Overlay Mobile */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
+    <div className="app-shell">
+      {desktop && (
+        <aside className="side" aria-label="Menu principal">
+          <div className="side-head">
+            <Link to={superAdmin ? '/super-admin' : '/admin'} aria-label="Trimly, início"><Logo size={30} /></Link>
+            <AnnouncementsBell enabled={isOwner} loyaltyEnabled={loyaltyOn} align="left" />
+          </div>
+
+          <div className="side-workspace">
+            {superAdmin
+              ? <span className="ds-avatar" style={{ width: 36, height: 36, background: 'var(--surface-3)', color: 'var(--ink-2)' }}><Building2 size={17} /></span>
+              : <Avatar name={businessName} src={settings?.logoUrl} size={36} />}
+            <div className="min-w-0">
+              <p className="side-workspace-name">{superAdmin ? 'Administração' : businessName}</p>
+              {superAdmin
+                ? <p className="side-workspace-sub">Todas as barbearias</p>
+                : publicUrl
+                  ? <a className="side-workspace-sub" href={publicUrl} target="_blank" rel="noopener noreferrer">Página de agendamento <ExternalLink size={11} /></a>
+                  : <p className="side-workspace-sub">Barbearia</p>}
+            </div>
+          </div>
+
+          <nav className="side-nav">
+            {groups.map(group => (
+              <div key={group.label ?? 'root'} className="side-group">
+                {group.label && <p className="side-label">{group.label}</p>}
+                {group.items.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <Link key={item.to} to={item.to} className="side-item"
+                      aria-current={isActive(item.to, location.pathname) ? 'page' : undefined}>
+                      <Icon size={18} strokeWidth={1.75} />
+                      {item.label}
+                      {trailing(item.to)}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
+          </nav>
+
+          <div className="side-foot">
+            <Avatar name={user?.name} size={32} />
+            <div className="flex-1 min-w-0">
+              <p className="side-user-name">{superAdmin ? 'Super admin' : user?.name}</p>
+              <p className="side-user-mail">{user?.email}</p>
+            </div>
+            <button type="button" onClick={handleLogout} className="side-icon-btn" aria-label="Sair" title="Sair">
+              <LogOut size={17} strokeWidth={1.75} />
+            </button>
+          </div>
+        </aside>
       )}
 
-      {/* Sidebar */}
-      <aside className={`ds-sidebar fixed lg:static inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        {/* Logo */}
-        <div className="ds-sidebar-logo flex items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="ds-sidebar-logo-mark w-8 h-8 rounded-lg flex items-center justify-center">
-              <Scissors size={16} style={{ color: 'var(--accent-fg)' }} />
-            </div>
-            <span className="ds-sidebar-logo-text">Trimly</span>
-          </div>
-          <button onClick={() => setSidebarOpen(false)} className="ds-icon-btn lg:hidden">
-            <X size={20} />
-          </button>
-        </div>
+      <div className="app-main">
+        {!desktop && (
+          <header className="mbar">
+            <LogoMark size={30} />
+            <p className="mbar-title">{superAdmin ? 'Trimly' : businessName}</p>
+            <AnnouncementsBell enabled={isOwner} loyaltyEnabled={loyaltyOn} align="right" />
+          </header>
+        )}
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {groups.map((group, gi) => (
-            <div key={group.label ?? 'root'}>
-              {group.label && <p className="ds-nav-group-label">{group.label}</p>}
-              {group.items.map((item, ii) => {
-                const index = groups.slice(0, gi).reduce((n, g) => n + g.items.length, 0) + ii
-
-                // Pai expansível: cabeçalho clicável + lista de subitens.
-                if (isParent(item)) {
-                  const { label, icon: Icon, children } = item
-                  const childActive = children.some(c => isActive(c.to, location.pathname))
-                  const open = openGroups.has(label)
-                  return (
-                    <div key={label}>
-                      <button type="button" onClick={() => toggleGroup(label)} aria-expanded={open}
-                        className={`ds-nav-item ds-nav-parent ds-nav-anim ${childActive && !open ? 'ds-nav-item-active' : ''} ${childActive && open ? 'ds-nav-parent-active' : ''}`}
-                        style={{ animationDelay: `${index * 30}ms` }}>
-                        <Icon size={18} />
-                        {label}
-                        <ChevronDown size={14} className={`ml-auto ds-nav-caret ${open ? 'ds-nav-caret-open' : ''}`} />
-                      </button>
-                      <div className={`ds-nav-sub ${open ? 'ds-nav-sub-open' : ''}`}>
-                        {children.map(({ to, label: clabel, icon: CIcon }) => {
-                          const active = isActive(to, location.pathname)
-                          return (
-                            <Link key={to} to={to}
-                              className={`ds-nav-item ds-nav-subitem ${active ? 'ds-nav-item-active' : ''}`}
-                              onClick={() => setSidebarOpen(false)}>
-                              <CIcon size={16} />
-                              {clabel}
-                              {active && <ChevronRight size={14} className="ml-auto" />}
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                }
-
-                // Folha: link direto (comportamento original).
-                const { to, label, icon: Icon } = item
-                const active = isActive(to, location.pathname)
-                return (
-                  <Link key={to} to={to}
-                    className={`ds-nav-item ds-nav-anim ${active ? 'ds-nav-item-active' : ''}`}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    onClick={() => setSidebarOpen(false)}>
-                    <Icon size={18} />
-                    {label}
-                    {to === '/admin/suporte' && supportUnread && !active && (
-                      <span className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: 'var(--accent)' }} aria-label="Resposta não lida" />
-                    )}
-                    {active && <ChevronRight size={14} className="ml-auto" />}
-                  </Link>
-                )
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* Rodapé: identidade do Trimly pro super admin (ele não é dono de
-            barbearia nenhuma); barbearia + dono pra todos os outros. */}
-        <div className="ds-sidebar-footer px-3 py-4">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="ds-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0">
-              {superAdmin ? <ShieldCheck size={16} /> : (settings?.businessName ?? user?.name)?.[0]?.toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="ds-user-name truncate">{superAdmin ? 'Trimly' : (settings?.businessName || 'Minha barbearia')}</p>
-              <p className="ds-user-role truncate">{superAdmin ? 'Super admin' : user?.name}</p>
-              <p className="ds-user-role truncate">{user?.email}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="ds-logout-btn">
-            <LogOut size={18} />
-            Sair
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Topbar */}
-        <header className="ds-topbar h-16 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="ds-icon-btn lg:hidden">
-            <Menu size={20} />
-          </button>
-          <div className="flex-1 lg:flex-none">
-            <h1 className="ds-topbar-title">{pageTitle}</h1>
-          </div>
-          {/* Sino do dono: avisos do Trimly + resgates de fidelidade pendentes
-              (duas fontes agregadas no componente — resgate NÃO é Announcement).
-              Some sozinho quando não há nada. */}
-          <AnnouncementsBell enabled={isOwner} loyaltyEnabled={loyaltyOn} />
-        </header>
-
-        {/* Content — fade suave a cada troca de página */}
-        <main key={location.pathname} className="ds-main-content flex-1 overflow-y-auto p-4 lg:p-6 animate-fade-in">
-          {children}
+        <main className="app-content">
+          {/* Telas do painel chegam em pedaços (lazy): o menu fica e só o miolo carrega. */}
+          <Suspense fallback={<PageLoading />}>{children}</Suspense>
         </main>
+
+        {!desktop && (
+          <nav className="tabbar" aria-label="Navegação">
+            {tabs.map(t => {
+              const Icon = t.icon
+              const active = isActive(t.to, location.pathname)
+              return (
+                <Link key={t.to} to={t.to} className="tabbar-item" aria-current={active ? 'page' : undefined}>
+                  <Icon size={22} strokeWidth={active ? 2 : 1.75} />
+                  {t.label}
+                </Link>
+              )
+            })}
+            <button type="button" className="tabbar-item" onClick={() => setMoreOpen(true)}
+              aria-current={overflowActive ? 'page' : undefined} aria-haspopup="dialog">
+              <Ellipsis size={22} strokeWidth={overflowActive ? 2 : 1.75} />
+              Mais
+              {overflowAlert && <span className="tabbar-badge" aria-label="Há itens pendentes" />}
+            </button>
+          </nav>
+        )}
       </div>
+
+      <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} title="Mais opções">
+        {overflow.length > 0 && (
+          <div className="mb-4">
+            {overflow.map(l => {
+              const Icon = l.icon
+              return (
+                <Link key={l.to} to={l.to} className="more-item" onClick={() => setMoreOpen(false)}
+                  aria-current={isActive(l.to, location.pathname) ? 'page' : undefined}>
+                  <Icon size={20} strokeWidth={1.75} />
+                  <span className="flex-1">{l.label}</span>
+                  {trailing(l.to)}
+                </Link>
+              )
+            })}
+            {publicUrl && (
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="more-item" onClick={() => setMoreOpen(false)}>
+                <ExternalLink size={20} strokeWidth={1.75} />
+                <span className="flex-1">Página de agendamento</span>
+              </a>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-3 rounded-control bg-surface-2 border border-line p-3">
+          <Avatar name={user?.name} size={36} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{superAdmin ? 'Super admin' : user?.name}</p>
+            <p className="text-13 text-ink-2 truncate">{user?.email}</p>
+          </div>
+          <button type="button" onClick={handleLogout} className="ds-btn ds-btn-secondary ds-btn-sm">
+            <LogOut size={15} /> Sair
+          </button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+/* Enquanto o pedaço da tela carrega: o mesmo formato de cabeçalho + conteúdo. */
+function PageLoading() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Carregando">
+      <Skeleton className="h-8 w-48" />
+      <LedgerSkeleton cells={3} />
+      <ListSkeleton rows={4} />
     </div>
   )
 }

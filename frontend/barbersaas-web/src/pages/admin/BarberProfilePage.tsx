@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { ChevronLeft, Pencil, UserRound, FileDown, CalendarDays, Clock } from 'lucide-react'
 import {
-  ArrowLeft, Pencil, User, Phone, Scissors, Clock, TrendingUp, Calendar, Percent, DollarSign, FileDown, Armchair,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import {
-  ResponsiveContainer, ComposedChart, Bar, Line, BarChart, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+  ResponsiveContainer, ComposedChart, Bar, Line, BarChart, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
-import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
+import { chartAxisTick, chartGridStroke, chartBarCursor, CHART_MAIN, CHART_SECOND } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
 import { useBarber, useBarberServices, useBarberSchedule, useBarberPerformanceSeries, useGoogleStatus, useConnectGoogle, useDisconnectGoogle } from '../../features/barbers/barbersApi'
 import { useBarberPerformance } from '../../features/dashboard/dashboardApi'
@@ -18,62 +15,37 @@ import { useSettings } from '../../features/settings/settingsApi'
 import { generateBarberReport } from '../../lib/pdf/barberReport'
 import { captureNode } from '../../lib/pdf/reportKit'
 import { EditBarberModal } from '../../components/admin/EditBarberModal'
-import { Card } from '../../components/ui/Card'
+import { ScheduleModal } from '../../components/admin/ScheduleModal'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
-import { Badge } from '../../components/ui/Badge'
+import { Pill } from '../../components/ui/Badge'
+import { Avatar } from '../../components/ui/Avatar'
+import { Ledger } from '../../components/ui/Ledger'
+import { Modal } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { CardGridSkeleton } from '../../components/ui/Skeleton'
+import { LedgerSkeleton, BlockSkeleton, Skeleton } from '../../components/ui/Skeleton'
 import { formatPhoneBR } from '../../lib/masks'
-import { assetUrl } from '../../lib/api'
-
-const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const fmtN = (n: number) => n.toLocaleString('pt-BR')
+import { brl, brlCompact, num, hhmm } from '../../lib/format'
+import { payModel } from '../../lib/barber'
+import { effectiveHero } from '../../lib/theme-tenant'
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-
-// dayOfWeek do .NET: 0=Domingo .. 6=Sábado. Exibimos Seg→Dom.
+// dayOfWeek do .NET: 0 = domingo … 6 = sábado. Exibimos de segunda a domingo.
 const dayNames: Record<number, string> = { 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado', 0: 'Domingo' }
 const dayOrder = [1, 2, 3, 4, 5, 6, 0]
-const hhmm = (t: string) => (t ?? '').slice(0, 5)
-
-const kpiColors: Record<string, string> = {
-  success: 'var(--color-success)', error: 'var(--color-error)',
-  warning: 'var(--color-warning)', info: 'var(--color-info)', accent: 'var(--accent)',
-}
-
-function KPICard({ title, value, sub, icon: Icon, chip }: {
-  title: string; value: string; sub?: string; icon: LucideIcon; chip: string
-}) {
-  const color = kpiColors[chip] ?? 'var(--accent)'
-  return (
-    <Card style={{ borderBottom: `2px solid ${color}` }}>
-      <div className="flex items-start gap-3">
-        <div className="flex items-center justify-center flex-shrink-0" style={{
-          width: 40, height: 40, borderRadius: '50%',
-          background: `color-mix(in srgb, ${color} 15%, transparent)`, color,
-        }}>
-          <Icon size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="ds-text-secondary" style={{ fontSize: '12px' }}>{title}</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'var(--text-primary)', marginTop: 4, lineHeight: 1 }}>{value}</p>
-          {sub && <p className="ds-text-disabled mt-1" style={{ fontSize: 'var(--text-xs)' }}>{sub}</p>}
-        </div>
-      </div>
-    </Card>
-  )
-}
 
 export default function BarberProfilePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState(false)
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false)
 
   const today = new Date()
   const monthStart = format(startOfMonth(today), 'yyyy-MM-dd')
-  // Mês INTEIRO (não "até hoje") — mesma janela do Dashboard, senão agendamentos
-  // com data futura concluídos antecipadamente somem daqui mas contam lá.
+  // Mês INTEIRO (mesma janela do Início) — senão concluídos com data futura somem daqui.
   const monthEnd = format(endOfMonth(today), 'yyyy-MM-dd')
+  const monthName = format(today, 'MMMM', { locale: ptBR })
 
   const { data: barber, isLoading, isError } = useBarber(id)
   const { data: services, isLoading: loadingServices } = useBarberServices(id)
@@ -82,33 +54,36 @@ export default function BarberProfilePage() {
   const connectGoogle = useConnectGoogle(id)
   const disconnectGoogle = useDisconnectGoogle(id)
 
-  // Volta do consentimento do Google: o callback do backend redireciona pra cá
-  // com ?google=connected|error — mostra o toast e limpa o parâmetro da URL.
+  // Volta do consentimento do Google: o backend redireciona com ?google=connected|error.
   const [searchParams, setSearchParams] = useSearchParams()
   useEffect(() => {
     const result = searchParams.get('google')
     if (!result) return
-    if (result === 'connected') toast.success('Google Calendar conectado!')
-    else toast.error('Não foi possível conectar o Google Calendar. Tente de novo.')
+    if (result === 'connected') toast.success('Google Agenda conectado.')
+    else toast.error('Não foi possível conectar o Google Agenda. Tente de novo.')
     searchParams.delete('google')
     setSearchParams(searchParams, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
   const { data: series, isLoading: loadingSeries } = useBarberPerformanceSeries(id, 6)
   const { data: perfList } = useBarberPerformance(monthStart, monthEnd)
   const { data: settings } = useSettings()
   const perf = perfList?.find(p => p.id.toLowerCase() === id.toLowerCase())
 
-  // Gráfico oculto em tema CLARO, capturado em 2x para o PDF (o da tela é escuro).
+  // Gráfico oculto em fundo branco, capturado em 2x para o PDF.
   const pdfChartRef = useRef<HTMLDivElement>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
+
+  const back = <Link to="/admin/barbeiros" className="ds-back"><ChevronLeft size={16} /> Barbeiros</Link>
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/admin/barbeiros')}><ArrowLeft size={16} /> Voltar</Button>
-        <CardGridSkeleton cells={4} />
-        <CardGridSkeleton cells={2} />
+        {back}
+        <div className="flex items-center gap-4"><Skeleton className="w-16 h-16 rounded-full" /><div className="space-y-2 flex-1"><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-72" /></div></div>
+        <LedgerSkeleton />
+        <BlockSkeleton height={280} />
       </div>
     )
   }
@@ -116,32 +91,29 @@ export default function BarberProfilePage() {
   if (isError || !barber) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/admin/barbeiros')}><ArrowLeft size={16} /> Voltar</Button>
-        <EmptyState icon={User} title="Barbeiro não encontrado"
+        {back}
+        <EmptyState boxed icon={UserRound} title="Barbeiro não encontrado"
           hint="Ele pode ter sido removido ou o link está incorreto."
-          action={<Button onClick={() => navigate('/admin/barbeiros')}>Ver barbeiros</Button>} />
+          action={<Button variant="secondary" onClick={() => navigate('/admin/barbeiros')}>Ver barbeiros</Button>} />
       </div>
     )
   }
 
-  const commissionLabel = barber.commissionType === 1 ? fmt(barber.commissionValue) : `${barber.commissionValue}%`
   const offered = (services ?? []).filter(s => s.isOffered)
-  const seriesData = series?.map(p => ({ ...p, label: format(new Date(`${p.month}-01`), 'MMM', { locale: ptBR }) }))
+  const seriesData = series?.map(p => ({ ...p, label: format(new Date(`${p.month}-01T12:00:00`), 'MMM', { locale: ptBR }) }))
   const hasSeries = seriesData?.some(p => p.revenue > 0 || p.appointments > 0) ?? false
   const weekly = perf?.weeklyAppointments ?? []
   const weeklyData = weekdayLabels.map((label, idx) => ({ label, count: weekly[idx] ?? 0 }))
   const hasWeekly = weekly.some(c => c > 0)
   const ticket = perf && perf.totalAppointments > 0 ? perf.revenue / perf.totalAppointments : 0
-  const brandHex = settings?.primaryColor || '#1a1a1a'
+  const brandHex = effectiveHero(settings?.primaryColor, settings?.secondaryColor)
 
   const handleDownloadPdf = async () => {
     if (!settings) { toast.error('Aguarde os dados carregarem.'); return }
     setPdfBusy(true)
     try {
       const chart = hasSeries && pdfChartRef.current ? await captureNode(pdfChartRef.current) : null
-      await generateBarberReport({
-        settings, periodStart: monthStart, barber, perf, services: services ?? [], chart,
-      })
+      await generateBarberReport({ settings, periodStart: monthStart, barber, perf, services: services ?? [], chart })
     } catch {
       toast.error('Não foi possível gerar o PDF.')
     } finally {
@@ -151,236 +123,159 @@ export default function BarberProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/admin/barbeiros')}><ArrowLeft size={16} /> Voltar</Button>
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={handleDownloadPdf} loading={pdfBusy} disabled={!settings}>
-            <FileDown size={16} /> Baixar relatório do barbeiro (PDF)
-          </Button>
-          <Button onClick={() => setEditing(true)}><Pencil size={16} /> Editar</Button>
-        </div>
-      </div>
-
-      {/* Cabeçalho */}
-      <Card style={{ padding: 'var(--space-6)' }}>
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-          {barber.photoUrl ? (
-            <img src={assetUrl(barber.photoUrl)} alt={barber.name} className="rounded-full object-cover flex-shrink-0"
-              style={{ width: 112, height: 112, border: '3px solid var(--accent)' }} />
-          ) : (
-            <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0"
-              style={{ width: 112, height: 112, borderRadius: '50%', fontSize: 40 }}>
-              <User size={48} />
-            </div>
-          )}
-          <div className="flex-1 min-w-0 text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', color: 'var(--text-primary)' }}>{barber.name}</h2>
-              <Badge variant={barber.isActive ? 'success' : 'default'}>{barber.isActive ? 'Ativo' : 'Inativo'}</Badge>
-              {barber.showInPublicPage && <Badge variant="info">Visível ao público</Badge>}
-            </div>
-            {barber.bio && <p className="ds-text-secondary mt-2" style={{ fontSize: 'var(--text-sm)', maxWidth: 560 }}>{barber.bio}</p>}
-            <div className="flex items-center justify-center sm:justify-start gap-5 mt-3 flex-wrap">
-              {barber.phone && (
-                <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-                  <Phone size={14} /> {formatPhoneBR(barber.phone)}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-                <Percent size={14} /> Comissão: <span className="ds-text-primary font-semibold">{commissionLabel}</span>
-                <span className="ds-text-disabled">({barber.commissionType === 1 ? 'fixo' : 'percentual'})</span>
+      <PageHeader
+        back={back}
+        title={
+          <span className="flex items-center gap-4">
+            <Avatar name={barber.name} src={barber.photoUrl} size={56} />
+            <span className="min-w-0">
+              <span className="block truncate">{barber.name}</span>
+              <span className="flex items-center gap-2 mt-1.5 flex-wrap font-sans">
+                {!barber.isActive && <Pill tone="neutral">Inativo</Pill>}
+                {barber.showInPublicPage ? <Pill tone="ok">Na página de agendamento</Pill> : <Pill tone="neutral">Oculto da página</Pill>}
               </span>
-              {barber.chairRentAmount != null && (
-                <span className="flex items-center gap-1.5 ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-                  <Armchair size={14} /> Cadeira: <span className="ds-text-primary font-semibold">{fmt(barber.chairRentAmount)}</span>
-                  <span className="ds-text-disabled">({barber.chairRentPeriod === 0 ? 'por semana' : 'por mês'} — pago pelo barbeiro)</span>
-                </span>
-              )}
-            </div>
+            </span>
+          </span>
+        }
+        actions={<>
+          <Button variant="secondary" onClick={handleDownloadPdf} loading={pdfBusy} disabled={!settings}>
+            <FileDown size={16} /> <span className="lbl-long">Relatório do mês</span><span className="lbl-short">PDF</span>
+          </Button>
+          <Button variant="secondary" onClick={() => setEditing(true)}><Pencil size={16} /> <span className="lbl-long">Editar</span></Button>
+        </>} />
+
+      <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm -mt-2">
+        <div className="flex gap-2"><dt className="text-ink-2">Telefone</dt><dd className="font-medium t-num">{barber.phone ? formatPhoneBR(barber.phone) : 'Não informado'}</dd></div>
+        <div className="flex gap-2"><dt className="text-ink-2">Remuneração</dt><dd className="font-medium">{payModel(barber)}</dd></div>
+        {barber.bio && <div className="flex gap-2 basis-full"><dt className="sr-only">Apresentação</dt><dd className="text-ink-2 max-w-[70ch]">{barber.bio}</dd></div>}
+      </dl>
+
+      <section aria-labelledby="mes-barbeiro">
+        <h2 id="mes-barbeiro" className="text-md font-semibold mb-3">Resultado de {monthName}</h2>
+        {!perfList ? <LedgerSkeleton /> : (
+          <Ledger items={[
+            { label: 'Faturamento', value: brl(perf?.revenue ?? 0) },
+            { label: 'Atendimentos', value: num(perf?.totalAppointments ?? 0) },
+            { label: 'Ocupação da agenda', value: `${(perf?.occupancyRate ?? 0).toFixed(0)}%` },
+            { label: 'Ticket médio', value: brl(ticket) },
+          ]} />
+        )}
+      </section>
+
+      <Panel title="Desempenho" description="Últimos 6 meses, atendimentos concluídos"
+        actions={hasSeries ? (
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-xs text-ink-2"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: CHART_MAIN }} />Faturamento</span>
+            <span className="flex items-center gap-1.5 text-xs text-ink-2"><span className="w-3 h-[2px]" style={{ background: 'var(--ink-2)' }} />Atendimentos</span>
           </div>
-        </div>
-      </Card>
-
-      {/* KPIs do mês */}
-      <div>
-        <p className="ds-text-disabled mb-2" style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {format(today, "MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KPICard title="Faturamento" value={fmt(perf?.revenue ?? 0)} icon={TrendingUp} chip="success" />
-          <KPICard title="Atendimentos" value={fmtN(perf?.totalAppointments ?? 0)} icon={Calendar} chip="accent" />
-          <KPICard title="Ocupação" value={`${(perf?.occupancyRate ?? 0).toFixed(0)}%`} icon={Percent} chip="info" />
-          <KPICard title="Ticket médio" value={fmt(ticket)} icon={DollarSign} chip="warning" />
-        </div>
-      </div>
-
-      {/* Gráfico de desempenho (6 meses) */}
-      <Card>
-        <h3 className="ds-section-title mb-4">Desempenho — últimos 6 meses</h3>
-        {loadingSeries ? (
-          <div style={{ height: 280 }} className="ds-shimmer" />
-        ) : !hasSeries ? (
-          <EmptyState icon={TrendingUp} title="Sem dados de desempenho"
-            hint="Faturamento e atendimentos concluídos deste barbeiro aparecem aqui." />
+        ) : undefined}>
+        {loadingSeries ? <BlockSkeleton height={260} /> : !hasSeries ? (
+          <EmptyState title="Sem atendimentos concluídos ainda" hint="Faturamento e atendimentos deste barbeiro aparecem aqui mês a mês." />
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={seriesData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="24%">
-              <defs>{accentBarGradient('barberRevFill')}</defs>
+          <ResponsiveContainer width="100%" height={270}>
+            <ComposedChart data={seriesData} margin={{ top: 8, right: 0, bottom: 0, left: 0 }} barCategoryGap="32%">
               <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false} />
-              <YAxis yAxisId="rev" tick={chartAxisTick} axisLine={false} tickLine={false} width={52} tickFormatter={(v: number) => fmt(v)} />
-              <YAxis yAxisId="appt" orientation="right" tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+              <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="rev" tick={chartAxisTick} axisLine={false} tickLine={false} width={72} tickFormatter={(v: number) => brlCompact(v)} />
+              <YAxis yAxisId="appt" orientation="right" tick={chartAxisTick} axisLine={false} tickLine={false} width={32} allowDecimals={false} />
               <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{
-                revenue: { label: 'Faturamento', color: 'var(--accent)', fmt },
-                appointments: { label: 'Atendimentos', color: 'var(--color-info)', fmt: fmtN },
+                revenue: { label: 'Faturamento', color: CHART_MAIN, fmt: brl },
+                appointments: { label: 'Atendimentos', color: 'var(--ink-2)', fmt: num },
               }} />} />
-              <Legend formatter={(value: string) => value === 'revenue' ? 'Faturamento' : 'Atendimentos'}
-                wrapperStyle={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)' }} />
-              <Bar yAxisId="rev" dataKey="revenue" name="revenue" fill="url(#barberRevFill)" radius={[5, 5, 0, 0]} maxBarSize={46}>
-                {barCells(seriesData ?? [], 'revenue')}
-              </Bar>
-              <Line yAxisId="appt" type="monotone" dataKey="appointments" name="appointments" stroke="var(--color-info)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-info)' }} />
+              <Bar yAxisId="rev" dataKey="revenue" fill={CHART_MAIN} radius={[3, 3, 0, 0]} maxBarSize={40} />
+              <Line yAxisId="appt" type="monotone" dataKey="appointments" stroke="var(--ink-2)" strokeWidth={2} dot={{ r: 3, fill: 'var(--ink-2)', strokeWidth: 0 }} />
             </ComposedChart>
           </ResponsiveContainer>
         )}
-      </Card>
+      </Panel>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Serviços & preços */}
-        <Card>
-          <h3 className="ds-section-title mb-4 flex items-center gap-2"><Scissors size={16} /> Serviços & preços</h3>
-          {loadingServices ? (
-            <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="ds-shimmer" style={{ height: 44 }} />)}</div>
-          ) : offered.length === 0 ? (
-            <EmptyState icon={Scissors} title="Nenhum serviço vinculado"
-              hint="Vincule serviços a este barbeiro para que ele apareça nas reservas." />
-          ) : (
-            <div className="space-y-2">
-              {offered.map(s => {
-                const custom = s.customPrice != null && s.customPrice !== s.basePrice
-                return (
-                  <div key={s.serviceId} className="flex items-center justify-between py-2"
-                    style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <span className="ds-text-primary" style={{ fontSize: 'var(--text-sm)' }}>{s.serviceName}</span>
-                    <span className="flex items-center gap-2">
-                      {custom && <span className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)', textDecoration: 'line-through' }}>{fmt(s.basePrice)}</span>}
-                      <span className="ds-text-accent font-semibold" style={{ fontSize: 'var(--text-sm)' }}>{fmt(s.effectivePrice)}</span>
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <Panel title="Serviços e preços" split={offered.length > 0} pad={false}
+          actions={<Link to="/admin/servicos" className="ds-btn ds-btn-ghost ds-btn-sm">Gerenciar</Link>}>
+          {loadingServices ? <div className="p-5 space-y-2">{[0, 1, 2].map(i => <Skeleton key={i} className="h-9" />)}</div>
+            : offered.length === 0 ? (
+              <EmptyState title="Nenhum serviço vinculado" hint="Vincule serviços a este barbeiro para ele aparecer nas reservas." />
+            ) : (
+              <ul className="ds-list">
+                {offered.map(s => {
+                  const custom = s.customPrice != null && s.customPrice !== s.basePrice
+                  return (
+                    <li key={s.serviceId} className="ds-row">
+                      <span className="flex-1 min-w-0 truncate">{s.serviceName}</span>
+                      {custom && <span className="text-13 text-ink-3 line-through t-num">{brl(s.basePrice)}</span>}
+                      <span className="font-semibold t-num">{brl(s.effectivePrice)}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+        </Panel>
 
-        {/* Horário de trabalho */}
-        <Card>
-          <h3 className="ds-section-title mb-4 flex items-center gap-2"><Clock size={16} /> Horário de trabalho</h3>
-          {loadingSchedule ? (
-            <div className="space-y-2">{[0, 1, 2, 3].map(i => <div key={i} className="ds-shimmer" style={{ height: 32 }} />)}</div>
-          ) : !schedule?.shifts?.length ? (
-            <EmptyState icon={Clock} title="Sem horários definidos"
-              hint="Configure os turnos pela lista de barbeiros." />
-          ) : (
-            <div className="space-y-1.5">
-              {dayOrder.map(day => {
-                const shifts = schedule.shifts.filter(s => s.dayOfWeek === day && s.isActive)
-                return (
-                  <div key={day} className="flex items-center justify-between py-1.5"
-                    style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <span className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>{dayNames[day]}</span>
-                    {shifts.length === 0 ? (
-                      <span className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>Folga</span>
-                    ) : (
-                      <span className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>
-                        {shifts.map(s => `${hhmm(s.startTime)}–${hhmm(s.endTime)}`).join('  ·  ')}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </Card>
+        <Panel title="Horário de trabalho" split pad={false}
+          actions={<Button variant="ghost" size="sm" onClick={() => setEditingSchedule(true)}><Clock size={15} /> Editar horários</Button>}>
+          {loadingSchedule ? <div className="p-5 space-y-2">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-8" />)}</div>
+            : !schedule?.shifts?.length ? (
+              <EmptyState title="Sem horários definidos" hint="Defina os turnos para a agenda saber quando ele atende."
+                action={<Button variant="secondary" size="sm" onClick={() => setEditingSchedule(true)}>Definir horários</Button>} />
+            ) : (
+              <ul className="ds-list">
+                {dayOrder.map(day => {
+                  const shifts = schedule.shifts.filter(s => s.dayOfWeek === day && s.isActive)
+                  return (
+                    <li key={day} className="ds-row">
+                      <span className="flex-1 text-ink-2">{dayNames[day]}</span>
+                      {shifts.length === 0
+                        ? <span className="text-13 text-ink-3">Folga</span>
+                        : <span className="font-medium t-num text-right">{shifts.map(s => `${hhmm(s.startTime)}–${hhmm(s.endTime)}`).join(', ')}</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+        </Panel>
       </div>
 
-      {/* Integração Google Calendar (OAuth por barbeiro) */}
-      <Card>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)' }}>
-              <Calendar size={18} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="ds-section-title">Google Calendar</h3>
-                {google?.connected
-                  ? <Badge variant="success">Conectado</Badge>
-                  : <Badge variant="default">Não conectado</Badge>}
-              </div>
-              <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)' }}>
-                {google?.connected
-                  ? <>Os agendamentos deste barbeiro viram eventos no calendário
-                      {google.email ? <> de <span className="ds-text-primary font-medium">{google.email}</span></> : ' da conta conectada'}.</>
-                  : 'Conecte a conta Google do barbeiro para que cada agendamento vire um evento no calendário dele automaticamente.'}
-              </p>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            {google?.connected ? (
-              <Button variant="danger" loading={disconnectGoogle.isPending}
-                onClick={() => {
-                  if (window.confirm('Desconectar o Google Calendar deste barbeiro? Os próximos agendamentos deixarão de virar eventos.'))
-                    disconnectGoogle.mutate(undefined, {
-                      onSuccess: () => toast.success('Google Calendar desconectado.'),
-                      onError: () => toast.error('Não foi possível desconectar. Tente de novo.'),
-                    })
-                }}>
-                Desconectar
-              </Button>
-            ) : (
-              <Button loading={connectGoogle.isPending}
-                onClick={() => connectGoogle.mutate(undefined, {
-                  onError: () => toast.error('Não foi possível iniciar a conexão com o Google.'),
-                })}>
-                <Calendar size={16} /> Conectar Google Calendar
-              </Button>
-            )}
-          </div>
+      <Panel title="Google Agenda"
+        description={google?.connected
+          ? <>Cada agendamento vira um evento no calendário{google.email ? <> de <span className="text-ink font-medium">{google.email}</span></> : ' da conta conectada'}.</>
+          : 'Conecte a conta Google do barbeiro para cada agendamento virar um evento no calendário dele.'}
+        actions={google?.connected ? (
+          <Button variant="secondary" onClick={() => setConfirmDisconnect(true)}>Desconectar</Button>
+        ) : (
+          <Button variant="secondary" loading={connectGoogle.isPending}
+            onClick={() => connectGoogle.mutate(undefined, { onError: () => toast.error('Não foi possível iniciar a conexão com o Google.') })}>
+            <CalendarDays size={16} /> Conectar
+          </Button>
+        )}>
+        <div className="flex items-center gap-2 text-13">
+          {google?.connected ? <Pill tone="ok">Conectado</Pill> : <Pill tone="neutral">Não conectado</Pill>}
         </div>
-      </Card>
+      </Panel>
 
-      {/* Distribuição por dia da semana (mês) */}
-      <Card>
-        <h3 className="ds-section-title mb-4">Atendimentos por dia da semana — {format(today, 'MMMM', { locale: ptBR })}</h3>
+      <Panel title="Atendimentos por dia da semana" description={`Em ${monthName}`}>
         {!hasWeekly ? (
-          <EmptyState icon={Calendar} title="Nenhum atendimento no período"
-            hint="A distribuição dos atendimentos do mês por dia da semana aparece aqui." />
+          <EmptyState title="Nenhum atendimento no mês" hint="A distribuição por dia da semana aparece conforme a agenda anda." />
         ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={weeklyData} barCategoryGap="22%">
-              <defs>{accentBarGradient('barberWeekly')}</defs>
+            <BarChart data={weeklyData} barCategoryGap="30%" margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
               <CartesianGrid stroke={chartGridStroke} vertical={false} />
               <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false} />
               <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
-              <Tooltip cursor={chartBarCursor}
-                content={<ChartTooltip series={{ count: { label: 'Atendimentos', color: 'var(--accent)', fmt: fmtN } }} />} />
-              <Bar dataKey="count" fill="url(#barberWeekly)" radius={[5, 5, 0, 0]} maxBarSize={48}>
-                {barCells(weeklyData, 'count')}
-              </Bar>
+              <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{ count: { label: 'Atendimentos', color: CHART_MAIN, fmt: num } }} />} />
+              <Bar dataKey="count" fill={CHART_SECOND} radius={[3, 3, 0, 0]} maxBarSize={44} />
             </BarChart>
           </ResponsiveContainer>
         )}
-      </Card>
+      </Panel>
 
-      {/* Gráfico oculto em tema claro — fonte da imagem 2x do PDF (não aparece na tela) */}
+      {/* Gráfico oculto (fonte da imagem do PDF — não aparece na tela) */}
       {seriesData && (
         <div ref={pdfChartRef} aria-hidden
           style={{ position: 'absolute', left: -10000, top: 0, width: 760, height: 300, background: '#ffffff', padding: 12 }}>
           <ComposedChart width={736} height={276} data={seriesData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="#e6e6ea" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: '#555555', fontSize: 12 }} axisLine={{ stroke: '#cccccc' }} tickLine={false} />
-            <YAxis yAxisId="rev" tick={{ fill: '#555555', fontSize: 11 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v: number) => fmt(v)} />
+            <YAxis yAxisId="rev" tick={{ fill: '#555555', fontSize: 11 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v: number) => brl(v)} />
             <YAxis yAxisId="appt" orientation="right" tick={{ fill: '#555555', fontSize: 11 }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
             <Bar yAxisId="rev" dataKey="revenue" fill={brandHex} radius={[4, 4, 0, 0]} maxBarSize={46} isAnimationActive={false} />
             <Line yAxisId="appt" type="monotone" dataKey="appointments" stroke="#888888" strokeWidth={2} dot={{ r: 3, fill: '#888888' }} isAnimationActive={false} />
@@ -389,6 +284,21 @@ export default function BarberProfilePage() {
       )}
 
       {editing && <EditBarberModal barber={barber} onClose={() => setEditing(false)} />}
+      {editingSchedule && <ScheduleModal barber={barber} onClose={() => setEditingSchedule(false)} />}
+
+      <Modal isOpen={confirmDisconnect} onClose={() => setConfirmDisconnect(false)} title="Desconectar o Google Agenda?"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmDisconnect(false)}>Voltar</Button>
+          <Button variant="danger" loading={disconnectGoogle.isPending}
+            onClick={() => disconnectGoogle.mutate(undefined, {
+              onSuccess: () => { toast.success('Google Agenda desconectado.'); setConfirmDisconnect(false) },
+              onError: () => toast.error('Não foi possível desconectar. Tente de novo.'),
+            })}>
+            Desconectar
+          </Button>
+        </>}>
+        <p className="text-sm text-ink-2">Os próximos agendamentos de {barber.name} deixam de virar eventos no calendário. Os eventos já criados continuam lá.</p>
+      </Modal>
     </div>
   )
 }

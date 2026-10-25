@@ -1,257 +1,92 @@
 import { useState } from 'react'
-import { Plus, Check, Undo2, Receipt } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-} from 'recharts'
-import {
-  useInvoices, useBillingSummary, useCreateInvoice, useMarkInvoicePaid,
-  type Invoice, type InvoiceStatus,
-} from '../../features/superadmin/invoicesApi'
+import { Plus, Receipt } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { useInvoices, useBillingSummary, type InvoiceStatus } from '../../features/superadmin/invoicesApi'
 import { useSuperAdminTenants } from '../../features/superadmin/superAdminApi'
-import { Card } from '../../components/ui/Card'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
-import { Modal } from '../../components/ui/Modal'
-import { Badge } from '../../components/ui/Badge'
-import { Skeleton } from '../../components/ui/Skeleton'
+import { Ledger } from '../../components/ui/Ledger'
+import { Segmented } from '../../components/ui/Controls'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { NumberField } from '../../components/ui/NumberField'
-import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButton'
-import { chartAxisTick, chartGridStroke } from '../../components/ui/chartTheme'
+import { ListSkeleton, LedgerSkeleton, BlockSkeleton } from '../../components/ui/Skeleton'
+import { InvoiceList, NewInvoiceModal } from '../../components/admin/InvoiceUI'
+import { chartAxisTick, chartGridStroke, chartBarCursor, barFills, CHART_MAIN } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
-import toast from 'react-hot-toast'
-import { apiErrorMessage } from '../../lib/apiError'
-
-const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
-
-const now = new Date()
-const emptyForm = () => ({
-  tenantId: '',
-  competenceYear: now.getFullYear(),
-  competenceMonth: now.getMonth() + 1,
-  amount: 0,
-  dueDate: format(new Date(now.getFullYear(), now.getMonth(), 10), 'yyyy-MM-dd'),
-  notes: '',
-})
+import { useIsDesktop } from '../../lib/useMediaQuery'
+import { brl, brlCompact, capFirst, num } from '../../lib/format'
 
 export default function SuperAdminInvoicesPage() {
+  const desktop = useIsDesktop()
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all')
   const filters = statusFilter === 'all' ? {} : { status: statusFilter }
 
   const { data: invoices, isLoading } = useInvoices(filters)
-  const { data: summary } = useBillingSummary(6)
+  const { data: summary, isLoading: loadingSummary } = useBillingSummary(6)
   const { data: tenants } = useSuperAdminTenants()
-  const create   = useCreateInvoice()
-  const markPaid = useMarkInvoicePaid()
-
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState(emptyForm)
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.tenantId) { toast.error('Escolha a barbearia.'); return }
-    if (form.amount <= 0) { toast.error('O valor deve ser maior que zero.'); return }
-    try {
-      await create.mutateAsync({
-        tenantId: form.tenantId,
-        competenceYear: form.competenceYear,
-        competenceMonth: form.competenceMonth,
-        amount: form.amount,
-        dueDate: form.dueDate,
-        notes: form.notes || undefined,
-      })
-      toast.success('Fatura criada.')
-      setShowCreate(false); setForm(emptyForm())
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao criar a fatura.'))
-    }
-  }
+  const month = capFirst(format(new Date(), 'MMMM', { locale: ptBR }))
+  const monthly = (summary?.monthly ?? []).map((m, i, arr) => ({ ...m, label: capFirst(m.label), isLast: i === arr.length - 1 }))
+  const sixMonths = monthly.reduce((s, m) => s + m.received, 0)
+  const hasRevenue = monthly.some(m => m.received > 0)
 
-  const togglePaid = async (i: Invoice) => {
-    const paid = i.status !== 'Paid'
-    try {
-      await markPaid.mutateAsync({ id: i.id, paid })
-      toast.success(paid ? 'Fatura marcada como paga.' : 'Fatura reaberta.')
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao alterar a fatura.'))
-    }
-  }
-
-  const hasRevenue = (summary?.monthly ?? []).some(m => m.received > 0)
+  // Sugestão de valor: o da fatura mais recente daquela barbearia na lista carregada.
+  const suggestAmount = (tenantId: string) => (invoices ?? [])
+    .filter(i => i.tenantId === tenantId)
+    .sort((a, b) => (b.competenceYear * 12 + b.competenceMonth) - (a.competenceYear * 12 + a.competenceMonth))[0]?.amount
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="ds-page-title flex items-center gap-2">
-            <Receipt size={24} style={{ color: 'var(--accent)' }} /> Faturas
-          </h2>
-          <p className="ds-page-sub">O que as barbearias pagam ao Trimly. Recebimento no Pix, baixa manual.</p>
-        </div>
-        <Button onClick={() => { setForm(emptyForm()); setShowCreate(true) }}><Plus size={16} /> Nova fatura</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Faturas" subtitle="O que as barbearias pagam ao Trimly. Pagamento por Pix, baixa manual."
+        actions={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> <span className="lbl-long">Nova fatura</span><span className="lbl-short">Nova</span></Button>} />
 
-      {/* Resumo do mês */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Recebido no mês</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>
-            {fmt(summary?.received ?? 0)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Em aberto</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-warning)' }}>
-            {fmt(summary?.outstanding ?? 0)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Faturas pagas</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {summary?.paidCount ?? 0}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Faturas em aberto</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {summary?.openCount ?? 0}
-          </p>
-        </Card>
-      </div>
-
-      {/* Receita ao longo do tempo */}
-      <Card>
-        <h3 className="ds-section-title mb-4">Recebido por mês</h3>
-        {!hasRevenue ? (
-          <EmptyState icon={Receipt} title="Nenhuma fatura paga ainda" hint="A receita do Trimly aparece aqui conforme você dá baixa nas faturas." />
-        ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={summary?.monthly ?? []}>
-              <defs>
-                <linearGradient id="trimlyRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false} />
-              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={64} tickFormatter={v => fmt(v)} />
-              <Tooltip content={<ChartTooltip series={{
-                received: { label: 'Recebido', color: 'var(--accent)', fmt },
-              }} />} />
-              <Area type="monotone" dataKey="received" name="received" stroke="var(--accent)" strokeWidth={2} fill="url(#trimlyRevenueFill)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </Card>
-
-      {/* Filtro + lista */}
-      <div className="flex items-center gap-2">
-        {(['all', 'Open', 'Paid'] as const).map(s => (
-          <Button key={s} variant={statusFilter === s ? 'primary' : 'ghost'} onClick={() => setStatusFilter(s)}
-            style={{ height: 32, fontSize: 'var(--text-xs)' }}>
-            {s === 'all' ? 'Todas' : s === 'Open' ? 'Em aberto' : 'Pagas'}
-          </Button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <Card><Skeleton className="h-40" /></Card>
-      ) : !invoices?.length ? (
-        <EmptyState icon={Receipt} title="Nenhuma fatura" hint="Crie a primeira fatura pelo botão acima." />
-      ) : (
-        <Card className="overflow-x-auto" style={{ padding: 0 }}>
-          <table className="w-full" style={{ fontSize: 'var(--text-sm)' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Barbearia</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Competência</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Valor</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Vencimento</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Status</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map(i => (
-                <tr key={i.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-primary font-medium">{i.tenantName}</td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-secondary">{competence(i)}</td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-primary font-medium">{fmt(i.amount)}</td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-secondary">
-                    {format(parseISO(i.dueDate), 'dd/MM/yyyy')}
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <Badge variant={i.status === 'Paid' ? 'success' : 'warning'}>
-                      {i.status === 'Paid' ? 'Paga' : 'Em aberto'}
-                    </Badge>
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <div className="flex items-center gap-1 justify-end flex-wrap">
-                      <Button variant="ghost" onClick={() => togglePaid(i)}
-                        style={{ fontSize: 'var(--text-xs)', height: 30, color: i.status === 'Paid' ? undefined : 'var(--color-success)' }}>
-                        {i.status === 'Paid' ? <><Undo2 size={13} /> Reabrir</> : <><Check size={13} /> Marcar paga</>}
-                      </Button>
-                      <InvoiceReceiptButton invoice={i} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+      {loadingSummary ? <LedgerSkeleton cells={3} /> : (
+        <Ledger items={[
+          { label: `Recebido em ${month.toLowerCase()}`, value: brl(summary?.received ?? 0),
+            foot: <span>{num(summary?.paidCount ?? 0)} {summary?.paidCount === 1 ? 'fatura paga' : 'faturas pagas'}</span> },
+          { label: `A receber em ${month.toLowerCase()}`, value: brl(summary?.outstanding ?? 0),
+            foot: <span>{num(summary?.openCount ?? 0)} em aberto</span> },
+          { label: 'Recebido em 6 meses', value: brl(sixMonths) },
+        ]} />
       )}
 
-      {/* Nova fatura */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Nova fatura">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="ds-field">
-            <label className="ds-label">Barbearia</label>
-            <select className="ds-input" value={form.tenantId} required
-              onChange={e => setForm(f => ({ ...f, tenantId: e.target.value }))}>
-              <option value="">Escolha…</option>
-              {tenants?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+      <Panel title="Recebido por mês" description="Pela competência da fatura">
+        {loadingSummary ? <BlockSkeleton height={200} /> : !hasRevenue ? (
+          <EmptyState icon={Receipt} title="Nenhuma fatura paga ainda" hint="Conforme você dá baixa nas faturas, a receita do Trimly aparece aqui." />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthly} barCategoryGap="32%" margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={chartGridStroke} vertical={false} />
+              <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false} />
+              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={72} tickFormatter={v => brlCompact(v)} />
+              <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{ received: { label: 'Recebido', color: CHART_MAIN, fmt: brl } }} />} />
+              <Bar dataKey="received" radius={[3, 3, 0, 0]} maxBarSize={44}>
+                {barFills(monthly, row => (row as { isLast: boolean }).isLast)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Panel>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="ds-field">
-              <label className="ds-label">Mês da competência</label>
-              <select className="ds-input" value={form.competenceMonth}
-                onChange={e => setForm(f => ({ ...f, competenceMonth: Number(e.target.value) }))}>
-                {Array.from({ length: 12 }, (_, m) => (
-                  <option key={m + 1} value={m + 1}>{String(m + 1).padStart(2, '0')}</option>
-                ))}
-              </select>
-            </div>
-            <div className="ds-field">
-              <label className="ds-label">Ano</label>
-              <NumberField value={form.competenceYear} onChange={v => setForm(f => ({ ...f, competenceYear: v }))} />
-            </div>
-          </div>
+      <Panel pad={false} split title="Todas as faturas"
+        actions={<Segmented value={statusFilter} onChange={setStatusFilter} ariaLabel="Filtrar faturas" options={[
+          { value: 'all', label: 'Todas' }, { value: 'Open', label: 'Em aberto' }, { value: 'Paid', label: 'Pagas' },
+        ]} />}>
+        {isLoading ? <ListSkeleton rows={5} boxed={false} /> : !invoices?.length ? (
+          <EmptyState icon={Receipt}
+            title={statusFilter === 'all' ? 'Nenhuma fatura emitida' : statusFilter === 'Open' ? 'Nenhuma fatura em aberto' : 'Nenhuma fatura paga'}
+            hint={statusFilter === 'all' ? 'Emita a primeira pelo botão Nova fatura.' : 'Troque o filtro para ver as outras.'} />
+        ) : (
+          <InvoiceList invoices={invoices} showTenant desktop={desktop} />
+        )}
+      </Panel>
 
-          <div className="ds-field">
-            <label className="ds-label">Valor (R$)</label>
-            <NumberField value={form.amount} onChange={v => setForm(f => ({ ...f, amount: v }))} step="0.01" />
-          </div>
-
-          <div className="ds-field">
-            <label className="ds-label">Vencimento</label>
-            <input type="date" className="ds-input" value={form.dueDate} required
-              onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
-          </div>
-
-          <Input label="Observações (opcional)" value={form.notes}
-            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} maxLength={500} />
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button type="submit" loading={create.isPending}>{create.isPending ? 'Criando…' : 'Criar fatura'}</Button>
-          </div>
-        </form>
-      </Modal>
+      {showCreate && (
+        <NewInvoiceModal tenants={tenants?.map(t => ({ id: t.id, name: t.name }))} suggestAmount={suggestAmount}
+          onClose={() => setShowCreate(false)} />
+      )}
     </div>
   )
 }

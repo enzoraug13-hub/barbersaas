@@ -1,5 +1,6 @@
 import { api } from '../../lib/api'
 import { useQuery } from '@tanstack/react-query'
+import type { BusinessHour } from '../../types'
 
 // Espelha o SettingsDto do backend (GET /settings). Fonte do logo, nome e cores
 // da marca usados nos relatórios PDF e na página de configuração.
@@ -24,6 +25,8 @@ export interface TenantSettings {
   allowOnlineBooking: boolean
   requireConfirmation: boolean
   publicSlug: string
+  /** Horário de funcionamento por dia (0 = domingo). */
+  businessHours?: BusinessHour[]
 }
 
 export const useSettings = () =>

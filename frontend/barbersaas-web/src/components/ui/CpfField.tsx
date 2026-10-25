@@ -1,4 +1,6 @@
+import { useId } from 'react'
 import { maskCPF, onlyDigits } from '../../lib/masks'
+import { Field } from './Input'
 
 interface CpfFieldProps {
   label: string
@@ -10,18 +12,19 @@ interface CpfFieldProps {
 }
 
 export function CpfField({ label, value, onChange, error, onEnter }: CpfFieldProps) {
+  const id = useId()
   return (
-    <div className="ds-field">
-      <label className="ds-label">{label}</label>
+    <Field label={label} error={error} htmlFor={id}>
       <input
-        className={`ds-input ${error ? 'ds-input-error' : ''}`}
+        id={id}
+        className="ds-input"
+        aria-invalid={error ? true : undefined}
         inputMode="numeric"
         placeholder="000.000.000-00"
         value={maskCPF(value)}
         onChange={e => onChange(onlyDigits(e.target.value).slice(0, 11))}
         onKeyDown={e => e.key === 'Enter' && onEnter?.()}
       />
-      {error && <span className="ds-error-text">{error}</span>}
-    </div>
+    </Field>
   )
 }

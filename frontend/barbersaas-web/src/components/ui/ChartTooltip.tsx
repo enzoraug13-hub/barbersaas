@@ -1,8 +1,5 @@
 import type { TooltipSeries } from './chartTheme'
 
-// Tooltip escuro elevado e legível: fundo var(--bg-elevated), borda sutil, rótulo
-// claro e o accent apenas no número. Substitui o tooltip padrão do Recharts (que
-// colore o texto com o fill da série e fica ilegível).
 type TooltipProps = {
   active?: boolean
   payload?: Array<{ dataKey?: string | number; name?: string; value?: number }>
@@ -11,26 +8,20 @@ type TooltipProps = {
   labelFmt?: (label: string | number) => string
 }
 
+/* Tooltip dos gráficos: superfície branca, rótulo do período e um valor por série. */
 export function ChartTooltip({ active, payload, label, series, labelFmt }: TooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-      borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '9px 11px',
-      fontFamily: 'var(--font-ui)', minWidth: 130 }}>
-      <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: 6 }}>
-        {labelFmt ? labelFmt(label ?? '') : String(label ?? '')}
-      </div>
+    <div className="bg-surface border border-line rounded-[8px] px-3 py-2.5" style={{ boxShadow: 'var(--shadow-pop)', minWidth: 150 }}>
+      <p className="text-xs text-ink-2 mb-1.5">{labelFmt ? labelFmt(label ?? '') : String(label ?? '')}</p>
       {payload.map((p, i) => {
         const cfg = series[String(p.dataKey)]
         if (!cfg) return null
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 0 : 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: cfg.color, flexShrink: 0 }} />
-            <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>{cfg.label}</span>
-            <span style={{ marginLeft: 'auto', color: cfg.color, fontWeight: 700,
-              fontSize: 'var(--text-xs)', fontVariantNumeric: 'tabular-nums' }}>
-              {cfg.fmt(Number(p.value ?? 0))}
-            </span>
+          <div key={i} className="flex items-center gap-2 text-13 mt-1 first:mt-0">
+            <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: cfg.color }} />
+            <span className="text-ink-2">{cfg.label}</span>
+            <span className="ml-auto pl-3 font-semibold text-ink t-num">{cfg.fmt(Number(p.value ?? 0))}</span>
           </div>
         )
       })}

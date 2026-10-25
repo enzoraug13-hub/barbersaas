@@ -1,48 +1,51 @@
 import { useState } from 'react'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, Check, ExternalLink, Share2 } from 'lucide-react'
 import { useSettings } from '../../features/settings/settingsApi'
 import { Button } from '../ui/Button'
 import toast from 'react-hot-toast'
 
 /**
- * Link público da área do cliente (/b/{slug}) com botões Copiar e Abrir.
- * O domínio vem de window.location.origin — funciona em dev, preview e produção
- * sem configuração extra. Usado no Dashboard e em Configurações → Identidade.
+ * Link público de agendamento (/b/{slug}): copiar, compartilhar (celular) e abrir.
+ * O domínio vem de window.location.origin — funciona em dev, preview e produção.
  */
-export function PublicLinkButtons() {
+export function PublicLinkButtons({ compact }: { compact?: boolean }) {
   const { data: settings } = useSettings()
   const [copied, setCopied] = useState(false)
 
   if (!settings?.publicSlug) return null
   const url = `${window.location.origin}/b/${settings.publicSlug}`
+  const display = url.replace(/^https?:\/\//, '')
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      toast.success('Link copiado!')
+      toast.success('Link copiado.')
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Não foi possível copiar. Selecione e copie manualmente.')
+      toast.error('Não foi possível copiar. Selecione o link e copie manualmente.')
     }
   }
 
+  const share = async () => {
+    try {
+      await navigator.share({ title: settings.businessName, text: `Agende seu horário na ${settings.businessName}`, url })
+    } catch { /* cancelado pelo usuário */ }
+  }
+
   return (
-    <div className="flex items-center gap-2 flex-wrap"
-      style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)' }}>
-      <span className="truncate" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontFamily: 'monospace', maxWidth: 280 }} title={url}>
-        {url}
-      </span>
-      <div className="flex items-center gap-1">
-        <Button type="button" variant="ghost" onClick={copy}
-          style={{ height: 30, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)', color: copied ? 'var(--color-success)' : undefined }}>
-          {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copiado!' : 'Copiar'}
-        </Button>
-        <Button type="button" variant="ghost" onClick={() => window.open(url, '_blank', 'noopener')}
-          style={{ height: 30, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)' }}>
-          <ExternalLink size={13} /> Abrir
-        </Button>
-      </div>
+    <div className={`flex items-center gap-2 ${compact ? '' : 'flex-wrap'}`}>
+      <input readOnly value={display} aria-label="Link de agendamento"
+        className="ds-input flex-1 min-w-0 text-ink-2" style={{ minWidth: 0 }}
+        onFocus={e => e.currentTarget.select()} />
+      <Button variant="secondary" onClick={copy} aria-label="Copiar link">
+        {copied ? <Check size={16} /> : <Copy size={16} />}
+        <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
+      </Button>
+      {canShare
+        ? <Button variant="secondary" icon onClick={share} aria-label="Compartilhar link"><Share2 size={16} /></Button>
+        : <Button variant="secondary" icon onClick={() => window.open(url, '_blank', 'noopener')} aria-label="Abrir página"><ExternalLink size={16} /></Button>}
     </div>
   )
 }

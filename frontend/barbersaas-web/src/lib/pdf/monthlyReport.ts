@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf'
+import { effectiveHero } from '../theme-tenant'
 import autoTable from 'jspdf-autotable'
 import {
   MARGIN, INK, LINE, hexToRgb, readableText, fmtBRL, drawHeader, sectionTitle,
@@ -30,7 +31,8 @@ export interface MonthlyReportInput {
 
 export async function generateMonthlyReport(input: MonthlyReportInput): Promise<void> {
   const { settings, dashboard, barbers, barberMeta, payments } = input
-  const brand = hexToRgb(settings.primaryColor)
+  // Mesma cor do topo da página pública (cores antigas de fábrica viram as do Trimly).
+  const brand = hexToRgb(effectiveHero(settings.primaryColor, settings.secondaryColor))
   const monthDate = new Date(input.periodStart + 'T00:00:00')
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
 

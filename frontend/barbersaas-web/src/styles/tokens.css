@@ -1,102 +1,102 @@
+/* ============================================================
+   Trimly — tokens
+   Claro: superfícies brancas sobre cinza-azulado, texto em tinta
+   azul-escura, marca em azul-petróleo, e a cor da barbearia (--accent)
+   nos botões e nas marcações de "onde/quando".
+   --accent e derivados são sobrescritos em runtime por
+   applyTenantTheme() (lib/theme-tenant.ts) com a cor de cada tenant.
+   Nenhuma tela usa hex fixo: tudo passa por aqui.
+   ============================================================ */
+
 :root {
-  /* Fundos */
-  --bg-base: #0F0D0B;
-  --bg-subtle: #1A1713;
-  --bg-elevated: #242019;
-  --border-subtle: #2E2A24;
-  --border-default: #3D3830;
+  /* Superfícies (cinzas puxados para o azul-petróleo da marca) */
+  --canvas: #F3F5F6;
+  --surface: #FFFFFF;
+  --surface-2: #F7F9FA;
+  --surface-3: #EDF1F2;
+
+  /* Linhas */
+  --line: #E1E6E9;
+  --line-strong: #BAC4C9;
+  --line-hover: #98A6AE;
 
   /* Texto */
-  --text-primary: #F5F0E8;
-  --text-secondary: #A89880;
-  --text-disabled: #5C5248;
+  --ink: #13212B;
+  --ink-2: #475862;
+  --ink-3: #5E707B;
 
-  /* Accent do produto (dourado fixo) */
-  --accent: #C9A84C;
-  --accent-hover: #DDB95A;
-  --accent-soft: rgba(201,168,76,0.10);
-  --accent-focus: rgba(201,168,76,0.25);
-  /* Texto/ícone sobre o acento — NUNCA usar --bg-base aqui: --bg-base inverte
-     de polaridade entre os temas (escuro≈preto, claro≈branco) mas o acento
-     não acompanha essa inversão, então o texto ficava ilegível no claro. */
-  --accent-fg: #16120A;
+  /* Barra lateral (desktop) — clara */
+  --side-bg: #FFFFFF;
+  --side-line: #E1E6E9;
+  --side-hover: #F1F4F5;
+  --side-text: #475862;
+  --side-text-strong: #13212B;
+  --side-label: #5E707B;
 
-  /* Tenant (sobrescreve accent por barbearia — vem do banco) */
-  --tenant-primary: var(--accent);
-  --tenant-primary-hover: var(--accent-hover);
-  --tenant-primary-soft: var(--accent-soft);
+  /* Marca Trimly (fixa): azul-petróleo. Também é a cor padrão das barbearias
+     que não escolheram a própria. */
+  --brand: #0F4C5C;
+  --brand-dark: #0B3A46;
+  --brand-aqua: #3FB6C1;
 
-  /* Semânticas */
-  --color-success: #4CAF7D;
-  --color-error: #E05C5C;
-  --color-warning: #E0A030;
-  --color-info: #5B9BD5;
+  /* Cor da barbearia (botões, seleção, "hoje/agora"). Valores abaixo = padrão;
+     applyTenantTheme recalcula tudo para a cor escolhida pelo dono. */
+  --accent: #0F4C5C;
+  --accent-hover: #0D4351;
+  --accent-fg: #FFFFFF;
+  --accent-ink: #0F4C5C;
+  --accent-soft: rgba(15, 76, 92, 0.09);
+  --accent-line: rgba(15, 76, 92, 0.35);
 
-  /* Tipografia */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-ui: 'Inter', system-ui, sans-serif;
+  /* Fundo do topo da página pública (sem foto de capa) */
+  --hero: #0B3A46;
 
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
-  --text-3xl: 30px;
-  --text-4xl: 38px;
+  /* Semânticas: texto forte + fundo suave */
+  --ok: #146B43;
+  --ok-solid: #17804F;
+  --ok-soft: #E5F3EB;
+  --warn: #8F5405;
+  --warn-solid: #B07408;
+  --warn-soft: #FCF1DE;
+  --bad: #B0322A;
+  --bad-solid: #C2372C;
+  --bad-soft: #FBEAE8;
+  --info: #2D58A0;
+  --info-solid: #3566B5;
+  --info-soft: #E8EEF8;
 
-  /* Espaçamento */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
-  --space-16: 64px;
+  /* Gráficos: a série principal na cor da barbearia, comparação em cinza */
+  --chart-1: var(--accent);
+  --chart-2: #C3CED3;
+  --chart-grid: #E7ECEE;
 
-  /* Raios */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
+  /* Foco */
+  --focus: var(--accent-ink);
 
-  /* Sombras */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
-  --shadow-accent: 0 0 0 3px var(--accent-focus);
+  /* Forma */
+  --r-control: 8px;
+  --r-panel: 12px;
+  --r-dialog: 16px;
+
+  --shadow-pop: 0 1px 2px rgba(19, 33, 43, 0.06), 0 8px 24px rgba(19, 33, 43, 0.12);
+  --shadow-dialog: 0 2px 6px rgba(19, 33, 43, 0.08), 0 24px 56px rgba(19, 33, 43, 0.22);
+
+  /* Tipografia — Archivo variável (largura 62–125%) */
+  --font: 'Archivo Variable', 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --stretch-display: 80%;
+  --stretch-numeric: 84%;
+
+  /* Alturas de controle */
+  --h-control: 38px;
+  --h-control-sm: 32px;
+  --h-control-lg: 46px;
 }
 
-/* Tema claro — INATIVO. Decisão: o app fica fixo no escuro por ora
-   (themeStore.ts nunca seta data-theme="light", não há mais botão de
-   toggle), porque várias superfícies (sidebar, cards, inputs, botão
-   secundário em admin-layout.css/components.css) ainda têm cor fixa em
-   vez de token e ficam ilegíveis no claro. Este bloco fica aqui pronto
-   pra quando isso for resolvido de verdade — não removido, só inerte
-   enquanto nada seta o atributo abaixo.
-   --tenant-primary/-hover/-soft e --shadow-accent não são redeclarados
-   aqui: são var(--accent...) e resolvem pro valor já sobrescrito acima
-   (cascade), tanto no padrão quanto no override por tenant. */
-:root[data-theme="light"] {
-  --bg-base: #FAF7F0;
-  --bg-subtle: #FFFFFF;
-  --bg-elevated: #F1EAD9;
-  --border-subtle: #E6DBC2;
-  --border-default: #D8C9A3;
-
-  --text-primary: #221C13;
-  --text-secondary: #6B5F4D;
-  --text-disabled: #A89880;
-
-  --accent: #B08F2E;
-  --accent-hover: #9A7C27;
-  --accent-soft: rgba(176,143,46,0.12);
-  --accent-focus: rgba(176,143,46,0.28);
-  --accent-fg: #16120A;
-
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.14);
+/* Telas de toque: alvos maiores. */
+@media (max-width: 1023px) {
+  :root {
+    --h-control: 44px;
+    --h-control-sm: 36px;
+    --h-control-lg: 50px;
+  }
 }

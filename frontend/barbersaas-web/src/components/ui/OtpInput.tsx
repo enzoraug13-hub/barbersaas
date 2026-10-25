@@ -26,7 +26,7 @@ export function OtpInput({ length = 6, value, onChange, onComplete, error }: Otp
   const handleChange = (i: number, raw: string) => {
     const d = raw.replace(/\D/g, '')
     if (d.length > 1) {
-      // colar várias casas de uma vez
+      // colar (ou preenchimento automático do SMS) várias casas de uma vez
       const pasted = d.slice(0, length - i).split('')
       const next = digits.slice()
       pasted.forEach((c, j) => { next[i + j] = c })
@@ -45,17 +45,17 @@ export function OtpInput({ length = 6, value, onChange, onComplete, error }: Otp
   }
 
   return (
-    <div className="flex gap-2 justify-center">
+    <div className="flex gap-2 justify-center" role="group" aria-label="Código de verificação">
       {digits.map((d, i) => (
         <input
           key={i}
           ref={el => { refs.current[i] = el }}
-          className="ds-input ds-otp-digit text-center font-semibold"
-          style={{
-            width: 44, height: 52, fontSize: 'var(--text-xl)', padding: 0,
-            borderColor: error ? 'var(--color-error)' : undefined,
-          }}
+          className="ds-input ds-otp-digit t-num text-center"
+          style={{ width: 46, height: 54, padding: 0, fontSize: 22, fontWeight: 600 }}
+          aria-invalid={error || undefined}
+          aria-label={`Dígito ${i + 1}`}
           inputMode="numeric"
+          autoComplete={i === 0 ? 'one-time-code' : 'off'}
           maxLength={length}
           value={d}
           onChange={e => handleChange(i, e.target.value)}

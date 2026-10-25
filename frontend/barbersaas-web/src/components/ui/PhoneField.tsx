@@ -1,10 +1,7 @@
+import { useId } from 'react'
 import { maskBRPhone, onlyDigits } from '../../lib/masks'
-
-// Só Brasil por ora. Pra adicionar outro país: incluir aqui (dial code,
-// bandeira, máscara/validação próprias) — o seletor já existe pra isso.
-export const COUNTRIES = [
-  { code: 'BR', dial: '+55', flag: '🇧🇷', label: 'Brasil' },
-] as const
+import { Field } from './Input'
+import { COUNTRIES } from '../../lib/phone'
 
 interface PhoneFieldProps {
   label: string
@@ -12,27 +9,27 @@ interface PhoneFieldProps {
   value: string
   onChange: (digits: string) => void
   error?: string
+  hint?: string
+  optional?: boolean
   autoFocus?: boolean
   required?: boolean
   onEnter?: () => void
 }
 
-export function PhoneField({ label, value, onChange, error, autoFocus, required, onEnter }: PhoneFieldProps) {
+export function PhoneField({ label, value, onChange, error, hint, optional, autoFocus, required, onEnter }: PhoneFieldProps) {
+  const id = useId()
   const country = COUNTRIES[0]
-
   return (
-    <div className="ds-field">
-      <label className="ds-label">{label}</label>
-      <div className="ds-phone-group">
-        <div className="ds-phone-prefix">
-          <select value={country.code} disabled aria-label="País" title="Por ora, só Brasil">
-            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
-          </select>
-        </div>
+    <Field label={label} optional={optional} error={error} hint={hint} htmlFor={id}>
+      <div className="ds-affix">
+        <span className="ds-affix-pre" title={country.label}>{country.dial}</span>
         <input
-          className={`ds-input flex-1 ${error ? 'ds-input-error' : ''}`}
+          id={id}
+          className="ds-input"
+          aria-invalid={error ? true : undefined}
           type="tel"
           inputMode="numeric"
+          autoComplete="tel-national"
           placeholder="(11) 99999-9999"
           value={maskBRPhone(value)}
           onChange={e => onChange(onlyDigits(e.target.value).slice(0, 11))}
@@ -41,7 +38,6 @@ export function PhoneField({ label, value, onChange, error, autoFocus, required,
           required={required}
         />
       </div>
-      {error && <span className="ds-error-text">{error}</span>}
-    </div>
+    </Field>
   )
 }

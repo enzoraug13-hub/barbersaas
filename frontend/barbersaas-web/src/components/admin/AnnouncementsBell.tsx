@@ -1,24 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, Check, Gift, Globe, Store } from 'lucide-react'
+import { Bell, Gift } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useMyAnnouncements, useMarkAnnouncementRead } from '../../features/announcements/announcementsApi'
 import { useLoyaltyRedemptions } from '../../features/loyalty/loyaltyApi'
 
-const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
+const when = (iso: string) => format(parseISO(iso), "d 'de' MMM, HH:mm", { locale: ptBR })
 
 /**
- * Sino do dono na topbar. Agrega DUAS fontes sem misturar as tabelas:
- * 1) Avisos do Trimly (Announcements do super admin — Bloco 3, intocado);
- * 2) Resgates de fidelidade PENDENTES (LoyaltyRedemptions do tenant) — um resgate
- *    não é um Announcement; ele aparece aqui enquanto Pending e sai sozinho quando
- *    o dono entrega/cancela na aba Fidelidade (o próprio pendente é o "não lido").
- * Renderizado apenas para Owner (o AdminLayout decide) — os endpoints exigem isso.
+ * Sino do dono. Junta DUAS fontes sem misturar as tabelas:
+ * 1) Avisos do Trimly (Announcements do super admin);
+ * 2) Resgates de fidelidade PENDENTES — saem sozinhos quando o dono entrega ou
+ *    cancela na aba Fidelidade (o próprio pendente é o "não lido").
+ * Só aparece para o Owner (os endpoints exigem) e some quando não há nada.
  */
-export function AnnouncementsBell({ enabled, loyaltyEnabled = false }: { enabled: boolean; loyaltyEnabled?: boolean }) {
+export function AnnouncementsBell({ enabled, loyaltyEnabled = false, tone = 'light', align = 'right' }: {
+  enabled: boolean; loyaltyEnabled?: boolean; tone?: 'light' | 'dark'; align?: 'left' | 'right'
+}) {
   const { data: announcements } = useMyAnnouncements(enabled)
-  // Só consulta resgates com o programa ligado — desligado, nem polling acontece.
+  // Só consulta resgates com o programa ligado — desligado, nem há polling.
   const { data: redemptions } = useLoyaltyRedemptions(enabled && loyaltyEnabled, 5 * 60 * 1000)
   const markRead = useMarkAnnouncementRead()
   const [open, setOpen] = useState(false)
@@ -28,7 +29,6 @@ export function AnnouncementsBell({ enabled, loyaltyEnabled = false }: { enabled
   const pending = redemptions?.filter(r => r.status === 'Pending') ?? []
   const badge   = unread.length + pending.length
 
-  // Fecha ao clicar fora ou apertar Esc.
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -47,78 +47,62 @@ export function AnnouncementsBell({ enabled, loyaltyEnabled = false }: { enabled
 
   return (
     <div className="relative" ref={panelRef}>
-      <button onClick={() => setOpen(o => !o)} className="ds-icon-btn relative"
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className={tone === 'dark' ? 'side-icon-btn relative' : 'ds-btn ds-btn-ghost ds-btn-icon relative'}
         aria-label={badge ? `Notificações: ${badge} pendente(s)` : 'Notificações'}>
-        <Bell size={20} />
+        <Bell size={18} strokeWidth={1.75} />
         {badge > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--accent)', color: 'var(--accent-fg)', fontSize: 10, fontWeight: 700 }}>
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-2xs font-semibold t-num"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)', boxShadow: `0 0 0 2px ${tone === 'dark' ? 'var(--side-bg)' : 'var(--surface)'}` }}>
             {badge > 9 ? '9+' : badge}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="ds-card absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] z-40 shadow-lg"
-          style={{ padding: 0, maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className={`ds-popover mt-2 w-[340px] max-w-[calc(100vw-24px)] overflow-y-auto ${align === 'right' ? 'right-0' : 'left-0'}`}
+          style={{ maxHeight: '70vh' }} role="dialog" aria-label="Notificações">
 
-          {/* Resgates de fidelidade pendentes — ação mora na aba Fidelidade */}
           {pending.length > 0 && (
-            <>
-              <p className="ds-text-primary font-medium px-4 py-3"
-                style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--text-sm)' }}>
-                Resgates de fidelidade
-              </p>
+            <section>
+              <p className="px-4 pt-3 pb-2 text-xs font-medium text-ink-3">Resgates de fidelidade</p>
               {pending.map(r => (
                 <Link key={r.id} to="/admin/fidelidade" onClick={() => setOpen(false)}
-                  className="block px-4 py-3 transition-colors hover:opacity-80"
-                  style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div className="flex items-center gap-2">
-                    <Gift size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                    <p className="ds-text-primary font-medium min-w-0 flex-1" style={{ fontSize: 'var(--text-sm)' }}>
-                      {r.clientName} resgatou {r.rewardName}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="ds-text-secondary" style={{ fontSize: 'var(--text-xs)' }}>{when(r.requestedAt)}</span>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)', fontWeight: 500 }}>Resolver →</span>
+                  className="flex gap-3 px-4 py-3 border-t border-line hover:bg-surface-2">
+                  <Gift size={16} className="text-accent-ink flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-13 text-ink"><span className="font-semibold">{r.clientName}</span> resgatou {r.rewardName}</p>
+                    <p className="text-xs text-ink-3 mt-0.5">{when(r.requestedAt)}</p>
                   </div>
                 </Link>
               ))}
-            </>
+            </section>
           )}
 
-          {/* Avisos do Trimly (Bloco 3 — comportamento original) */}
           {!!announcements?.length && (
-            <>
-              <p className="ds-text-primary font-medium px-4 py-3"
-                style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--text-sm)' }}>
-                Avisos do Trimly
-              </p>
+            <section className={pending.length ? 'border-t border-line' : ''}>
+              <p className="px-4 pt-3 pb-2 text-xs font-medium text-ink-3">Avisos do Trimly</p>
               {announcements.map(a => (
-                <div key={a.id} className="px-4 py-3"
-                  style={{ borderBottom: '1px solid var(--border-subtle)', opacity: a.isRead ? 0.6 : 1 }}>
-                  <div className="flex items-center gap-2">
-                    {!a.isRead && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--accent)' }} />}
-                    <p className="ds-text-primary font-medium min-w-0 flex-1" style={{ fontSize: 'var(--text-sm)' }}>{a.title}</p>
-                    {a.isBroadcast
-                      ? <Globe size={12} style={{ color: 'var(--text-secondary)' }} />
-                      : <Store size={12} style={{ color: 'var(--text-secondary)' }} />}
-                  </div>
-                  <p className="ds-text-secondary mt-1 whitespace-pre-wrap" style={{ fontSize: 'var(--text-xs)' }}>{a.body}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="ds-text-secondary" style={{ fontSize: 'var(--text-xs)' }}>{when(a.createdAt)}</span>
-                    {!a.isRead && (
-                      <button onClick={() => markRead.mutate(a.id)} disabled={markRead.isPending}
-                        className="flex items-center gap-1"
-                        style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)', fontWeight: 500 }}>
-                        <Check size={12} /> Marcar como lido
-                      </button>
-                    )}
+                <div key={a.id} className="px-4 py-3 border-t border-line">
+                  <div className="flex items-start gap-2">
+                    {!a.isRead && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: 'var(--accent)' }} aria-label="Não lido" />}
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-13 ${a.isRead ? 'text-ink-2' : 'text-ink font-semibold'}`}>{a.title}</p>
+                      <p className="text-13 text-ink-2 mt-1 whitespace-pre-wrap">{a.body}</p>
+                      <div className="flex items-center justify-between gap-3 mt-2">
+                        <span className="text-xs text-ink-3">{when(a.createdAt)}</span>
+                        {!a.isRead && (
+                          <button type="button" onClick={() => markRead.mutate(a.id)} disabled={markRead.isPending}
+                            className="ds-link text-xs">
+                            Marcar como lido
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
-            </>
+            </section>
           )}
         </div>
       )}

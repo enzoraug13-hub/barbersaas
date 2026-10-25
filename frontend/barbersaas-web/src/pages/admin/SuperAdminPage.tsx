@@ -1,194 +1,222 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, KeyRound, ShieldCheck, Ban, CheckCircle2, Copy, Building2, ChevronRight } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Search, Building2, ChevronRight, Copy, KeyRound } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
+import toast from 'react-hot-toast'
 import {
-  useSuperAdminTenants, useCreateTenantAccount, useSetTenantStatus, useResetTenantPassword,
-  type TenantAccount,
+  useSuperAdminTenants, useCreateTenantAccount, type TenantAccount,
 } from '../../features/superadmin/superAdminApi'
-import { Card } from '../../components/ui/Card'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Modal } from '../../components/ui/Modal'
-import { Badge } from '../../components/ui/Badge'
-import { Skeleton } from '../../components/ui/Skeleton'
+import { Pill } from '../../components/ui/Badge'
+import { Avatar } from '../../components/ui/Avatar'
+import { Ledger } from '../../components/ui/Ledger'
+import { Segmented } from '../../components/ui/Controls'
 import { EmptyState } from '../../components/ui/EmptyState'
-import toast from 'react-hot-toast'
+import { ListSkeleton, LedgerSkeleton } from '../../components/ui/Skeleton'
+import {
+  AccessDetails, ProvisionalPasswordField, ResetPasswordModal, TenantStatusModal,
+} from '../../components/admin/TenantAccessModals'
+import { useIsDesktop } from '../../lib/useMediaQuery'
+import { generatePassword } from '../../lib/password'
+import { brl, num } from '../../lib/format'
 import { apiErrorMessage } from '../../lib/apiError'
 
-const EMPTY_FORM = { businessName: '', ownerName: '', ownerEmail: '', provisionalPassword: '' }
-const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+type Filter = 'all' | 'open' | 'suspended'
+const emptyForm = () => ({ businessName: '', ownerName: '', ownerEmail: '', provisionalPassword: generatePassword() })
 
 export default function SuperAdminPage() {
+  const desktop = useIsDesktop()
+  const navigate = useNavigate()
   const { data: tenants, isLoading } = useSuperAdminTenants()
-  const create      = useCreateTenantAccount()
-  const setStatus   = useSetTenantStatus()
-  const resetPass   = useResetTenantPassword()
+  const create = useCreateTenantAccount()
 
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(emptyForm)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [created, setCreated] = useState<{ businessName: string; email: string; password: string; slug: string } | null>(null)
   const [resetTarget, setResetTarget] = useState<TenantAccount | null>(null)
-  const [newPassword, setNewPassword] = useState('')
+  const [statusTarget, setStatusTarget] = useState<TenantAccount | null>(null)
 
-  const set = (k: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof ReturnType<typeof emptyForm>) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const openCreate = () => { setForm(emptyForm()); setPasswordError(null); setShowCreate(true) }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (form.provisionalPassword.length < 8) { toast.error('A senha provisória precisa de 8+ caracteres.'); return }
+    const password = form.provisionalPassword.trim()
+    if (password.length < 8) { setPasswordError('A senha precisa ter pelo menos 8 caracteres.'); return }
+    setPasswordError(null)
     try {
       const res = await create.mutateAsync({
-        businessName: form.businessName,
-        ownerEmail: form.ownerEmail,
-        provisionalPassword: form.provisionalPassword,
-        ownerName: form.ownerName || undefined,
+        businessName: form.businessName.trim(),
+        ownerEmail: form.ownerEmail.trim(),
+        provisionalPassword: password,
+        ownerName: form.ownerName.trim() || undefined,
       })
-      toast.success(`Conta criada — slug: ${res.slug}`)
-      setShowCreate(false); setForm(EMPTY_FORM)
+      setShowCreate(false)
+      setCreated({ businessName: form.businessName.trim(), email: res.ownerEmail ?? form.ownerEmail.trim(), password, slug: res.slug })
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao criar a conta.'))
-    }
-  }
-
-  const handleToggle = async (t: TenantAccount) => {
-    const next = t.status === 'Active' ? 'Suspended' : 'Active'
-    const verb = next === 'Suspended' ? 'suspender' : 'reativar'
-    if (!window.confirm(`Tem certeza que quer ${verb} "${t.name}"? ${next === 'Suspended' ? 'O dono não conseguirá mais entrar.' : ''}`)) return
-    try {
-      await setStatus.mutateAsync({ id: t.id, status: next })
-      toast.success(next === 'Suspended' ? 'Conta suspensa.' : 'Conta reativada.')
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao alterar o status.'))
-    }
-  }
-
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!resetTarget) return
-    if (newPassword.length < 8) { toast.error('A senha precisa de 8+ caracteres.'); return }
-    try {
-      await resetPass.mutateAsync({ id: resetTarget.id, newPassword })
-      toast.success(`Senha do dono de "${resetTarget.name}" redefinida.`)
-      setResetTarget(null); setNewPassword('')
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao redefinir a senha.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível criar a conta.'))
     }
   }
 
   const copyLink = (slug: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/b/${slug}`)
-    toast.success('Link público copiado!')
+    toast.success('Link de agendamento copiado.')
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="ds-page-title flex items-center gap-2">
-            <ShieldCheck size={24} style={{ color: 'var(--accent)' }} /> Super Admin
-          </h2>
-          <p className="ds-page-sub">Gestão de contas — criar, suspender e redefinir senha das barbearias.</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nova conta</Button>
-      </div>
+  const all = tenants ?? []
+  const active = all.filter(t => t.status === 'Active').length
+  const suspended = all.length - active
+  const withOpen = all.filter(t => t.openAmount > 0)
+  const openTotal = withOpen.reduce((s, t) => s + t.openAmount, 0)
 
-      {isLoading ? (
-        <Card><Skeleton className="h-40" /></Card>
-      ) : !tenants?.length ? (
-        <EmptyState icon={Building2} title="Nenhuma conta ainda" hint="Crie a primeira barbearia pelo botão acima." />
-      ) : (
-        <Card className="overflow-x-auto" style={{ padding: 0 }}>
-          <table className="w-full" style={{ fontSize: 'var(--text-sm)' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Barbearia</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Dono</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Status</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Financeiro</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)' }}>Criada em</th>
-                <th style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map(t => (
-                <tr key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    {/* O nome abre o "mundo" da barbearia (detalhe da conta). */}
-                    <Link to={`/super-admin/contas/${t.id}`}
-                      className="ds-text-primary font-medium hover:underline inline-flex items-center gap-1">
-                      {t.name} <ChevronRight size={13} style={{ color: 'var(--text-secondary)' }} />
-                    </Link>
-                    <button onClick={() => copyLink(t.slug)} className="flex items-center gap-1 ds-text-secondary hover:underline"
-                      style={{ fontSize: 'var(--text-xs)', fontFamily: 'monospace', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      /b/{t.slug} <Copy size={11} />
-                    </button>
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <p className="ds-text-primary">{t.ownerName ?? '—'}</p>
-                    <p className="ds-text-secondary" style={{ fontSize: 'var(--text-xs)' }}>{t.ownerEmail ?? '—'}</p>
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <Badge variant={t.status === 'Active' ? 'success' : 'error'}>
-                      {t.status === 'Active' ? 'Ativa' : 'Suspensa'}
-                    </Badge>
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    {/* Bate-olho de cobrança: quem deve aparece em amarelo com o valor. */}
-                    {t.openAmount > 0
-                      ? <Badge variant="warning">{fmt(t.openAmount)} em aberto</Badge>
-                      : <Badge variant="success">Em dia</Badge>}
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-secondary">
-                    {format(parseISO(t.createdAt), 'dd/MM/yyyy')}
-                  </td>
-                  <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
-                    <div className="flex items-center gap-1 justify-end flex-wrap">
-                      <Button variant="ghost" onClick={() => handleToggle(t)}
-                        style={{ fontSize: 'var(--text-xs)', height: 30, color: t.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}>
-                        {t.status === 'Active' ? <><Ban size={13} /> Suspender</> : <><CheckCircle2 size={13} /> Reativar</>}
-                      </Button>
-                      <Button variant="ghost" onClick={() => { setResetTarget(t); setNewPassword('') }}
-                        style={{ fontSize: 'var(--text-xs)', height: 30 }}>
-                        <KeyRound size={13} /> Redefinir senha
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+  const q = search.trim().toLowerCase()
+  const shown = all
+    .filter(t => filter === 'all' || (filter === 'open' ? t.openAmount > 0 : t.status === 'Suspended'))
+    .filter(t => !q || [t.name, t.slug, t.ownerName ?? '', t.ownerEmail ?? ''].some(v => v.toLowerCase().includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Barbearias"
+        subtitle={tenants ? `${num(all.length)} ${all.length === 1 ? 'conta' : 'contas'} no Trimly` : undefined}
+        actions={<Button onClick={openCreate}><Plus size={16} /> <span className="lbl-long">Nova barbearia</span><span className="lbl-short">Nova</span></Button>} />
+
+      {isLoading ? <LedgerSkeleton cells={3} /> : all.length > 0 && (
+        <Ledger items={[
+          { label: 'Contas ativas', value: num(active), foot: suspended ? <span>{num(suspended)} {suspended === 1 ? 'suspensa' : 'suspensas'}</span> : undefined },
+          { label: 'Com fatura em aberto', value: num(withOpen.length) },
+          { label: 'Total em aberto', value: brl(openTotal) },
+        ]} />
       )}
 
-      {/* Criar conta */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Nova conta de barbearia">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <Input label="Nome da barbearia" value={form.businessName} onChange={set('businessName')} required maxLength={150} />
-          <Input label="Nome do dono (opcional)" value={form.ownerName} onChange={set('ownerName')} maxLength={150} />
-          <Input label="E-mail do dono" type="email" value={form.ownerEmail} onChange={set('ownerEmail')} required />
-          <Input label="Senha provisória" type="text" value={form.provisionalPassword} onChange={set('provisionalPassword')}
-            required minLength={8} placeholder="Mínimo 8 caracteres — anote e entregue ao dono" autoComplete="off" />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button type="submit" loading={create.isPending}>{create.isPending ? 'Criando...' : 'Criar conta'}</Button>
+      {all.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="sm:max-w-[360px] flex-1">
+            <Input type="search" placeholder="Buscar por nome, link ou e-mail" value={search} aria-label="Buscar barbearia"
+              onChange={e => setSearch(e.target.value)} leading={<Search size={16} />} />
           </div>
+          <Segmented value={filter} onChange={setFilter} ariaLabel="Filtrar contas" options={[
+            { value: 'all', label: 'Todas' },
+            { value: 'open', label: 'Em aberto', count: withOpen.length || undefined },
+            { value: 'suspended', label: 'Suspensas', count: suspended || undefined },
+          ]} />
+        </div>
+      )}
+
+      {isLoading ? <ListSkeleton rows={5} /> : !all.length ? (
+        <EmptyState boxed icon={Building2} title="Nenhuma barbearia cadastrada"
+          hint="Crie a conta, mande os dados de acesso ao dono e ele já começa a usar."
+          action={<Button variant="secondary" onClick={openCreate}><Plus size={16} /> Criar a primeira conta</Button>} />
+      ) : !shown.length ? (
+        <EmptyState boxed icon={Search} title="Nenhuma conta encontrada" hint="Troque o filtro ou busque por outro termo." />
+      ) : desktop ? (
+        <Panel pad={false}>
+          <div className="ds-table-scroll">
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Barbearia</th>
+                  <th>Dono</th>
+                  <th>Situação</th>
+                  <th>Cobrança</th>
+                  <th>Cliente desde</th>
+                  <th className="ds-right"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(t => (
+                  <tr key={t.id} className="ds-row-link" onClick={() => navigate(`/super-admin/contas/${t.id}`)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={t.name} size={32} />
+                        <div className="min-w-0">
+                          <Link to={`/super-admin/contas/${t.id}`} className="font-medium hover:underline" onClick={e => e.stopPropagation()}>{t.name}</Link>
+                          <button type="button" onClick={e => { e.stopPropagation(); copyLink(t.slug) }}
+                            className="flex items-center gap-1 text-13 text-ink-3 hover:text-ink" title="Copiar link de agendamento">
+                            /b/{t.slug} <Copy size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p>{t.ownerName ?? <span className="text-ink-3">Sem nome</span>}</p>
+                      <p className="text-13 text-ink-3">{t.ownerEmail ?? ''}</p>
+                    </td>
+                    <td>{t.status === 'Active' ? <Pill tone="ok">Ativa</Pill> : <Pill tone="bad">Suspensa</Pill>}</td>
+                    <td>{t.openAmount > 0 ? <Pill tone="warn">{brl(t.openAmount)} em aberto</Pill> : <span className="text-ink-2">Em dia</span>}</td>
+                    <td className="ds-muted t-num whitespace-nowrap">{format(parseISO(t.createdAt), 'dd/MM/yyyy')}</td>
+                    <td className="ds-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setResetTarget(t)}><KeyRound size={14} /> Senha</Button>
+                        <Button variant={t.status === 'Active' ? 'danger-ghost' : 'ghost'} size="sm" onClick={() => setStatusTarget(t)}>
+                          {t.status === 'Active' ? 'Suspender' : 'Reativar'}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : (
+        <Panel pad={false}>
+          <ul className="ds-list">
+            {shown.map(t => (
+              <li key={t.id}>
+                <Link to={`/super-admin/contas/${t.id}`} className="ds-row">
+                  <Avatar name={t.name} size={36} />
+                  <div className="ds-row-main">
+                    <p className="ds-row-title">{t.name}</p>
+                    <p className="ds-row-sub">{t.openAmount > 0 ? `${brl(t.openAmount)} em aberto` : 'Em dia'}</p>
+                  </div>
+                  {t.status === 'Suspended' && <Pill tone="bad">Suspensa</Pill>}
+                  <ChevronRight size={16} className="text-ink-3 flex-shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
+      {/* Nova barbearia */}
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Nova barbearia"
+        subtitle="A conta já nasce com a página de agendamento no ar."
+        footer={<>
+          <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancelar</Button>
+          <Button type="submit" form="new-tenant" loading={create.isPending}>Criar conta</Button>
+        </>}>
+        <form id="new-tenant" onSubmit={handleCreate} className="space-y-4">
+          <Input label="Nome da barbearia" value={form.businessName} onChange={set('businessName')} required maxLength={150} autoComplete="off" />
+          <Input label="Nome do dono" optional value={form.ownerName} onChange={set('ownerName')} maxLength={150} autoComplete="off" />
+          <Input label="E-mail do dono" type="email" value={form.ownerEmail} onChange={set('ownerEmail')} required autoComplete="off"
+            hint="É o login dele no painel." />
+          <ProvisionalPasswordField value={form.provisionalPassword} error={passwordError}
+            onChange={v => { setForm(f => ({ ...f, provisionalPassword: v })); if (passwordError) setPasswordError(null) }} />
         </form>
       </Modal>
 
-      {/* Redefinir senha */}
-      <Modal isOpen={!!resetTarget} onClose={() => setResetTarget(null)} title={`Redefinir senha — ${resetTarget?.name ?? ''}`}>
-        <form onSubmit={handleReset} className="space-y-4">
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>
-            A nova senha vale para o dono ({resetTarget?.ownerEmail ?? '—'}). As sessões ativas dele serão encerradas.
-          </p>
-          <Input label="Nova senha provisória" type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-            required minLength={8} placeholder="Mínimo 8 caracteres" autoComplete="off" />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setResetTarget(null)}>Cancelar</Button>
-            <Button type="submit" loading={resetPass.isPending}>{resetPass.isPending ? 'Salvando...' : 'Redefinir'}</Button>
-          </div>
-        </form>
+      {/* Conta criada: dados para mandar ao dono */}
+      <Modal isOpen={!!created} onClose={() => setCreated(null)} title="Conta criada" subtitle={created?.businessName}
+        footer={<Button variant="secondary" onClick={() => setCreated(null)}>Concluir</Button>}>
+        {created && (
+          <>
+            <p className="text-sm text-ink-2 mb-4">Mande estes dados para o dono. A senha não aparece de novo depois que você fechar.</p>
+            <AccessDetails businessName={created.businessName} email={created.email} password={created.password} slug={created.slug} />
+          </>
+        )}
       </Modal>
+
+      {resetTarget && <ResetPasswordModal tenant={resetTarget} onClose={() => setResetTarget(null)} />}
+      {statusTarget && <TenantStatusModal tenant={statusTarget} onClose={() => setStatusTarget(null)} />}
     </div>
   )
 }

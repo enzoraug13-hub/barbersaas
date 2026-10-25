@@ -1,18 +1,23 @@
 import { useState } from 'react'
-import { Plus, Target, Plus as PlusIcon, Check, Pencil, Trophy } from 'lucide-react'
-import { ListSkeleton } from '../../components/ui/Skeleton'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { Card } from '../../components/ui/Card'
+import { Plus, Target, Pencil, CircleCheck } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
-import { Badge } from '../../components/ui/Badge'
+import { Input, Field } from '../../components/ui/Input'
+import { Segmented } from '../../components/ui/Controls'
 import { Modal } from '../../components/ui/Modal'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ListSkeleton } from '../../components/ui/Skeleton'
 import { NumberField } from '../../components/ui/NumberField'
 import { useGoals, useCreateGoal, useUpdateGoal, useContributeGoal } from '../../features/goals/goalsApi'
+import { brl } from '../../lib/format'
 import type { Goal } from '../../types'
 import toast from 'react-hot-toast'
+import { apiErrorMessage } from '../../lib/apiError'
 
-const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const emptyForm = { name: '', description: '', targetAmount: 0, targetDate: '' }
+const fmtDate = (d?: string) => { if (!d) return null; try { return format(parseISO(d), "d 'de' MMM 'de' yyyy", { locale: ptBR }) } catch { return d } }
 
 export default function GoalsPage() {
   const { data: goals, isLoading } = useGoals()
@@ -26,26 +31,24 @@ export default function GoalsPage() {
   const [form, setForm] = useState(emptyForm)
   const [amount, setAmount] = useState('')
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await create.mutateAsync({ ...form, targetDate: form.targetDate || undefined })
-      toast.success('Meta criada!'); setShowForm(false); setForm(emptyForm)
-    } catch { toast.error('Erro ao criar meta.') }
-  }
-
+  const openCreate = () => { setForm(emptyForm); setEditGoal(null); setShowForm(true) }
   const openEdit = (g: Goal) => {
     setForm({ name: g.name, description: g.description ?? '', targetAmount: g.targetAmount, targetDate: g.targetDate ?? '' })
-    setEditGoal(g)
+    setEditGoal(g); setShowForm(true)
   }
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editGoal) return
     try {
-      await update.mutateAsync({ id: editGoal.id, ...form, targetDate: form.targetDate || undefined })
-      toast.success('Meta atualizada!'); setEditGoal(null); setForm(emptyForm)
-    } catch { toast.error('Erro ao atualizar meta.') }
+      if (editGoal) {
+        await update.mutateAsync({ id: editGoal.id, ...form, targetDate: form.targetDate || undefined })
+        toast.success('Meta atualizada.')
+      } else {
+        await create.mutateAsync({ ...form, targetDate: form.targetDate || undefined })
+        toast.success('Meta criada.')
+      }
+      setShowForm(false); setEditGoal(null); setForm(emptyForm)
+    } catch (err) { toast.error(apiErrorMessage(err, 'Não foi possível salvar a meta.')) }
   }
 
   const handleContrib = async (e: React.FormEvent) => {
@@ -53,180 +56,115 @@ export default function GoalsPage() {
     if (!contribGoal) return
     try {
       const res = await contribute.mutateAsync({ id: contribGoal.id, amount: +amount })
-      // A invalidação de ['goals'] (no hook) refaz a lista e a meta migra de aba sozinha.
-      // Se esta contribuição concluiu a meta, comemora e leva o usuário pra aba Concluídas.
-      if (res?.isCompleted) { toast.success('🎉 Meta concluída! Mandou bem!'); setTab('completed') }
-      else toast.success('Contribuição adicionada!')
+      // Se esta contribuição bateu o alvo, a meta muda de aba: leva o usuário até ela.
+      if (res?.isCompleted) { toast.success(`Meta “${contribGoal.name}” atingida.`); setTab('completed') }
+      else toast.success(`${brl(+amount)} guardados em “${contribGoal.name}”.`)
       setContribGoal(null); setAmount('')
-    } catch { toast.error('Erro.') }
+    } catch (err) { toast.error(apiErrorMessage(err, 'Não foi possível registrar o valor.')) }
   }
 
-  // Abas: Ativas | Concluídas | Todas. Concluída = status persistido OU alvo batido.
+  // Concluída = status persistido OU alvo batido.
   const isDone = (g: Goal) => g.status === 'Completed' || g.isCompleted
   const counts = {
     active:    goals?.filter(g => !isDone(g)).length ?? 0,
     completed: goals?.filter(isDone).length ?? 0,
     all:       goals?.length ?? 0,
   }
-  const filtered = (goals ?? []).filter(g =>
-    tab === 'all' ? true : tab === 'completed' ? isDone(g) : !isDone(g))
-  const tabs = [
-    { key: 'active',    label: 'Ativas',     count: counts.active },
-    { key: 'completed', label: 'Concluídas', count: counts.completed },
-    { key: 'all',       label: 'Todas',      count: counts.all },
-  ] as const
+  const filtered = (goals ?? []).filter(g => (tab === 'all' ? true : tab === 'completed' ? isDone(g) : !isDone(g)))
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="ds-page-title">Metas Financeiras</h2>
-        <Button onClick={() => setShowForm(true)}><Plus size={18} /> Nova Meta</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Metas"
+        subtitle="Reserve dinheiro para os planos da barbearia e acompanhe quanto falta."
+        actions={<Button onClick={openCreate}><Plus size={16} /> <span className="lbl-long">Nova meta</span><span className="lbl-short">Nova</span></Button>} />
 
-      {isLoading ? (
-        <ListSkeleton rows={3} />
-      ) : !goals?.length ? (
-        <EmptyState icon={Target} title="Nenhuma meta criada ainda" hint="Defina uma meta financeira para acompanhar seu progresso." />
+      {isLoading ? <ListSkeleton rows={3} /> : !goals?.length ? (
+        <EmptyState boxed icon={Target} title="Nenhuma meta criada"
+          hint="Ex.: reformar a fachada, comprar uma cadeira nova ou montar uma reserva de emergência."
+          action={<Button variant="secondary" onClick={openCreate}><Plus size={16} /> Criar meta</Button>} />
       ) : (
         <>
-          {/* Abas: Ativas | Concluídas | Todas */}
-          <div className="inline-flex gap-1 p-1" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)' }}>
-            {tabs.map(t => (
-              <button key={t.key} type="button" onClick={() => setTab(t.key)}
-                className="inline-flex items-center gap-1.5 transition-colors"
-                style={{
-                  padding: '6px var(--space-3)', borderRadius: 'var(--radius-md)',
-                  fontSize: 'var(--text-sm)', fontWeight: 500, border: 'none', cursor: 'pointer',
-                  background: tab === t.key ? 'var(--bg-elevated)' : 'transparent',
-                  color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  boxShadow: tab === t.key ? 'var(--shadow-sm)' : 'none',
-                }}>
-                {t.label}
-                <span style={{
-                  fontSize: 'var(--text-xs)', fontWeight: 600, minWidth: 18, textAlign: 'center',
-                  padding: '0 6px', borderRadius: 'var(--radius-full)',
-                  background: tab === t.key ? 'var(--accent-soft)' : 'transparent',
-                  color: tab === t.key ? 'var(--accent)' : 'var(--text-disabled)',
-                }}>{t.count}</span>
-              </button>
-            ))}
-          </div>
+          <Segmented value={tab} onChange={setTab} ariaLabel="Filtrar metas" options={[
+            { value: 'active', label: 'Em andamento', count: counts.active },
+            { value: 'completed', label: 'Atingidas', count: counts.completed },
+            { value: 'all', label: 'Todas', count: counts.all },
+          ]} />
 
           {!filtered.length ? (
-            <EmptyState
-              icon={tab === 'completed' ? Trophy : Target}
-              title={tab === 'completed' ? 'Nenhuma meta concluída ainda' : 'Nenhuma meta ativa'}
-              hint={tab === 'completed'
-                ? 'Bata o alvo de uma meta para vê-la aqui como conquista.'
-                : 'Crie uma nova meta ou contribua nas existentes para alcançar o alvo.'} />
+            <EmptyState boxed title={tab === 'completed' ? 'Nenhuma meta atingida ainda' : 'Nenhuma meta em andamento'}
+              hint={tab === 'completed' ? 'Quando uma meta bater o valor, ela aparece aqui.' : 'Crie uma meta nova para começar a guardar.'} />
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map((g, i) => {
-              const done = isDone(g)
-              return (
-              <Card key={g.id} style={{
-                animationDelay: `${i * 45}ms`,
-                borderColor: done ? 'var(--color-success)' : undefined,
-                // brilho sutil de conquista nas concluídas
-                boxShadow: done ? '0 0 0 1px var(--color-success), 0 10px 30px -12px color-mix(in srgb, var(--color-success) 55%, transparent)' : undefined,
-              }} className="space-y-4 animate-slide-up">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="ds-text-primary font-semibold inline-flex items-center gap-1.5">
-                      {done && <Trophy size={15} style={{ color: 'var(--color-success)' }} />}
-                      {g.name}
-                    </p>
-                    {g.description && <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{g.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={done ? 'success' : 'accent'}>
-                      {done ? <span className="inline-flex items-center gap-1"><Check size={12} /> Concluída</span> : 'Ativa'}
-                    </Badge>
-                    {!done && (
-                      <button type="button" aria-label="Editar meta" className="ds-text-disabled hover:ds-text-primary" onClick={() => openEdit(g)}>
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5" style={{ fontSize: 'var(--text-sm)' }}>
-                    <span className="ds-text-secondary">{fmt(g.currentAmount)}</span>
-                    <span className="font-semibold" style={{ color: done ? 'var(--color-success)' : 'var(--text-primary)' }}>
-                      {done ? '100%' : `${g.percentageComplete.toFixed(1)}%`}
-                    </span>
-                  </div>
-                  <div className="ds-progress-track" style={{ width: '100%' }}>
-                    <div className="ds-progress-fill" style={{
-                      width: `${done ? 100 : Math.min(100, g.percentageComplete)}%`,
-                      background: done ? 'var(--color-success)' : undefined,
-                      transition: 'width 500ms ease-out',
-                    }} />
-                  </div>
-                  <div className="ds-text-disabled flex justify-between mt-1" style={{ fontSize: 'var(--text-xs)' }}>
-                    <span>Meta: {fmt(g.targetAmount)}</span>
-                    {done
-                      ? <span className="inline-flex items-center gap-1" style={{ color: 'var(--color-success)', fontWeight: 600 }}>Meta alcançada 🎉</span>
-                      : <span>Falta: {fmt(g.remainingAmount)}</span>}
-                  </div>
-                </div>
-
-                {!done && (
-                  <Button variant="ghost" className="w-full" style={{ fontSize: 'var(--text-xs)' }} onClick={() => setContribGoal(g)}>
-                    <PlusIcon size={14} /> Contribuir
-                  </Button>
-                )}
-              </Card>
-              )
-            })}
-          </div>
+            <Panel pad={false}>
+              <ul className="ds-list">
+                {filtered.map(g => {
+                  const done = isDone(g)
+                  const pct = done ? 100 : Math.min(100, g.percentageComplete)
+                  const due = fmtDate(g.targetDate)
+                  return (
+                    <li key={g.id} className="px-5 py-5 border-b border-line last:border-b-0 max-lg:px-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-md font-semibold flex items-center gap-2">
+                            {done && <CircleCheck size={18} className="text-ok flex-shrink-0" aria-label="Atingida" />}
+                            {g.name}
+                          </p>
+                          {(g.description || due) && (
+                            <p className="text-13 text-ink-2 mt-0.5">
+                              {g.description}{g.description && due ? '. ' : ''}{due && `Prazo: ${due}`}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!done && <Button variant="secondary" size="sm" onClick={() => { setContribGoal(g); setAmount('') }}><Plus size={14} /> Guardar</Button>}
+                          {!done && <Button variant="ghost" size="sm" icon onClick={() => openEdit(g)} aria-label={`Editar ${g.name}`}><Pencil size={15} /></Button>}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-end justify-between gap-4">
+                        <p className="text-sm">
+                          <span className="t-num text-[22px] leading-7 font-semibold" style={{ fontStretch: 'var(--stretch-numeric)' }}>{brl(g.currentAmount)}</span>
+                          <span className="text-ink-2"> de {brl(g.targetAmount)}</span>
+                        </p>
+                        <p className="text-13 text-ink-2 t-num">{done ? 'Meta atingida' : `Faltam ${brl(g.remainingAmount)}`}</p>
+                      </div>
+                      <div className={`ds-progress mt-2 ${done ? 'ds-progress-ok' : 'ds-progress-accent'}`} style={{ height: 8 }}
+                        role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={`${g.name}: ${Math.round(pct)}%`}>
+                        <span style={{ width: `${pct}%`, transition: 'width 400ms ease-out' }} />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </Panel>
           )}
         </>
       )}
 
-      {/* Modal criar meta */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Nova Meta">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
-          <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} /></div>
-          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><NumberField step="0.01" value={form.targetAmount} onChange={v => setForm(f => ({...f, targetAmount: v}))} placeholder="0,00" required /></div>
-          <div className="ds-field"><label className="ds-label">Data prevista</label><input type="date" className="ds-input" value={form.targetDate} onChange={e => setForm(f => ({...f, targetDate: e.target.value}))} /></div>
-          <div className="flex gap-3">
-            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1" loading={create.isPending}>Criar</Button>
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editGoal ? 'Editar meta' : 'Nova meta'}
+        footer={<>
+          <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
+          <Button type="submit" form="goal-form" loading={create.isPending || update.isPending}>{editGoal ? 'Salvar' : 'Criar meta'}</Button>
+        </>}>
+        <form id="goal-form" onSubmit={handleSave} className="space-y-4">
+          <Input label="Nome" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required placeholder="Ex.: Reforma da fachada" />
+          <Input label="Descrição" optional value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Valor da meta (R$)">
+              <NumberField step="0.01" value={form.targetAmount} onChange={v => setForm(f => ({ ...f, targetAmount: v }))} placeholder="0,00" required />
+            </Field>
+            <Input label="Prazo" optional type="date" value={form.targetDate} onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))} />
           </div>
         </form>
       </Modal>
 
-      {/* Modal editar meta */}
-      <Modal isOpen={!!editGoal} onClose={() => setEditGoal(null)} title="Editar Meta">
-        <form onSubmit={handleUpdate} className="space-y-4">
-          <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required /></div>
-          <div className="ds-field"><label className="ds-label">Descrição</label><input className="ds-input" value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} /></div>
-          <div className="ds-field"><label className="ds-label">Valor alvo (R$)</label><NumberField step="0.01" value={form.targetAmount} onChange={v => setForm(f => ({...f, targetAmount: v}))} placeholder="0,00" required /></div>
-          <div className="ds-field"><label className="ds-label">Data prevista</label><input type="date" className="ds-input" value={form.targetDate} onChange={e => setForm(f => ({...f, targetDate: e.target.value}))} /></div>
-          <div className="flex gap-3">
-            <Button type="button" variant="ghost" className="flex-1" onClick={() => setEditGoal(null)}>Cancelar</Button>
-            <Button type="submit" className="flex-1" loading={update.isPending}>Salvar</Button>
-          </div>
+      <Modal isOpen={!!contribGoal} onClose={() => setContribGoal(null)} title="Guardar dinheiro" subtitle={contribGoal?.name}
+        footer={<>
+          <Button variant="secondary" onClick={() => setContribGoal(null)}>Cancelar</Button>
+          <Button type="submit" form="contrib-form" loading={contribute.isPending}>Guardar</Button>
+        </>}>
+        <form id="contrib-form" onSubmit={handleContrib} className="space-y-4">
+          {contribGoal && <p className="text-sm text-ink-2">Faltam <span className="font-semibold text-ink t-num">{brl(contribGoal.remainingAmount)}</span> para atingir a meta.</p>}
+          <Input label="Valor (R$)" type="number" step="0.01" min="0.01" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="0,00" />
         </form>
-      </Modal>
-
-      {/* Modal contribuir */}
-      <Modal isOpen={!!contribGoal} onClose={() => setContribGoal(null)} title="Contribuir para">
-        {contribGoal && (
-          <>
-            <p className="ds-text-accent font-medium mb-4">{contribGoal.name}</p>
-            <form onSubmit={handleContrib} className="space-y-4">
-              <div className="ds-field"><label className="ds-label">Valor (R$)</label><input type="number" step="0.01" className="ds-input" value={amount} onChange={e => setAmount(e.target.value)} required autoFocus /></div>
-              <div className="flex gap-3">
-                <Button type="button" variant="ghost" className="flex-1" onClick={() => setContribGoal(null)}>Cancelar</Button>
-                <Button type="submit" className="flex-1" loading={contribute.isPending}>Confirmar</Button>
-              </div>
-            </form>
-          </>
-        )}
       </Modal>
     </div>
   )

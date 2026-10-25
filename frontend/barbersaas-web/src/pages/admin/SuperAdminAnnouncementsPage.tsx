@@ -1,24 +1,24 @@
 import { useState } from 'react'
-import { Megaphone, Send, Trash2, Globe, Store, CheckCheck } from 'lucide-react'
+import { Megaphone, CheckCheck } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import toast from 'react-hot-toast'
 import {
-  useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement,
-  type Announcement,
+  useAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, type Announcement,
 } from '../../features/superadmin/announcementsApi'
 import { useSuperAdminTenants } from '../../features/superadmin/superAdminApi'
-import { Card } from '../../components/ui/Card'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
-import { Badge } from '../../components/ui/Badge'
-import { Skeleton } from '../../components/ui/Skeleton'
+import { Input, Select, Textarea } from '../../components/ui/Input'
+import { Pill } from '../../components/ui/Badge'
+import { Modal } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
-import toast from 'react-hot-toast'
+import { ListSkeleton } from '../../components/ui/Skeleton'
 import { apiErrorMessage } from '../../lib/apiError'
 
-const when = (iso: string) => format(parseISO(iso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+const when = (iso: string) => format(parseISO(iso), "d 'de' MMM 'às' HH:mm", { locale: ptBR })
 
-/** 'all' = broadcast; qualquer outro valor é o id da barbearia alvo. */
+/** 'all' = todas as barbearias; qualquer outro valor é o id da barbearia alvo. */
 const emptyForm = () => ({ title: '', body: '', target: 'all' })
 
 export default function SuperAdminAnnouncementsPage() {
@@ -28,11 +28,16 @@ export default function SuperAdminAnnouncementsPage() {
   const remove = useDeleteAnnouncement()
 
   const [form, setForm] = useState(emptyForm)
+  const [errors, setErrors] = useState<{ title?: string; body?: string }>({})
+  const [toDelete, setToDelete] = useState<Announcement | null>(null)
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.title.trim()) { toast.error('Informe o título.'); return }
-    if (!form.body.trim()) { toast.error('Escreva a mensagem.'); return }
+    const next: typeof errors = {}
+    if (!form.title.trim()) next.title = 'Dê um título ao aviso.'
+    if (!form.body.trim()) next.body = 'Escreva a mensagem.'
+    setErrors(next)
+    if (next.title || next.body) return
     try {
       await create.mutateAsync({
         title: form.title.trim(),
@@ -42,102 +47,89 @@ export default function SuperAdminAnnouncementsPage() {
       toast.success('Aviso publicado.')
       setForm(emptyForm())
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao publicar o aviso.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível publicar o aviso.'))
     }
   }
 
-  const handleDelete = async (a: Announcement) => {
-    if (!window.confirm(`Remover o aviso "${a.title}"? Ele some do painel de todas as barbearias.`)) return
+  const handleDelete = async () => {
+    if (!toDelete) return
     try {
-      await remove.mutateAsync(a.id)
+      await remove.mutateAsync(toDelete.id)
       toast.success('Aviso removido.')
+      setToDelete(null)
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao remover o aviso.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível remover o aviso.'))
     }
   }
+
+  const targetName = form.target === 'all' ? 'todas as barbearias' : tenants?.find(t => t.id === form.target)?.name
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="ds-page-title flex items-center gap-2">
-          <Megaphone size={24} style={{ color: 'var(--accent)' }} /> Avisos
-        </h2>
-        <p className="ds-page-sub">Comunicados do Trimly que aparecem no painel das barbearias.</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Avisos" subtitle="Comunicados do Trimly que aparecem no sino do painel das barbearias." />
 
-      {/* Compor aviso */}
-      <Card>
-        <form onSubmit={handlePublish} className="space-y-4">
-          <Input label="Título" value={form.title} maxLength={150}
-            placeholder="Ex.: Atualização programada para amanhã"
-            onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-
-          <div className="ds-field">
-            <label className="ds-label">Mensagem</label>
-            <textarea className="ds-input" rows={4} maxLength={2000} value={form.body}
-              placeholder="Escreva o comunicado…"
-              onChange={e => setForm(f => ({ ...f, body: e.target.value }))} />
-          </div>
-
-          <div className="flex items-end justify-between flex-wrap gap-3">
-            <div className="ds-field" style={{ minWidth: 260 }}>
-              <label className="ds-label">Enviar para</label>
-              <select className="ds-input" value={form.target}
-                onChange={e => setForm(f => ({ ...f, target: e.target.value }))}>
-                <option value="all">Todas as barbearias</option>
-                {tenants?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-            <Button type="submit" loading={create.isPending}>
-              <Send size={16} /> {create.isPending ? 'Publicando…' : 'Publicar aviso'}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-6 items-start">
+        <Panel title="Novo aviso" className="xl:sticky xl:top-6">
+          <form onSubmit={handlePublish} className="space-y-4">
+            <Input label="Título" value={form.title} maxLength={150} error={errors.title}
+              placeholder="Ex.: Manutenção programada no domingo"
+              onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (errors.title) setErrors(er => ({ ...er, title: undefined })) }} />
+            <Textarea label="Mensagem" rows={5} maxLength={2000} value={form.body} error={errors.body}
+              hint={`${form.body.length}/2000`}
+              onChange={e => { setForm(f => ({ ...f, body: e.target.value })); if (errors.body) setErrors(er => ({ ...er, body: undefined })) }} />
+            <Select label="Enviar para" value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))}>
+              <option value="all">Todas as barbearias</option>
+              {[...(tenants ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </Select>
+            <Button type="submit" block loading={create.isPending}>
+              {targetName ? `Publicar para ${targetName}` : 'Publicar aviso'}
             </Button>
-          </div>
-        </form>
-      </Card>
+          </form>
+        </Panel>
 
-      {/* Histórico */}
-      <div>
-        <h3 className="ds-section-title mb-3">Avisos publicados</h3>
-        {isLoading ? (
-          <Card><Skeleton className="h-32" /></Card>
-        ) : !announcements?.length ? (
-          <EmptyState icon={Megaphone} title="Nenhum aviso publicado"
-            hint="O primeiro comunicado que você publicar aparece aqui." />
-        ) : (
-          <div className="space-y-3">
-            {announcements.map(a => (
-              <Card key={a.id}>
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="ds-text-primary font-medium">{a.title}</p>
-                      {a.tenantId === null ? (
-                        <Badge variant="accent"><Globe size={11} className="inline mr-1" />Todas</Badge>
-                      ) : (
-                        <Badge variant="info"><Store size={11} className="inline mr-1" />{a.tenantName ?? 'Barbearia'}</Badge>
-                      )}
+        <Panel pad={false} split title="Publicados" description={announcements?.length ? `${announcements.length} ${announcements.length === 1 ? 'aviso' : 'avisos'}` : undefined}>
+          {isLoading ? <ListSkeleton rows={3} boxed={false} /> : !announcements?.length ? (
+            <EmptyState icon={Megaphone} title="Nenhum aviso publicado"
+              hint="Use avisos para contar novidades, manutenções e mudanças de preço." />
+          ) : (
+            <ul>
+              {announcements.map(a => (
+                <li key={a.id} className="px-5 py-4 max-lg:px-4 border-b border-line last:border-b-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{a.title}</p>
+                      <div className="mt-1">
+                        {a.tenantId === null
+                          ? <Pill tone="accent">Todas as barbearias</Pill>
+                          : <Pill tone="neutral">{a.tenantName ?? 'Barbearia'}</Pill>}
+                      </div>
                     </div>
-                    <p className="ds-text-secondary mt-1 whitespace-pre-wrap" style={{ fontSize: 'var(--text-sm)' }}>{a.body}</p>
-                    <p className="ds-text-secondary mt-2 flex items-center gap-3" style={{ fontSize: 'var(--text-xs)' }}>
-                      <span>{when(a.createdAt)}</span>
-                      <span className="flex items-center gap-1">
-                        <CheckCheck size={13} />
-                        {a.readCount === 0 ? 'Ninguém leu ainda'
-                          : a.readCount === 1 ? 'Lido por 1 barbearia'
-                          : `Lido por ${a.readCount} barbearias`}
-                      </span>
-                    </p>
+                    <Button variant="danger-ghost" size="sm" onClick={() => setToDelete(a)}>Remover</Button>
                   </div>
-                  <Button variant="ghost" onClick={() => handleDelete(a)} disabled={remove.isPending}
-                    style={{ fontSize: 'var(--text-xs)', height: 30, color: 'var(--color-error)' }}>
-                    <Trash2 size={13} /> Remover
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+                  <p className="text-sm text-ink-2 mt-2 whitespace-pre-wrap">{a.body}</p>
+                  <p className="text-13 text-ink-3 mt-2 flex items-center gap-1.5 flex-wrap">
+                    <span>{when(a.createdAt)}.</span>
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCheck size={14} />
+                      {a.readCount === 0 ? 'Ninguém leu ainda'
+                        : a.tenantId !== null ? 'Lido'
+                        : a.readCount === 1 ? 'Lido por 1 barbearia' : `Lido por ${a.readCount} barbearias`}
+                    </span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
       </div>
+
+      <Modal isOpen={!!toDelete} onClose={() => setToDelete(null)} title="Remover aviso" subtitle={toDelete?.title}
+        footer={<>
+          <Button variant="secondary" onClick={() => setToDelete(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={handleDelete} loading={remove.isPending}>Remover aviso</Button>
+        </>}>
+        <p className="text-sm text-ink-2">O aviso some do painel de {toDelete?.tenantId === null ? 'todas as barbearias' : (toDelete?.tenantName ?? 'da barbearia')}.</p>
+      </Modal>
     </div>
   )
 }

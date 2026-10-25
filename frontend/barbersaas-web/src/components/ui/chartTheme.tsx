@@ -1,33 +1,21 @@
 import { Cell } from 'recharts'
 
-// Acabamento compartilhado dos gráficos. Tudo derivado de var(--accent) (a cor
-// da marca que o tenant escolhe em Aparência) e dos tokens — nada de hex fixo.
-// Sem componentes React aqui de propósito: helpers/constantes ficam separados do
-// componente <ChartTooltip> pra não quebrar o fast-refresh (react-refresh).
+// Acabamento dos gráficos: a série principal na cor da barbearia, a de
+// comparação em cinza; em barras de um só tipo, cinza com destaque (ex.: hoje).
+// Helpers e constantes ficam aqui (sem componentes React exportados junto com
+// o tooltip, p/ não quebrar o fast-refresh).
 
-export const chartAxisTick = { fill: 'var(--text-secondary)', fontSize: 11, fontFamily: 'var(--font-ui)' }
-export const chartGridStroke = 'var(--border-subtle)'
-export const chartBarCursor = { fill: 'var(--accent)', fillOpacity: 0.08 }
+export const chartAxisTick = { fill: 'var(--ink-3)', fontSize: 12, fontFamily: 'var(--font)' }
+export const chartGridStroke = 'var(--chart-grid)'
+export const chartBarCursor = { fill: 'var(--surface-3)' }
+export const CHART_MAIN = 'var(--chart-1)'
+export const CHART_SECOND = 'var(--chart-2)'
+export const CHART_ACCENT = 'var(--accent)'
 
-// Gradiente vertical sutil do accent: mais sólido embaixo, levemente translúcido
-// no topo — dá profundidade sem trocar a cor.
-export function accentBarGradient(id: string) {
-  return (
-    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.72} />
-      <stop offset="100%" stopColor="var(--accent)" stopOpacity={1} />
-    </linearGradient>
-  )
-}
-
-// Hierarquia por opacidade: a barra de maior valor vem em accent cheio, as
-// demais levemente translúcidas. Herdam o fill (gradiente) da <Bar>.
-export function barCells(data: readonly unknown[], key: string) {
-  const vals = data.map(d => Number((d as Record<string, unknown>)?.[key]) || 0)
-  const max = Math.max(0, ...vals)
-  return data.map((_, i) => (
-    <Cell key={i} fillOpacity={max > 0 && vals[i] === max ? 1 : 0.62} />
-  ))
+/** Pinta as barras: destaque (ex.: hoje) na cor da barbearia, o resto em cinza. */
+export function barFills(data: readonly unknown[], isHighlight: (row: unknown, i: number) => boolean,
+  base = CHART_SECOND, highlight = CHART_ACCENT) {
+  return data.map((row, i) => <Cell key={i} fill={isHighlight(row, i) ? highlight : base} />)
 }
 
 export type TooltipSeries = Record<string, { label: string; color: string; fmt: (v: number) => string }>

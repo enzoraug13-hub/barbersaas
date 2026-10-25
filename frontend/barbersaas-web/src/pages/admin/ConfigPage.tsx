@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react'
-import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock, Check, Scissors, Gift } from 'lucide-react'
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Store, Palette, ImageIcon, CalendarClock, Clock, Gift } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, assetUrl } from '../../lib/api'
-import { applyTenantTheme } from '../../lib/theme-tenant'
-import { Card } from '../../components/ui/Card'
+import { applyTenantTheme, foregroundFor, effectiveBrand, effectiveHero } from '../../lib/theme-tenant'
+import { PageHeader, Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
+import { Input, Textarea, Field } from '../../components/ui/Input'
+import { Switch, SwitchRow, Tabs } from '../../components/ui/Controls'
 import { ImageField } from '../../components/ui/ImageField'
 import { NumberField } from '../../components/ui/NumberField'
+import { BlockSkeleton } from '../../components/ui/Skeleton'
 import { PublicLinkButtons } from '../../components/admin/PublicLinkButtons'
 import { PhoneField } from '../../components/ui/PhoneField'
+import { useIsDesktop } from '../../lib/useMediaQuery'
 import { brDigitsFromStored, toE164BR } from '../../lib/masks'
 import { useLoyaltyProgram, useUpdateLoyaltyProgram, unitLabel } from '../../features/loyalty/loyaltyApi'
-import type { LoyaltyMode } from '../../features/loyalty/loyaltyApi'
+import type { LoyaltyMode, LoyaltyProgram } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 
@@ -30,116 +35,79 @@ interface SettingsForm {
 }
 
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const weekOrder = [1, 2, 3, 4, 5, 6, 0]
 
-type Tab = 'aparencia' | 'fotos' | 'identidade' | 'agenda' | 'horarios' | 'fidelidade'
-const tabs = [
+type Tab = 'barbearia' | 'aparencia' | 'fotos' | 'agenda' | 'horarios' | 'fidelidade'
+const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
+  { id: 'barbearia',  label: 'Barbearia',  icon: Store },
   { id: 'aparencia',  label: 'Aparência',  icon: Palette },
-  { id: 'fotos',      label: 'Fotos',      icon: ImageIcon },
-  { id: 'identidade', label: 'Identidade', icon: Store },
-  { id: 'agenda',     label: 'Agenda',     icon: CalendarClock },
-  { id: 'horarios',   label: 'Horários',   icon: Clock },
+  { id: 'fotos',      label: 'Logo e capa', icon: ImageIcon },
+  { id: 'agenda',     label: 'Agendamento online', icon: CalendarClock },
+  { id: 'horarios',   label: 'Horário de funcionamento', icon: Clock },
   { id: 'fidelidade', label: 'Fidelidade', icon: Gift },
-] as const
+]
+// Endereço antigo das abas (links salvos) → novo.
+const legacyTab: Record<string, Tab> = { identidade: 'barbearia' }
 
 const toNum = (v: number | string | undefined): number | undefined =>
   v === '' || v === undefined || v === null ? undefined : Number(v)
 
-// Texto legível (preto/branco) sobre uma cor — espelha o cálculo do tema.
-function fgFor(hex?: string): string {
-  const m = (hex ?? '').replace('#', '')
-  const full = m.length === 3 ? m.split('').map(c => c + c).join('') : m
-  if (!/^[0-9a-fA-F]{6}$/.test(full)) return '#101012'
-  const [r, g, b] = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16))
-  const f = (c: number) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 }
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b) > 0.5 ? '#101012' : '#ffffff'
-}
-
-function SectionCard({ icon: Icon, title, desc, children }: {
-  icon: LucideIcon; title: string; desc?: string; children: React.ReactNode
-}) {
-  return (
-    <Card className="space-y-5" style={{ padding: 'var(--space-6)' }}>
-      <div className="flex items-start gap-3 pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 36, height: 36 }}><Icon size={18} /></div>
-        <div>
-          <h3 className="ds-section-title">{title}</h3>
-          {desc && <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{desc}</p>}
-        </div>
-      </div>
-      {children}
-    </Card>
-  )
-}
-
-/* ---------- Seletor de cor com legenda do efeito ---------- */
-function ColorField({ label, hint, value, fallback, onChange }: {
-  label: string; hint: string; value?: string; fallback: string; onChange: (v: string) => void
-}) {
-  const v = value || fallback
-  return (
-    <div className="flex items-center gap-3 ds-hoverable-field" style={{
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 'var(--radius-lg)',
-      padding: 'var(--space-4)',
-      background: 'var(--bg-base)',
-      transition: 'border-color 180ms ease',
-    }}>
-      <input type="color" value={v} onChange={e => onChange(e.target.value)}
-        className="cursor-pointer flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: 'transparent' }} aria-label={label} />
-      <div className="min-w-0 flex-1">
-        <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{label}</p>
-        <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{hint}</p>
-      </div>
-      <span className="ds-text-secondary uppercase flex-shrink-0" style={{ fontSize: 'var(--text-xs)', fontFamily: 'monospace' }}>{v}</span>
-    </div>
-  )
-}
-
-/* ---------- Prévia ao vivo (espelha a página pública + componentes) ---------- */
-function ThemePreview({ brand, hero, logoUrl, name }: {
-  brand: string; hero: string; logoUrl?: string; name?: string
-}) {
-  const fg = fgFor(brand)
-  return (
-    <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-      <div className="h-24 flex flex-col items-center justify-center gap-1.5"
-        style={{ background: `linear-gradient(to bottom, ${hero}, var(--bg-elevated))` }}>
-        {logoUrl
-          ? <img src={assetUrl(logoUrl)} alt="" className="w-10 h-10 object-cover" style={{ borderRadius: 'var(--radius-md)', border: `2px solid ${brand}80` }} />
-          : <div className="w-10 h-10 flex items-center justify-center" style={{ borderRadius: 'var(--radius-md)', background: brand }}>
-              <Scissors size={18} style={{ color: fg }} />
-            </div>}
-        <span className="font-bold drop-shadow" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{name || 'Sua Barbearia'}</span>
-      </div>
-      <div className="p-4 flex items-center gap-3 flex-wrap" style={{ background: 'var(--bg-subtle)' }}>
-        <button type="button" className="inline-flex items-center gap-1.5 font-semibold"
-          style={{ borderRadius: 'var(--radius-md)', padding: '8px var(--space-4)', fontSize: 'var(--text-sm)', background: brand, color: fg, border: 'none', cursor: 'default' }}>
-          <Check size={14} /> Agendar
-        </button>
-        <span className="font-medium" style={{ fontSize: 'var(--text-xs)', padding: '4px var(--space-3)', borderRadius: 'var(--radius-full)', border: `1px solid ${brand}66`, background: `${brand}1a`, color: brand }}>Destaque</span>
-        <span className="font-semibold" style={{ fontSize: 'var(--text-sm)', color: brand }}>Ver mais →</span>
-      </div>
-    </div>
-  )
-}
+// Telefones ficam no formulário como dígitos (DDD + número) e voltam a +55… ao salvar.
+const toForm = (s: SettingsForm): SettingsForm => ({
+  ...s,
+  phone: brDigitsFromStored(s.phone),
+  whatsAppNumber: brDigitsFromStored(s.whatsAppNumber),
+})
 
 export default function ConfigPage() {
-  const qc = useQueryClient()
-  const { data: settings, isLoading } = useQuery({
+  const [params, setParams] = useSearchParams()
+  const desktop = useIsDesktop()
+  const initialTab = params.get('aba') ?? ''
+  const tab: Tab = (tabs.some(t => t.id === initialTab) ? initialTab : legacyTab[initialTab] ?? 'barbearia') as Tab
+  const setTab = (t: Tab) => setParams({ aba: t }, { replace: true })
+
+  const { data: settings, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => (await api.get('/settings')).data.data as SettingsForm,
   })
 
-  const [form, setForm] = useState<SettingsForm>({})
-  // Telefones ficam no form como dígitos BR (DDD+número) e voltam a +55... no salvar.
-  useEffect(() => {
-    if (settings) setForm({
-      ...settings,
-      phone: brDigitsFromStored(settings.phone),
-      whatsAppNumber: brDigitsFromStored(settings.whatsAppNumber),
-    })
-  }, [settings])
-  const [tab, setTab] = useState<Tab>('aparencia')
+  return (
+    <div className="space-y-5">
+      <PageHeader title="Configurações" subtitle="Dados da barbearia, aparência da página de agendamento e regras da agenda." />
+
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+        {desktop ? (
+          <nav className="w-[232px] flex-shrink-0 sticky top-6" aria-label="Seções">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" onClick={() => setTab(id)} aria-current={tab === id ? 'page' : undefined}
+                className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-control text-sm text-left mb-0.5 ${tab === id ? 'bg-surface border border-line font-semibold text-ink shadow-[0_1px_2px_rgba(16,24,32,0.05)]' : 'text-ink-2 hover:bg-surface-3 hover:text-ink border border-transparent'}`}>
+                <Icon size={16} strokeWidth={1.75} className={tab === id ? 'text-accent-ink' : ''} />
+                {label}
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <div className="w-full">
+            <Tabs value={tab} onChange={setTab} ariaLabel="Seções" options={tabs.map(t => ({ value: t.id, label: t.label }))} />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0 w-full max-w-[760px]">
+          {tab === 'fidelidade' ? <LoyaltySection /> : isLoading || !settings
+            ? <BlockSkeleton height={360} />
+            : <SettingsSections key={dataUpdatedAt} settings={settings} tab={tab} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Seções que salvam juntas (PUT /settings) ---------- */
+function SettingsSections({ settings, tab }: { settings: SettingsForm; tab: Tab }) {
+  const qc = useQueryClient()
+  const [initial] = useState(() => toForm(settings))
+  const [form, setForm] = useState<SettingsForm>(initial)
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial)
 
   const update = useMutation({
     mutationFn: () => api.put('/settings', {
@@ -150,169 +118,192 @@ export default function ConfigPage() {
       maxAdvanceDays:      toNum(form.maxAdvanceDays),
     }),
     onSuccess: () => {
+      // Aplica a cor na hora em todo o painel; o refetch recarrega o formulário salvo.
+      applyTenantTheme({ primaryColor: form.primaryColor, secondaryColor: form.secondaryColor, accentColor: form.accentColor })
       qc.invalidateQueries({ queryKey: ['settings'] })
       qc.invalidateQueries({ queryKey: ['public-info'] })
-      // aplica o tema imediatamente em todo o painel
-      applyTenantTheme({ primaryColor: form.primaryColor, secondaryColor: form.secondaryColor, accentColor: form.accentColor })
-      toast.success('Configurações salvas e tema aplicado!')
+      toast.success('Alterações salvas.')
     },
-    onError: () => toast.error('Erro ao salvar.'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Não foi possível salvar.')),
   })
 
   const set = (k: keyof SettingsForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
-  const setVal = (k: keyof SettingsForm, v: SettingsForm[keyof SettingsForm]) => setForm(f => ({ ...f, [k]: v }))
+  const setVal = <K extends keyof SettingsForm>(k: K, v: SettingsForm[K]) => setForm(f => ({ ...f, [k]: v }))
+  const setHour = (day: number, patch: Partial<BusinessHour>) =>
+    setVal('businessHours', (form.businessHours ?? []).map(h => (h.dayOfWeek === day ? { ...h, ...patch } : h)))
 
-  if (isLoading)
-    return <div className="flex justify-center py-20"><Loader2 size={28} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
-
-  const brand = form.secondaryColor || '#c9a84c'
-  const hero  = form.primaryColor   || '#1a1a1a'
+  const brand = effectiveBrand(form.secondaryColor)
+  const hero  = effectiveHero(form.primaryColor, form.secondaryColor)
 
   return (
-    <div className="max-w-3xl space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="ds-page-title">Configurações</h2>
-          <p className="ds-page-sub">Identidade, aparência e regras de agendamento da sua barbearia.</p>
-        </div>
-        <Button onClick={() => update.mutate()} loading={update.isPending}>
-          {!update.isPending && <Save size={16} />}
-          {update.isPending ? 'Salvando…' : 'Salvar alterações'}
-        </Button>
-      </div>
-
-      {/* Abas + conteúdo */}
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Sub-sidebar de abas */}
-        <div className="flex md:flex-col overflow-x-auto md:overflow-visible gap-1 md:w-[200px] flex-shrink-0">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)}
-              className={`ds-config-tab ${tab === id ? 'ds-config-tab-active' : ''}`}>
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Conteúdo da aba ativa — o form continua único no componente pai;
-            trocar de aba só troca qual SectionCard é renderizado, sem refetch
-            nem perda de dado digitado nas outras abas. */}
-        <div className="flex-1 space-y-6 min-w-0">
-          {tab === 'aparencia' && (
-            <SectionCard icon={Palette} title="Aparência" desc="As cores da sua marca — aplicadas no painel e na página pública dos clientes.">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <div className="space-y-3">
-                  <ColorField label="Cor da marca" hint="Botões, links e destaques em todo o site."
-                    value={form.secondaryColor} fallback="#c9a84c" onChange={v => setVal('secondaryColor', v)} />
-                  <ColorField label="Cor do topo" hint="Fundo do banner da página pública."
-                    value={form.primaryColor} fallback="#1a1a1a" onChange={v => setVal('primaryColor', v)} />
-                  <p className="ds-text-disabled flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)' }}>
-                    <Check size={13} style={{ color: 'var(--accent)' }} /> O contraste do texto se ajusta sozinho para manter a leitura.
-                  </p>
-                </div>
-                <div>
-                  <p className="ds-label mb-2">Prévia ao vivo</p>
-                  <ThemePreview brand={brand} hero={hero} logoUrl={form.logoUrl} name={form.businessName} />
-                </div>
-              </div>
-            </SectionCard>
-          )}
-
-          {tab === 'fotos' && (
-            <SectionCard icon={ImageIcon} title="Fotos" desc="Logo e capa que aparecem na sua página pública.">
+    <form onSubmit={e => { e.preventDefault(); update.mutate() }} className="space-y-6">
+      {tab === 'barbearia' && (
+        <>
+          <Panel title="Link de agendamento" description="Endereço da sua página. Coloque na bio do Instagram e envie no WhatsApp.">
+            <PublicLinkButtons />
+          </Panel>
+          <Panel title="Dados da barbearia" description="Aparecem na página de agendamento e nas mensagens aos clientes.">
+            <div className="space-y-4">
+              <Input label="Nome da barbearia" value={form.businessName ?? ''} onChange={set('businessName')} />
+              <Textarea label="Sobre" optional rows={3} value={form.description ?? ''} onChange={set('description')}
+                placeholder="Ex.: Corte, barba e cuidado masculino no centro desde 2016." />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ImageField label="Logo" hint="PNG/JPG, quadrado, até 5 MB" value={form.logoUrl} onChange={v => setVal('logoUrl', v)} />
-                <ImageField label="Imagem de capa" hint="Banner da página pública" value={form.coverImageUrl} onChange={v => setVal('coverImageUrl', v)} tall />
-              </div>
-            </SectionCard>
-          )}
-
-          {tab === 'identidade' && (
-            <SectionCard icon={Store} title="Identidade" desc="Nome, contato e endereço — aparecem na página pública e nas mensagens.">
-              <div className="ds-field">
-                <label className="ds-label">Link da área do cliente</label>
-                <PublicLinkButtons />
-              </div>
-              <div className="ds-field"><label className="ds-label">Nome</label><input className="ds-input" value={form.businessName ?? ''} onChange={set('businessName')} /></div>
-              <div className="ds-field"><label className="ds-label">Descrição</label><textarea className="ds-input resize-none" style={{ height: 80, paddingTop: 8 }} value={form.description ?? ''} onChange={set('description')} /></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <PhoneField label="Telefone" value={form.phone ?? ''} onChange={d => setVal('phone', d)} />
                 <PhoneField label="WhatsApp" value={form.whatsAppNumber ?? ''} onChange={d => setVal('whatsAppNumber', d)} />
               </div>
-              <div className="ds-field"><label className="ds-label">Instagram</label><input className="ds-input" value={form.instagramUrl ?? ''} onChange={set('instagramUrl')} placeholder="https://instagram.com/sua_barbearia" /></div>
-              <div className="ds-field"><label className="ds-label">Endereço</label><input className="ds-input" value={form.address ?? ''} onChange={set('address')} /></div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="ds-field col-span-2"><label className="ds-label">Cidade</label><input className="ds-input" value={form.city ?? ''} onChange={set('city')} /></div>
-                <div className="ds-field"><label className="ds-label">Estado</label><input className="ds-input" value={form.state ?? ''} onChange={set('state')} placeholder="UF" /></div>
+              <Input label="Instagram" optional value={form.instagramUrl ?? ''} onChange={set('instagramUrl')} placeholder="https://instagram.com/suabarbearia" />
+            </div>
+          </Panel>
+          <Panel title="Endereço" description="Usado no botão “Como chegar” da página.">
+            <div className="space-y-4">
+              <Input label="Rua e número" value={form.address ?? ''} onChange={set('address')} />
+              <div className="grid grid-cols-[1fr_88px] gap-4">
+                <Input label="Cidade" value={form.city ?? ''} onChange={set('city')} />
+                <Input label="UF" value={form.state ?? ''} onChange={set('state')} maxLength={2} className="uppercase" />
               </div>
-            </SectionCard>
-          )}
+            </div>
+          </Panel>
+        </>
+      )}
 
-          {tab === 'agenda' && (
-            <SectionCard icon={CalendarClock} title="Agenda" desc="Como os clientes agendam online.">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="ds-field"><label className="ds-label">Intervalo entre horários (min)</label><NumberField min={5} step={5} placeholder="15" value={toNum(form.slotIntervalMinutes) || 15} onChange={v => setVal('slotIntervalMinutes', v)} /></div>
-                <div className="ds-field"><label className="ds-label">Antecedência máxima (dias)</label><NumberField min={1} placeholder="30" value={toNum(form.maxAdvanceDays) || 30} onChange={v => setVal('maxAdvanceDays', v)} /></div>
-              </div>
-              <Toggle label="Permitir agendamento online" desc="Clientes podem marcar pela página pública." checked={form.allowOnlineBooking ?? true} onChange={v => setVal('allowOnlineBooking', v)} />
-              <Toggle label="Exigir confirmação manual" desc="Você aprova cada agendamento antes de confirmar." checked={form.requireConfirmation ?? false} onChange={v => setVal('requireConfirmation', v)} />
-              <Toggle label="Preço por barbeiro" desc="Quando ativado, cada barbeiro pode ter seu próprio preço por serviço. O cliente verá o preço do barbeiro escolhido na hora de agendar." checked={form.customPriceEnabled ?? false} onChange={v => setVal('customPriceEnabled', v)} />
-            </SectionCard>
-          )}
+      {tab === 'aparencia' && (
+        <Panel title="Aparência" description="As cores da sua marca na página de agendamento e no painel.">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-6 items-start">
+            <div className="space-y-4">
+              <ColorField label="Cor da marca" hint="Botões, seleção e destaques." value={brand} onChange={v => setVal('secondaryColor', v)} />
+              <ColorField label="Cor do topo da página" hint="Fundo do cabeçalho quando não há foto de capa." value={hero} onChange={v => setVal('primaryColor', v)} />
+              <p className="text-13 text-ink-3">O texto dos botões fica preto ou branco sozinho, o que der mais leitura.</p>
+            </div>
+            <Field label="Prévia">
+              <ThemePreview brand={brand} hero={hero} logoUrl={form.logoUrl} coverUrl={form.coverImageUrl} name={form.businessName} />
+            </Field>
+          </div>
+        </Panel>
+      )}
 
-          {tab === 'fidelidade' && <LoyaltySection />}
+      {tab === 'fotos' && (
+        <Panel title="Logo e foto de capa" description="Aparecem no topo da página de agendamento.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <ImageField label="Logo" hint="Quadrada, PNG ou JPG, até 5 MB." value={form.logoUrl} onChange={v => setVal('logoUrl', v)} />
+            <ImageField label="Foto de capa" hint="Horizontal, de preferência a fachada ou o salão." value={form.coverImageUrl} onChange={v => setVal('coverImageUrl', v)} tall />
+          </div>
+        </Panel>
+      )}
 
-          {tab === 'horarios' && (
-            <SectionCard icon={Clock} title="Horários de funcionamento" desc="Dias e horários em que a barbearia abre — mostrados na página pública.">
-              <div className="space-y-2">
-                {(form.businessHours ?? []).map((h, i) => (
-                  <div key={h.dayOfWeek} className="flex items-center gap-3 flex-wrap" style={{ padding: 'var(--space-2) 0' }}>
-                    <button type="button" role="switch" aria-checked={h.isOpen}
-                      onClick={() => setVal('businessHours', (form.businessHours ?? []).map((d, j) => j === i ? { ...d, isOpen: !d.isOpen } : d))}
-                      className="relative flex-shrink-0 transition-colors" style={{ width: 40, height: 22, borderRadius: 'var(--radius-full)', background: h.isOpen ? 'var(--tenant-primary)' : 'var(--bg-elevated)', border: h.isOpen ? 'none' : '1px solid var(--border-default)', cursor: 'pointer' }}>
-                      <span className="absolute shadow transition-transform" style={{ top: 2, left: 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transform: h.isOpen ? 'translateX(18px)' : 'none' }} />
-                    </button>
-                    <span className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)', width: 90, flexShrink: 0 }}>{weekdayNames[h.dayOfWeek]}</span>
-                    {h.isOpen ? (
-                      <div className="flex items-center gap-2">
-                        <input type="time" className="ds-input" style={{ width: 110 }} value={h.openTime ?? '09:00'}
-                          onChange={e => setVal('businessHours', (form.businessHours ?? []).map((d, j) => j === i ? { ...d, openTime: e.target.value } : d))} />
-                        <span className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>até</span>
-                        <input type="time" className="ds-input" style={{ width: 110 }} value={h.closeTime ?? '19:00'}
-                          onChange={e => setVal('businessHours', (form.businessHours ?? []).map((d, j) => j === i ? { ...d, closeTime: e.target.value } : d))} />
-                      </div>
-                    ) : (
-                      <span className="ds-text-disabled" style={{ fontSize: 'var(--text-sm)' }}>Fechado</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+      {tab === 'agenda' && (
+        <Panel title="Agendamento online" description="Como os clientes marcam horário pela página.">
+          <div className="space-y-4">
+            <SwitchRow title="Aceitar agendamentos pela página" description="Desligado, a página mostra só as informações da barbearia."
+              checked={form.allowOnlineBooking ?? true} onChange={v => setVal('allowOnlineBooking', v)} />
+            <SwitchRow title="Aprovar cada agendamento" description="O horário fica pendente até alguém da equipe confirmar."
+              checked={form.requireConfirmation ?? false} onChange={v => setVal('requireConfirmation', v)} />
+            <SwitchRow title="Preço diferente por barbeiro" description="Cada barbeiro pode ter o próprio preço por serviço. O cliente vê o preço de quem escolheu."
+              checked={form.customPriceEnabled ?? false} onChange={v => setVal('customPriceEnabled', v)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <Field label="Intervalo entre horários" hint="De quanto em quanto tempo a agenda oferece horários (minutos).">
+                <NumberField min={5} step={5} placeholder="15" value={toNum(form.slotIntervalMinutes) || 15} onChange={v => setVal('slotIntervalMinutes', v)} />
+              </Field>
+              <Field label="Agendar com até" hint="Quantos dias à frente o cliente pode marcar.">
+                <NumberField min={1} placeholder="30" value={toNum(form.maxAdvanceDays) || 30} onChange={v => setVal('maxAdvanceDays', v)} />
+              </Field>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {tab === 'horarios' && (
+        <Panel title="Horário de funcionamento" description="Mostrado na página e usado para montar a grade da agenda." pad={false}>
+          <ul className="ds-list border-t border-line">
+            {weekOrder.map(day => {
+              const h = form.businessHours?.find(x => x.dayOfWeek === day)
+              if (!h) return null
+              return (
+                <li key={day} className="flex items-center gap-3 px-5 py-3 border-b border-line last:border-b-0 max-lg:px-4 flex-wrap">
+                  <Switch checked={h.isOpen} onChange={v => setHour(day, { isOpen: v })} label={`Aberto ${weekdayNames[day]}`} />
+                  <span className="text-sm font-medium w-[72px]">{weekdayNames[day]}</span>
+                  {h.isOpen ? (
+                    <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                      <input type="time" className="ds-input t-num" style={{ width: 108 }} value={h.openTime ?? '09:00'} step={900}
+                        onChange={e => setHour(day, { openTime: e.target.value })} aria-label={`Abre ${weekdayNames[day]}`} />
+                      <span className="text-13 text-ink-3">às</span>
+                      <input type="time" className="ds-input t-num" style={{ width: 108 }} value={h.closeTime ?? '19:00'} step={900}
+                        onChange={e => setHour(day, { closeTime: e.target.value })} aria-label={`Fecha ${weekdayNames[day]}`} />
+                    </div>
+                  ) : (
+                    <span className="text-13 text-ink-3 ml-auto sm:ml-0">Fechado</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </Panel>
+      )}
+
+      {/* Barra de salvar: gruda no rodapé da tela enquanto houver alteração não salva */}
+      {dirty && (
+        <div className="sticky z-20 bottom-[calc(70px+env(safe-area-inset-bottom))] lg:bottom-5 animate-[ds-dialog-in_160ms_ease-out]">
+          <div className="flex items-center gap-3 rounded-panel border border-line bg-surface pl-4 pr-3 py-3" style={{ boxShadow: 'var(--shadow-pop)' }}>
+            <p className="text-sm text-ink-2 flex-1">Alterações não salvas</p>
+            <Button variant="ghost" size="sm" onClick={() => setForm(initial)}>Descartar</Button>
+            <Button type="submit" size="sm" loading={update.isPending}>Salvar alterações</Button>
+          </div>
+        </div>
+      )}
+    </form>
+  )
+}
+
+/* ---------- Cor + amostra ---------- */
+function ColorField({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex items-center gap-3 p-3 rounded-control border border-line bg-surface cursor-pointer hover:border-line-strong">
+      <input type="color" value={value} onChange={e => onChange(e.target.value)}
+        className="w-11 h-11 rounded-[8px] border border-line cursor-pointer p-0.5 bg-surface flex-shrink-0" aria-label={label} />
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-13 text-ink-2">{hint}</span>
+      </span>
+      <span className="text-13 text-ink-3 t-num uppercase">{value}</span>
+    </label>
+  )
+}
+
+/* ---------- Prévia: topo da página de agendamento ---------- */
+function ThemePreview({ brand, hero, logoUrl, coverUrl, name }: {
+  brand: string; hero: string; logoUrl?: string; coverUrl?: string; name?: string
+}) {
+  return (
+    <div className="rounded-panel border border-line overflow-hidden bg-surface" aria-hidden>
+      <div className="h-[92px] relative" style={{ background: hero }}>
+        {coverUrl && <img src={assetUrl(coverUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+      </div>
+      <div className="px-4 pb-4">
+        <div className="-mt-6 w-12 h-12 rounded-[10px] border-2 border-surface overflow-hidden bg-surface-3 relative">
+          {logoUrl ? <img src={assetUrl(logoUrl)} alt="" className="w-full h-full object-cover" /> : <span className="w-full h-full flex items-center justify-center text-ink-2 font-semibold">{(name || 'B')[0]}</span>}
+        </div>
+        <p className="mt-2 t-display text-[19px] leading-6 truncate">{name || 'Sua barbearia'}</p>
+        <p className="text-xs text-ink-3">Aberto agora</p>
+        <div className="mt-3 h-10 rounded-control flex items-center justify-center text-sm font-semibold" style={{ background: brand, color: foregroundFor(brand) }}>
+          Agendar horário
         </div>
       </div>
     </div>
   )
 }
 
-/* ---------- Fidelidade (programa por tenant — salvar próprio, PUT /loyalty/program) ---------- */
+/* ---------- Fidelidade (programa por barbearia — salvar próprio, PUT /loyalty/program) ---------- */
 function LoyaltySection() {
-  const { data: program, isLoading } = useLoyaltyProgram()
+  const { data: program, isLoading, dataUpdatedAt } = useLoyaltyProgram()
+  if (isLoading || !program) return <BlockSkeleton height={280} />
+  return <LoyaltyForm key={dataUpdatedAt} program={program} />
+}
+
+function LoyaltyForm({ program }: { program: LoyaltyProgram }) {
   const update = useUpdateLoyaltyProgram()
-
-  const [enabled, setEnabled] = useState(false)
-  const [mode, setMode]       = useState<LoyaltyMode>('Points')
-  const [rate, setRate]       = useState('1')
-
-  useEffect(() => {
-    if (program) {
-      setEnabled(program.isEnabled)
-      setMode(program.mode)
-      setRate(String(program.pointsPerReal))
-    }
-  }, [program])
+  const [enabled, setEnabled] = useState(program.isEnabled)
+  const [mode, setMode]       = useState<LoyaltyMode>(program.mode)
+  const [rate, setRate]       = useState(String(program.pointsPerReal))
 
   const save = async () => {
     const pointsPerReal = Number(rate.replace(',', '.'))
@@ -322,79 +313,51 @@ function LoyaltySection() {
     }
     try {
       await update.mutateAsync({ isEnabled: enabled, mode, pointsPerReal: pointsPerReal || 1 })
-      toast.success(enabled ? 'Programa de fidelidade ativado!' : 'Programa de fidelidade salvo.')
+      toast.success(enabled ? 'Programa de fidelidade ativado.' : 'Programa de fidelidade salvo.')
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao salvar fidelidade.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível salvar a fidelidade.'))
     }
   }
 
-  if (isLoading)
-    return <div className="flex justify-center py-10"><Loader2 size={22} className="animate-spin" style={{ color: 'var(--accent)' }} /></div>
-
-  const exampleEarn = mode === 'Points'
-    ? `Ex.: corte de R$ 45 × ${rate || '1'} = ${Math.floor(45 * (Number(rate.replace(',', '.')) || 0))} ${unitLabel('Points', 2)} (arredonda pra baixo)`
+  const example = mode === 'Points'
+    ? `Um corte de R$ 45 rende ${Math.floor(45 * (Number(rate.replace(',', '.')) || 0))} ${unitLabel('Points', 2)} (arredonda para baixo).`
     : 'Cada atendimento concluído vale 1 corte no cartão do cliente.'
 
   return (
-    <SectionCard icon={Gift} title="Fidelidade" desc="Recompense clientes que voltam. Com o programa ligado, a aba Fidelidade aparece no menu e os clientes acumulam e resgatam sozinhos na área deles.">
-      <Toggle label="Ativar programa de fidelidade" desc="Desligado, nada de pontos aparece — nem pro cliente, nem no painel." checked={enabled} onChange={setEnabled} />
+    <Panel title="Programa de fidelidade"
+      description="Com o programa ligado, a aba Fidelidade aparece no menu e o cliente acompanha o saldo e troca por recompensas na área dele.">
+      <div className="space-y-5">
+        <SwitchRow title="Programa ativo" description="Desligado, nada de saldo aparece, nem para o cliente nem no painel."
+          checked={enabled} onChange={setEnabled} />
 
-      {enabled && (
-        <>
-          <div className="ds-field">
-            <label className="ds-label">Como o cliente acumula</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([
-                { id: 'Points', title: 'Por pontos', desc: 'Ganha pontos pelo valor gasto em cada atendimento.' },
-                { id: 'Visits', title: 'Por cortes',  desc: 'Ganha 1 corte por atendimento concluído (cartãozinho).' },
-              ] as const).map(opt => (
-                <button key={opt.id} type="button" onClick={() => setMode(opt.id)}
-                  className="text-left transition-colors ds-hoverable-field"
-                  style={{
-                    borderRadius: 'var(--radius-md)', padding: 'var(--space-4)',
-                    border: mode === opt.id ? '2px solid var(--tenant-primary)' : '1px solid var(--border-subtle)',
-                    background: 'var(--bg-base)', cursor: 'pointer',
-                  }}>
-                  <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{opt.title}</p>
-                  <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{opt.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+        {enabled && (
+          <>
+            <Field label="Como o cliente acumula">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {([
+                  { id: 'Visits', title: 'Cartão de cortes', desc: '1 corte por atendimento concluído.' },
+                  { id: 'Points', title: 'Pontos por valor', desc: 'Pontos proporcionais ao valor gasto.' },
+                ] as const).map(opt => (
+                  <button key={opt.id} type="button" className="ds-choice" aria-pressed={mode === opt.id} onClick={() => setMode(opt.id)}>
+                    <span className="text-sm font-semibold">{opt.title}</span>
+                    <span className="text-13 text-ink-2">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </Field>
 
-          {mode === 'Points' && (
-            <div className="ds-field" style={{ maxWidth: 280 }}>
-              <label className="ds-label">Pontos por real gasto</label>
-              <input type="number" inputMode="decimal" min="0.01" step="0.1" className="ds-input"
-                value={rate} onChange={e => setRate(e.target.value)} />
-            </div>
-          )}
-          <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{exampleEarn}</p>
-        </>
-      )}
+            {mode === 'Points' && (
+              <Input label="Pontos por real gasto" type="number" inputMode="decimal" min="0.01" step="0.1"
+                value={rate} onChange={e => setRate(e.target.value)} fieldClassName="max-w-[240px]" />
+            )}
+            <p className="text-13 text-ink-2">{example}</p>
+          </>
+        )}
 
-      <div className="pt-2">
-        <Button onClick={save} loading={update.isPending}>
-          {!update.isPending && <Save size={15} />} Salvar fidelidade
-        </Button>
+        <div className="pt-1">
+          <Button onClick={save} loading={update.isPending}>Salvar fidelidade</Button>
+        </div>
       </div>
-    </SectionCard>
-  )
-}
-
-/* ---------- Toggle acessível ---------- */
-function Toggle({ label, desc, checked, onChange }: { label: string; desc?: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between gap-4 text-left transition-colors ds-hoverable-field"
-      style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', padding: 'var(--space-3)', background: 'var(--bg-base)', cursor: 'pointer' }}>
-      <div>
-        <p className="ds-text-primary font-medium" style={{ fontSize: 'var(--text-sm)' }}>{label}</p>
-        {desc && <p className="ds-text-disabled mt-0.5" style={{ fontSize: 'var(--text-xs)' }}>{desc}</p>}
-      </div>
-      <span className="relative flex-shrink-0 transition-colors" style={{ width: 44, height: 24, borderRadius: 'var(--radius-full)', background: checked ? 'var(--tenant-primary)' : 'var(--bg-elevated)', border: checked ? 'none' : '1px solid var(--border-default)' }}>
-        <span className="absolute shadow transition-transform" style={{ top: 2, left: 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transform: checked ? 'translateX(20px)' : 'none' }} />
-      </span>
-    </button>
+    </Panel>
   )
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { Input, Select, Textarea, Field } from '../ui/Input'
+import { SwitchRow } from '../ui/Controls'
 import { ImageField } from '../ui/ImageField'
 import { useUpdateBarber } from '../../features/barbers/barbersApi'
 import { PhoneField } from '../ui/PhoneField'
@@ -11,10 +12,9 @@ import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 
-// Modal de edição do barbeiro (Parte C). Reusado na lista (BarbersPage) e no perfil (Parte D).
+// Edição do barbeiro — usada na lista (Barbeiros) e no perfil.
 export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: () => void }) {
   const update = useUpdateBarber()
-  const [saved, setSaved] = useState(false)
   const [form, setForm] = useState({
     name: barber.name,
     photoUrl: barber.photoUrl ?? '',
@@ -28,9 +28,6 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
     chairRentAmount: barber.chairRentAmount ?? 0,
     chairRentPeriod: barber.chairRentPeriod ?? 1, // mensal por padrão
   })
-
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [k]: k === 'commissionType' ? +e.target.value : e.target.value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,104 +47,69 @@ export function EditBarberModal({ barber, onClose }: { barber: Barber; onClose: 
           chairRentPeriod: form.chairRentEnabled && form.chairRentAmount > 0 ? form.chairRentPeriod : null,
         },
       })
-      setSaved(true)
-      toast.success('Barbeiro atualizado!')
-      setTimeout(onClose, 800)
+      toast.success('Barbeiro atualizado.')
+      onClose()
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Erro ao salvar.'))
+      toast.error(apiErrorMessage(err, 'Não foi possível salvar.'))
     }
   }
 
   return (
-    <Modal isOpen onClose={onClose} title="Editar barbeiro" subtitle={barber.name}
-      panelClassName="max-w-lg max-h-[90vh] overflow-y-auto">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <ImageField
-          label="Foto"
-          hint="Aparece nos cards e na página pública. PNG, JPG ou WEBP."
-          value={form.photoUrl}
-          onChange={(url) => setForm(f => ({ ...f, photoUrl: url }))}
-          tall
-        />
+    <Modal isOpen onClose={onClose} title="Editar barbeiro" subtitle={barber.name} size="lg"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <Button type="submit" form="edit-barber" loading={update.isPending}>Salvar alterações</Button>
+      </>}>
+      <form id="edit-barber" onSubmit={handleSubmit} className="space-y-5">
+        <ImageField label="Foto" round hint="Aparece na agenda e na página de agendamento."
+          value={form.photoUrl} onChange={url => setForm(f => ({ ...f, photoUrl: url }))} />
 
-        <div className="ds-field">
-          <label className="ds-label">Nome</label>
-          <input className="ds-input" value={form.name} onChange={set('name')} required />
-        </div>
+        <Input label="Nome" value={form.name} required onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <PhoneField label="Telefone" value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
-          <div className="ds-field">
-            <label className="ds-label">Ordem de exibição</label>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px] gap-4">
+          <PhoneField label="Telefone" optional value={form.phone} onChange={d => setForm(f => ({ ...f, phone: d }))} />
+          <Field label="Ordem na página" hint="Menor aparece primeiro.">
             <NumberField min={0} value={form.displayOrder} onChange={v => setForm(f => ({ ...f, displayOrder: v }))} />
-          </div>
+          </Field>
         </div>
 
-        <div className="ds-field">
-          <label className="ds-label">Bio</label>
-          <textarea className="ds-input" rows={3} value={form.bio} onChange={set('bio')} style={{ resize: 'vertical' }}
-            placeholder="Especialidades, experiência…" />
-        </div>
+        <Textarea label="Apresentação" optional rows={3} value={form.bio} placeholder="Especialidades, tempo de profissão…"
+          onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="ds-field">
-            <label className="ds-label">Comissão</label>
-            <select className="ds-input" value={form.commissionType} onChange={set('commissionType')}>
+        <fieldset className="space-y-3">
+          <legend className="ds-label mb-2">Remuneração</legend>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Comissão" value={form.commissionType}
+              onChange={e => setForm(f => ({ ...f, commissionType: +e.target.value }))}>
               <option value={0}>Percentual (%)</option>
-              <option value={1}>Fixo (R$)</option>
-            </select>
+              <option value={1}>Valor fixo (R$)</option>
+            </Select>
+            <Field label={form.commissionType === 1 ? 'Valor por atendimento' : 'Percentual'}>
+              <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
+            </Field>
           </div>
-          <div className="ds-field">
-            <label className="ds-label">Valor</label>
-            <NumberField min={0} step="0.01" value={form.commissionValue} onChange={v => setForm(f => ({ ...f, commissionValue: v }))} />
-          </div>
-        </div>
-
-        {/* Aluguel de cadeira — modelo ADICIONAL, combinável com a comissão acima:
-            valor fixo que o barbeiro paga pelo espaço, independente do faturamento. */}
-        <div style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input type="checkbox" checked={form.chairRentEnabled}
-              onChange={e => setForm(f => ({ ...f, chairRentEnabled: e.target.checked }))}
-              className="w-4 h-4 flex-shrink-0" style={{ accentColor: 'var(--accent)' }} />
-            <span>
-              <span className="ds-text-primary block" style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>Valor fixo por cadeira</span>
-              <span className="ds-text-disabled block" style={{ fontSize: 'var(--text-xs)' }}>O barbeiro paga um valor fixo pelo espaço — pode ser combinado com a comissão.</span>
-            </span>
-          </label>
+          {/* Aluguel de cadeira: modelo ADICIONAL, combinável com a comissão. */}
+          <SwitchRow title="Cobrar aluguel de cadeira"
+            description="O barbeiro paga um valor fixo pelo espaço. Pode somar com a comissão."
+            checked={form.chairRentEnabled} onChange={v => setForm(f => ({ ...f, chairRentEnabled: v }))} />
           {form.chairRentEnabled && (
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="ds-field">
-                <label className="ds-label">Valor (R$)</label>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Valor (R$)">
                 <NumberField min={0} step="0.01" placeholder="0,00" value={form.chairRentAmount}
                   onChange={v => setForm(f => ({ ...f, chairRentAmount: v }))} required />
-              </div>
-              <div className="ds-field">
-                <label className="ds-label">Periodicidade</label>
-                <select className="ds-input" value={form.chairRentPeriod}
-                  onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
-                  <option value={0}>Semanal</option>
-                  <option value={1}>Mensal</option>
-                </select>
-              </div>
+              </Field>
+              <Select label="Cobrança" value={form.chairRentPeriod}
+                onChange={e => setForm(f => ({ ...f, chairRentPeriod: +e.target.value }))}>
+                <option value={0}>Semanal</option>
+                <option value={1}>Mensal</option>
+              </Select>
             </div>
           )}
-        </div>
+        </fieldset>
 
-        <label className="flex items-center gap-3 cursor-pointer select-none"
-          style={{ background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)' }}>
-          <input type="checkbox" checked={form.showInPublicPage}
-            onChange={e => setForm(f => ({ ...f, showInPublicPage: e.target.checked }))}
-            className="w-4 h-4 flex-shrink-0" style={{ accentColor: 'var(--accent)' }} />
-          <span className="ds-text-primary" style={{ fontSize: 'var(--text-sm)' }}>Exibir na página pública de agendamento</span>
-        </label>
-
-        <div className="flex gap-3 pt-2">
-          <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" className="flex-1" loading={update.isPending} disabled={saved}>
-            {saved ? <><Check size={16} /> Salvo!</> : 'Salvar alterações'}
-          </Button>
-        </div>
+        <SwitchRow title="Aparecer na página de agendamento"
+          description="Desligado, o barbeiro continua no painel mas os clientes não podem escolhê-lo."
+          checked={form.showInPublicPage} onChange={v => setForm(f => ({ ...f, showInPublicPage: v }))} />
       </form>
     </Modal>
   )
