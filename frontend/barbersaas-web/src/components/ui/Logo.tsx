@@ -2,13 +2,15 @@ import { BRAND, MARK_T, MARK_CUT, WORD_VIEWBOX, WORD_RATIO, WORD_LETTERS, WORD_D
 
 /* Marca do Trimly — identidade do produto, não muda com a cor da barbearia. */
 
-/** Símbolo: o "t" com o corte diagonal, no quadrado azul-petróleo. */
-export function LogoMark({ size = 32, className = '' }: { size?: number; className?: string }) {
+/** Símbolo: o "t" com o corte diagonal, no quadrado azul-petróleo.
+ *  `inverse` (fundo escuro): quadrado branco com o "t" em petróleo. */
+export function LogoMark({ size = 32, inverse = false, className = '' }: { size?: number; inverse?: boolean; className?: string }) {
+  const square = inverse ? '#FFFFFF' : BRAND.petrol
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={`flex-shrink-0 ${className}`} aria-hidden="true">
-      <rect width="48" height="48" rx="11" fill={BRAND.petrol} />
-      <path fill="#FFFFFF" d={MARK_T} />
-      <path fill={BRAND.petrol} d={MARK_CUT} />
+      <rect width="48" height="48" rx="11" fill={square} />
+      <path fill={inverse ? BRAND.petrol : '#FFFFFF'} d={MARK_T} />
+      <path fill={square} d={MARK_CUT} />
     </svg>
   )
 }
@@ -28,7 +30,7 @@ export function Wordmark({ height = 20, inverse = false, className = '' }: { hei
 export function Logo({ size = 32, inverse = false, className = '' }: { size?: number; inverse?: boolean; className?: string }) {
   return (
     <span className={`inline-flex items-center ${className}`} style={{ gap: Math.round(size * 0.3) }}>
-      <LogoMark size={size} />
+      <LogoMark size={size} inverse={inverse} />
       <Wordmark height={Math.round(size * 0.78)} inverse={inverse} />
     </span>
   )
