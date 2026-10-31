@@ -61,3 +61,16 @@ Mesmos nomes; superfícies claras (`--bg 250 250 252`, `--surface 255 255 255`),
 ---
 
 **Style guide vivo:** rota `/style-guide` renderiza paleta, tipografia, botões, inputs, cards, badges, skeleton e empty state aplicando os tokens — para validar a direção em light e dark.
+
+---
+
+# Redesign Glass (2026) — em migração
+
+Linguagem nova: **dashboard escuro com vidro fosco** sobre um fundo ambiente quente (3 manchas desfocadas âmbar / bordô / bronze). Convive com o sistema acima enquanto as telas migram uma a uma (Fase 1: shell + Dashboard).
+
+- **Tokens:** `src/styles/tokens.css`, bloco `--g-*` (superfícies `--g-surface` 4.5% branco, borda `--g-border` 8%, blur `--g-blur` 24px, raios `--g-radius-*` 8–22px, texto `--g-fg-1` 92% / `--g-fg-2` 55% / `--g-fg-3` 36%, motion `--g-ease` `cubic-bezier(.22,1,.36,1)` e `--g-dur-*`). Destaque continua sendo `var(--accent)` (dourado Trimly; a cor da barbearia sobrescreve via `applyTenantTheme()`). Série secundária de gráfico = neutra (`--g-chart-muted`).
+- **CSS:** `src/styles/glass.css` (classes `g-*`).
+- **Componentes:** `src/components/ui/glass` — `GlassCard`, `Button`, `Input`/`Textarea`, `Select` (nativo), `Badge`/`Trend`, `Progress`, `Skeleton`/`KpiSkeleton`/`ListSkeleton`/`ChartSkeleton`, `Tabs` (pílula com layoutId), `Table` (`TBody`/`TR` com stagger), `Modal`/`Drawer` (portal + fundo desfocado), `EmptyState`, `Donut`, `GlassTooltip`, helpers de gráfico (`growBarShape`, `gBarGradient`, `gAreaGradient`…).
+- **Motion:** `src/components/motion` — `PageTransition` (AnimatePresence `mode="wait"` por rota), `Stagger`/`StaggerItem`, `CountUp` (BRL por padrão), `tokens.ts`.
+- **Regras:** animar só `transform`/`opacity`/`filter` (exceção: o traço de linha/donut usa `stroke-dashoffset`/clip do SVG, que é só pintura). Entrada roda uma vez por montagem. `prefers-reduced-motion` troca blur/deslocamento por fade curto. Modais novos sempre em portal (vidro/transform criam containing block para `position: fixed`).
+- **Migrar uma tela:** trocar imports de `components/ui/*` por `components/ui/glass`, cards → `GlassCard` (+ `Stagger` nas grades/listas), números → `CountUp`, gráficos → `growBarShape` + `isAnimationActive={false}` nas barras e `key` do gráfico mudando com período/filtro para redisparar.

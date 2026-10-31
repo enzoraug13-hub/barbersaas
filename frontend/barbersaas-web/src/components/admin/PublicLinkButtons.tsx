@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Copy, Check, ExternalLink } from 'lucide-react'
 import { useSettings } from '../../features/settings/settingsApi'
-import { Button } from '../ui/Button'
+import { Button } from '../ui/glass/Button'
 import toast from 'react-hot-toast'
 
 /**
@@ -28,18 +28,16 @@ export function PublicLinkButtons() {
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap"
-      style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)' }}>
-      <span className="truncate" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontFamily: 'monospace', maxWidth: 280 }} title={url}>
+    <div className="g-linkbar max-w-full">
+      <span className="truncate g-fg-2" style={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', maxWidth: 280 }} title={url}>
         {url}
       </span>
       <div className="flex items-center gap-1">
-        <Button type="button" variant="ghost" onClick={copy}
-          style={{ height: 30, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)', color: copied ? 'var(--color-success)' : undefined }}>
+        <Button variant="ghost" size="sm" onClick={copy}
+          style={copied ? { color: 'var(--g-success)' } : undefined}>
           {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copiado!' : 'Copiar'}
         </Button>
-        <Button type="button" variant="ghost" onClick={() => window.open(url, '_blank', 'noopener')}
-          style={{ height: 30, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)' }}>
+        <Button variant="secondary" size="sm" onClick={() => window.open(url, '_blank', 'noopener')}>
           <ExternalLink size={13} /> Abrir
         </Button>
       </div>
