@@ -9,6 +9,7 @@ import { NumberField } from '../../components/ui/NumberField'
 import { useServices, useCreateService, useUpdateService, useDeleteService } from '../../features/services/servicesApi'
 import type { Service } from '../../types'
 import toast from 'react-hot-toast'
+import { Stagger, StaggerItem } from '../../components/motion'
 
 const EMPTY_FORM = { name: '', description: '', durationMinutes: 30, price: 0, colorHex: '#c9a84c', showInPublicPage: true }
 
@@ -81,9 +82,10 @@ export default function ServicesPage() {
         <EmptyState icon={Clock} title="Nenhum serviço cadastrado"
           action={<Button onClick={openCreate}>Cadastrar primeiro serviço</Button>} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {services.map((s, i) => (
-            <Card key={s.id} style={{ animationDelay: `${i * 45}ms` }} className="group animate-slide-up">
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {services.map(s => (
+            <StaggerItem key={s.id}>
+            <Card className="group h-full">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-3 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
@@ -124,8 +126,9 @@ export default function ServicesPage() {
                 </button>
               </div>
             </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {/* Modal criar/editar */}
