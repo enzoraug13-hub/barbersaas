@@ -13,6 +13,7 @@ import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Client } from '../../types'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { TBody, TR } from '../../components/ui/glass/Table'
 
 export default function ClientsPage() {
   const [search, setSearch]       = useState('')
@@ -105,9 +106,9 @@ export default function ClientsPage() {
                   <th className="text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody>
+              <TBody>
                 {clients.map(c => (
-                  <tr key={c.id}>
+                  <TR key={c.id}>
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="ds-avatar flex items-center justify-center flex-shrink-0" style={{ width: 32, height: 32, borderRadius: '50%', fontSize: 'var(--text-sm)' }}>
@@ -149,9 +150,9 @@ export default function ClientsPage() {
                         </Button>
                       )}
                     </td>
-                  </tr>
+                  </TR>
                 ))}
-              </tbody>
+              </TBody>
             </table>
           </div>
         </div>
