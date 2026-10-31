@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button'
 import { RainCanvas } from '../../components/ui/RainCanvas'
 import facade from '../../assets/login-facade.jpg'
 import { apiErrorMessage, apiErrorStatus } from '../../lib/apiError'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Stagger, StaggerItem, DUR, EASE } from '../../components/motion'
 
 /* Cena cinematográfica: fachada da barbearia à noite (asset local otimizado) +
    chuva leve em canvas + brilho pulsante de letreiro + card de vidro fosco.
@@ -14,6 +16,7 @@ import { apiErrorMessage, apiErrorStatus } from '../../lib/apiError'
    (exceção consciente aos tokens de tema, que invertem no modo claro); o dourado
    da marca continua vindo de var(--accent). Só visual: o fluxo de login é o mesmo. */
 export default function LoginPage() {
+  const reduce = useReducedMotion()
   const navigate = useNavigate()
   const login    = useLogin()
   const [form, setForm]         = useState({ email: '', password: '' })
@@ -50,19 +53,23 @@ export default function LoginPage() {
       <div aria-hidden className="login-sign-glow" />
       <RainCanvas />
 
-      <div className="relative w-full max-w-sm animate-fade-in">
+      <motion.div className="relative w-full max-w-sm"
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.97, filter: 'blur(8px)' }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+        transition={{ duration: reduce ? DUR.reduced : 0.6, ease: EASE }}>
         {/* Cartão de vidro fosco */}
         <div className="login-glass" style={{ padding: 'var(--space-8, 32px) var(--space-6)' }}>
           {/* Marca */}
-          <div className="flex flex-col items-center mb-8 text-center">
+          <Stagger delay={0.2} stagger={0.07}>
+          <StaggerItem className="flex flex-col items-center mb-8 text-center">
             <h1 className="login-brand" style={{ fontSize: '34px', lineHeight: 1.1 }}>Trimly</h1>
             <p className="mt-2" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.72)' }}>
               Gestão e agendamento para barbearias
             </p>
-          </div>
+          </StaggerItem>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            <div className="ds-field">
+            <StaggerItem className="ds-field">
               <label className="ds-label" htmlFor="login-email">E-mail</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(235,230,218,0.45)' }} />
@@ -78,9 +85,9 @@ export default function LoginPage() {
                   required
                 />
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="ds-field">
+            <StaggerItem className="ds-field">
               <label className="ds-label" htmlFor="login-password">Senha</label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(235,230,218,0.45)' }} />
@@ -102,27 +109,32 @@ export default function LoginPage() {
                   {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
-            </div>
+            </StaggerItem>
 
             {error && (
-              <div role="alert" className="flex items-start gap-2.5"
+              <motion.div role="alert" className="flex items-start gap-2.5"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: DUR.base, ease: EASE }}
                 style={{
-                  background: 'rgba(224,92,92,0.14)',
-                  border: '1px solid rgba(224,92,92,0.4)',
-                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--danger-soft)',
+                  border: '1px solid var(--danger-line)',
+                  borderRadius: 12,
                   padding: 'var(--space-3)',
-                  color: '#f2a3a3',
+                  color: 'var(--danger)',
                   fontSize: 'var(--text-sm)',
                 }}>
                 <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
-              </div>
+              </motion.div>
             )}
 
+            <StaggerItem>
             <Button type="submit" className="w-full mt-1" loading={login.isPending}>
               {login.isPending ? 'Entrando…' : <>Entrar <ArrowRight size={16} /></>}
             </Button>
+            </StaggerItem>
           </form>
+          </Stagger>
 
           {/* Auto-cadastro público desativado (contas criadas pelo super admin).
               Reativação futura (billing self-service): restaurar o bloco abaixo e o
@@ -134,7 +146,7 @@ export default function LoginPage() {
             </Link>
           </p> */}
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
