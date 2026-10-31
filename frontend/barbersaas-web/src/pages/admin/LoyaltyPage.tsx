@@ -19,6 +19,8 @@ import { formatPhoneBR } from '../../lib/masks'
 import type { Service, Product } from '../../types'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { TBody, TR } from '../../components/ui/glass/Table'
+import { Stagger, StaggerItem } from '../../components/motion'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -112,9 +114,9 @@ function RedemptionsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
               <th className="text-center">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <TBody>
             {sorted.map(r => (
-              <tr key={r.id}>
+              <TR key={r.id}>
                 <td>
                   <p className="ds-text-primary font-medium">{r.clientName}</p>
                   <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{formatPhoneBR(r.clientPhone)}</p>
@@ -142,9 +144,9 @@ function RedemptionsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
                     </div>
                   )}
                 </td>
-              </tr>
+              </TR>
             ))}
-          </tbody>
+          </TBody>
         </table>
       </div>
     </div>
@@ -204,9 +206,10 @@ function RewardsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
         <EmptyState icon={Gift} title="Monte seu catálogo de recompensas"
           action={<Button onClick={openNew}><Plus size={15} /> Criar a primeira</Button>} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {rewards.map(r => (
-            <div key={r.id} className="ds-card space-y-3" style={{ opacity: r.isActive ? 1 : 0.55 }}>
+            <StaggerItem key={r.id}>
+            <div className="ds-card space-y-3 h-full" style={{ opacity: r.isActive ? 1 : 0.55 }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 36, height: 36 }}>
                   {r.type === 'Service' ? <Tag size={16} /> : <Package size={16} />}
@@ -228,8 +231,9 @@ function RewardsTab({ mode }: { mode?: 'Points' | 'Visits' }) {
                 </button>
               </div>
             </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {/* Modal criar/editar */}
@@ -319,9 +323,9 @@ function BalancesTab({ mode }: { mode?: 'Points' | 'Visits' }) {
               <th className="text-center hidden md:table-cell">Acumulado total</th>
             </tr>
           </thead>
-          <tbody>
+          <TBody>
             {balances.map(b => (
-              <tr key={b.clientId}>
+              <TR key={b.clientId}>
                 <td className="ds-text-primary font-medium">{b.clientName?.trim() || 'Sem nome'}</td>
                 <td className="ds-text-secondary hidden sm:table-cell">{formatPhoneBR(b.phone)}</td>
                 <td className="text-center">
@@ -330,9 +334,9 @@ function BalancesTab({ mode }: { mode?: 'Points' | 'Visits' }) {
                   </span>
                 </td>
                 <td className="ds-text-secondary text-center hidden md:table-cell">{b.lifetimePoints}</td>
-              </tr>
+              </TR>
             ))}
-          </tbody>
+          </TBody>
         </table>
       </div>
     </div>
