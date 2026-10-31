@@ -21,6 +21,8 @@ import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 import { TBody, TR } from '../../components/ui/glass/Table'
 import { Stagger, StaggerItem } from '../../components/motion'
+import { motion, useReducedMotion } from 'framer-motion'
+import { DUR, EASE } from '../../components/motion'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -30,6 +32,7 @@ const statusVariant = { Pending: 'warning', Delivered: 'success', Cancelled: 'er
 type Tab = 'resgates' | 'recompensas' | 'saldos'
 
 export default function LoyaltyPage() {
+  const reduce = useReducedMotion()
   const [tab, setTab] = useState<Tab>('resgates')
   const { data: program } = useLoyaltyProgram()
   const mode = program?.mode
@@ -44,7 +47,7 @@ export default function LoyaltyPage() {
   ]
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div>
         <h2 className="ds-page-title">Fidelidade</h2>
         <p className="ds-page-sub">
@@ -58,6 +61,8 @@ export default function LoyaltyPage() {
         {tabs.map(({ id, label, icon: Icon, badge }) => (
           <button key={id} type="button" onClick={() => setTab(id)}
             className={`ds-config-tab ${tab === id ? 'ds-config-tab-active' : ''}`}>
+            {tab === id && <motion.span layoutId="loyalty-tab-pill" className="g-config-pill" aria-hidden="true"
+              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }} />}
             <Icon size={16} />
             {label}
             {badge != null && (
@@ -70,9 +75,12 @@ export default function LoyaltyPage() {
         ))}
       </div>
 
+      <motion.div key={tab} initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduce ? DUR.reduced : DUR.page, ease: EASE }}>
       {tab === 'resgates'    && <RedemptionsTab mode={mode} />}
       {tab === 'recompensas' && <RewardsTab mode={mode} />}
       {tab === 'saldos'      && <BalancesTab mode={mode} />}
+      </motion.div>
     </div>
   )
 }
