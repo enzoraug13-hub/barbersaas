@@ -1,0 +1,277 @@
+/* ============================================================
+   PONTE LEGADO → GLASS (só dentro do painel admin: .g-shell)
+   As telas do painel ainda usam tokens/classes do sistema anterior
+   (var(--bg-subtle), .ds-card, .ds-input, .ds-btn-*, .ds-table…).
+   Aqui eles ganham o visual de vidro, sem tocar em layout (padding,
+   margem, tamanho) — cada tela continua com o espaçamento que já tem.
+   Área pública (/b/:slug, login, conta do cliente) não é afetada.
+   ============================================================ */
+
+/* ---------- Tokens legados reapontados pro vidro ---------- */
+/* Vale no shell e nos overlays (modal/drawer vão em portal no <body>). */
+.g-shell, .g-modal, .g-drawer {
+  --bg-base: rgba(0, 0, 0, 0.22);              /* "afundado" (tiles de opção, previews) */
+  --bg-subtle: rgba(255, 255, 255, 0.06);
+  --bg-elevated: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-default: rgba(255, 255, 255, 0.14);
+  --text-primary: var(--g-fg-1);
+  --text-secondary: rgba(255, 255, 255, 0.58);
+  --text-disabled: rgba(255, 255, 255, 0.38);
+  --color-success: var(--success);
+  --color-error: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --font-display: var(--g-font);
+  --font-ui: var(--g-font);
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: var(--g-shadow-md);
+  --shadow-lg: var(--g-shadow-lg);
+}
+
+/* ---------- Cards ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-card,
+:is(.g-shell, .g-modal, .g-drawer) .card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.095) 0%, rgba(255, 255, 255, 0.055) 100%);
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-lg);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.35);
+  backdrop-filter: blur(var(--g-blur)) saturate(1.35);
+}
+@media (max-width: 640px) {
+  :is(.g-shell, .g-modal, .g-drawer) .ds-card, :is(.g-shell, .g-modal, .g-drawer) .card { -webkit-backdrop-filter: blur(var(--g-blur-sm)); backdrop-filter: blur(var(--g-blur-sm)); }
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-card-interactive { transition: transform var(--g-dur-2) var(--g-ease), border-color var(--g-dur-2) var(--g-ease), background-color var(--g-dur-2) var(--g-ease); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--g-border-hover);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+}
+/* Card dentro de card/modal: sem blur duplo, só uma superfície mais clara. */
+:is(.g-shell, .g-modal, .g-drawer) .ds-card .ds-card,
+:is(.g-modal, .g-drawer) .ds-card {
+  background: rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* ---------- Tipografia ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-page-title {
+  font-family: var(--g-font);
+  font-weight: 700;
+  font-size: clamp(24px, 2.4vw, 30px);
+  letter-spacing: -0.03em;
+  color: var(--g-fg-1);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-page-sub { color: var(--g-fg-2); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-section-title { font-family: var(--g-font); font-weight: 600; letter-spacing: -0.015em; color: var(--g-fg-1); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-label { color: var(--g-fg-2); font-weight: 500; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-error-text { color: var(--danger); }
+
+/* ---------- Campos ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-input,
+:is(.g-shell, .g-modal, .g-drawer) .input {
+  font-family: var(--g-font);
+  color: var(--g-fg-1);
+  background: var(--g-surface-sunken);
+  border: 1px solid var(--g-border);
+  border-radius: 12px;
+  transition: border-color var(--g-dur-2) var(--g-ease), box-shadow var(--g-dur-2) var(--g-ease), background-color var(--g-dur-2) var(--g-ease);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-input::placeholder { color: var(--g-fg-3); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-input:hover:not(:disabled):not(:focus) { border-color: var(--g-border-hover); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-input:focus,
+:is(.g-shell, .g-modal, .g-drawer) .input:focus {
+  outline: none;
+  border-color: var(--g-accent-line);
+  background: rgba(0, 0, 0, 0.30);
+  box-shadow: 0 0 0 3px var(--g-accent-soft);
+}
+:is(.g-shell, .g-modal, .g-drawer) select.ds-input option, .g-modal select.ds-input option { background: #17130F; color: rgba(255, 255, 255, 0.92); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-input-error { border-color: color-mix(in srgb, var(--danger) 60%, transparent) !important; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-phone-prefix {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--g-border);
+  color: var(--g-fg-2);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-hoverable-field:hover { border-color: var(--g-border-hover); }
+
+/* ---------- Botões ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn,
+:is(.g-shell, .g-modal, .g-drawer) .btn-primary,
+:is(.g-shell, .g-modal, .g-drawer) .btn-secondary,
+:is(.g-shell, .g-modal, .g-drawer) .btn-ghost,
+:is(.g-shell, .g-modal, .g-drawer) .btn-danger {
+  font-family: var(--g-font);
+  border-radius: 12px;
+  transition:
+    transform var(--g-dur-1) var(--g-ease),
+    background-color var(--g-dur-2) var(--g-ease),
+    border-color var(--g-dur-2) var(--g-ease),
+    box-shadow var(--g-dur-2) var(--g-ease),
+    filter var(--g-dur-2) var(--g-ease);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-primary,
+:is(.g-shell, .g-modal, .g-drawer) .btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), var(--g-accent-glow);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-primary:hover:not(:disabled),
+:is(.g-shell, .g-modal, .g-drawer) .btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), var(--g-accent-glow);
+  transform: translateY(-1px);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-ghost,
+:is(.g-shell, .g-modal, .g-drawer) .btn-secondary,
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-secondary {
+  background: var(--g-surface-strong);
+  color: var(--g-fg-1);
+  border: 1px solid var(--g-border);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-ghost:hover:not(:disabled),
+:is(.g-shell, .g-modal, .g-drawer) .btn-secondary:hover:not(:disabled),
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--g-border-hover);
+  transform: translateY(-1px);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-danger,
+:is(.g-shell, .g-modal, .g-drawer) .btn-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn-danger:hover:not(:disabled),
+:is(.g-shell, .g-modal, .g-drawer) .btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 22%, transparent); filter: none; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--g-accent-soft), 0 0 0 1px var(--accent); }
+
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-btn {
+  color: var(--g-fg-2);
+  border-radius: 10px;
+  transition: background-color var(--g-dur-2) var(--g-ease), color var(--g-dur-2) var(--g-ease);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-btn:hover { background: var(--g-surface-hover); color: var(--g-fg-1); }
+
+/* ---------- Badges ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-badge {
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-weight: 550;
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-badge-default { background: var(--g-surface-strong); color: rgba(255, 255, 255, 0.65); box-shadow: inset 0 0 0 1px var(--g-border); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-badge-accent { background: var(--g-accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--g-accent-line); }
+
+/* ---------- Chips de ícone / avatar ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip {
+  background: var(--g-surface-strong);
+  border: 1px solid var(--g-border);
+  color: var(--g-fg-2);
+  border-radius: 12px;
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip-accent {
+  background: var(--g-accent-soft);
+  border: 1px solid var(--g-accent-line);
+  color: var(--accent);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip-success { background: var(--success-soft); color: var(--success); border: 1px solid var(--success-line); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip-error   { background: var(--danger-soft);  color: var(--danger);  border: 1px solid var(--danger-line); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip-warning { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-line); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-icon-chip-info    { background: var(--info-soft);    color: var(--info);    border: 1px solid var(--info-line); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-avatar {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 12%, transparent));
+  border: 1px solid var(--g-accent-line);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+/* ---------- Tabela ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-table-wrap {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.085) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-lg);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--g-blur)) saturate(1.3);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-table th { color: var(--g-fg-3); font-size: 12px; font-weight: 500; letter-spacing: 0.01em; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-table thead tr { border-bottom-color: var(--g-border); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-table tbody tr { border-bottom-color: rgba(255, 255, 255, 0.05); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-table tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+
+/* ---------- Progresso ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-progress-track { background: rgba(255, 255, 255, 0.07); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-progress-fill { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 65%, transparent), var(--accent)); }
+
+/* ---------- Skeleton (shimmer por transform) ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  background-image: none;
+  animation: none;
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  animation: g-shimmer 1.6s var(--g-ease-inout) infinite;
+}
+
+/* ---------- Estado vazio ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-empty-icon { color: var(--g-fg-3); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-empty-title { font-family: var(--g-font); font-weight: 600; font-size: 16px; color: var(--g-fg-1); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-empty-desc { color: var(--g-fg-2); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-empty-elegant .ds-empty-icon { color: rgba(255, 255, 255, 0.22); }
+
+/* ---------- Agenda: seletor da semana ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  transition: transform var(--g-dur-2) var(--g-ease), border-color var(--g-dur-2) var(--g-ease), background-color var(--g-dur-2) var(--g-ease);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day:hover { border-color: var(--g-border-hover); background: rgba(255, 255, 255, 0.08); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-label { color: var(--g-fg-3); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-number { color: var(--g-fg-2); font-family: var(--g-font); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-active,
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-active:hover { background: transparent; border-color: transparent; transform: none; }
+/* Pílula do dia selecionado (desliza via layoutId) */
+.g-week-pill {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.07));
+  border: 1px solid var(--g-accent-line);
+  box-shadow: var(--g-highlight), 0 8px 22px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.ds-week-day > .ds-week-day-label, .ds-week-day > .ds-week-day-number { position: relative; z-index: 1; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-active .ds-week-day-label,
+:is(.g-shell, .g-modal, .g-drawer) .ds-week-day-active .ds-week-day-number { color: var(--accent); font-family: var(--g-font); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-agenda-filter:hover { border-color: var(--g-border-hover); }
+
+/* ---------- Configurações: abas laterais ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab { color: var(--g-fg-2); border-radius: 12px; }
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab svg { color: var(--g-fg-3); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab:hover { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.82); }
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab-active,
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab-active:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.07));
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-config-tab-active svg { color: var(--accent); }
+
+/* ---------- Divisores ---------- */
+:is(.g-shell, .g-modal, .g-drawer) .ds-divider { border-color: var(--g-border); }

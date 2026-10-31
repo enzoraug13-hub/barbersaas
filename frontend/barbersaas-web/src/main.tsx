@@ -8,6 +8,7 @@ import './styles/tokens.css'
 import './styles/components.css'
 import './styles/admin-layout.css'
 import './styles/glass.css'
+import './styles/glass-legacy.css'
 import './index.css'
 import { router } from './app/router'
 
