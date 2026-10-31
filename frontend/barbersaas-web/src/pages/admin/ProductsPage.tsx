@@ -12,6 +12,7 @@ import {
 } from '../../features/products/productsApi'
 import type { Product } from '../../types'
 import toast from 'react-hot-toast'
+import { TBody, TR } from '../../components/ui/glass/Table'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -156,9 +157,9 @@ export default function ProductsPage() {
                     <th className="text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody>
+                <TBody>
                   {products.map(p => (
-                    <tr key={p.id}>
+                    <TR key={p.id}>
                       <td>
                         <p className="ds-text-primary font-medium">{p.name}</p>
                         {p.sku && <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>SKU: {p.sku}</p>}
@@ -190,9 +191,9 @@ export default function ProductsPage() {
                           </button>
                         </div>
                       </td>
-                    </tr>
+                    </TR>
                   ))}
-                </tbody>
+                </TBody>
               </table>
             </div>
           </div>
