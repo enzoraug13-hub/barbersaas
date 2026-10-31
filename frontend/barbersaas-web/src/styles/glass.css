@@ -25,26 +25,38 @@
 .g-ambient-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(90px);
   will-change: transform;
 }
-.g-ambient-blob--1 {
-  width: 62vmax; height: 62vmax;
-  top: -24vmax; left: -14vmax;
-  background: radial-gradient(closest-side, var(--g-blob-1), transparent 72%);
+.g-ambient-blob--1 {               /* dourado — canto superior esquerdo */
+  width: 58vmax; height: 58vmax;
+  top: -20vmax; left: -12vmax;
+  background: radial-gradient(closest-side, var(--g-blob-1), transparent 70%);
   animation: g-drift-1 38s var(--g-ease-inout) infinite alternate;
 }
-.g-ambient-blob--2 {
-  width: 58vmax; height: 58vmax;
-  bottom: -26vmax; right: -16vmax;
-  background: radial-gradient(closest-side, var(--g-blob-2), transparent 72%);
+.g-ambient-blob--2 {               /* azul-petróleo — direita */
+  width: 52vmax; height: 52vmax;
+  top: 18%; right: -18vmax;
+  background: radial-gradient(closest-side, var(--g-blob-2), transparent 70%);
   animation: g-drift-2 46s var(--g-ease-inout) infinite alternate;
 }
-.g-ambient-blob--3 {
-  width: 40vmax; height: 40vmax;
-  top: 28%; left: 46%;
-  background: radial-gradient(closest-side, var(--g-blob-3), transparent 72%);
+.g-ambient-blob--3 {               /* cobre — embaixo, centro */
+  width: 46vmax; height: 46vmax;
+  bottom: -22vmax; left: 22%;
+  background: radial-gradient(closest-side, var(--g-blob-3), transparent 70%);
   animation: g-drift-3 54s var(--g-ease-inout) infinite alternate;
+}
+.g-ambient-blob--4 {               /* violeta fundo — profundidade no topo direito */
+  width: 34vmax; height: 34vmax;
+  top: -14vmax; right: 18%;
+  background: radial-gradient(closest-side, var(--g-blob-4), transparent 70%);
+  animation: g-drift-2 60s var(--g-ease-inout) infinite alternate-reverse;
+}
+/* Vinheta: escurece as bordas pra o vidro ler bem por cima da cor. */
+.g-ambient-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(5, 4, 6, 0.55) 100%);
 }
 /* Granulado sutil: tira o "banding" dos gradientes escuros. */
 .g-ambient-grain {
@@ -65,45 +77,49 @@
 .g-num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
 .g-page-title {
   font-family: var(--g-font);
-  font-weight: 650;
-  font-size: 26px;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   color: var(--g-fg-1);
 }
-.g-page-sub { font-size: 13px; color: var(--g-fg-2); margin-top: 4px; }
+.g-page-sub { font-size: 14px; color: var(--g-fg-2); margin-top: 6px; }
 .g-section-title {
   font-family: var(--g-font);
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  letter-spacing: -0.015em;
   color: var(--g-fg-1);
 }
+/* Label pequeno e apagado (KPIs, legendas) */
 .g-eyebrow {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--g-fg-2);
+  letter-spacing: -0.005em;
+  color: var(--g-fg-3);
 }
+/* Números grandes */
 .g-stat {
   font-family: var(--g-font);
-  font-weight: 650;
-  font-size: 30px;
+  font-weight: 700;
+  font-size: clamp(28px, 2.5vw, 36px);
   line-height: 1.05;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   color: var(--g-fg-1);
   font-variant-numeric: tabular-nums;
 }
-@media (max-width: 640px) { .g-stat { font-size: 26px; } .g-page-title { font-size: 22px; } }
+.g-stat--hero { font-size: clamp(36px, 3.6vw, 46px); letter-spacing: -0.04em; }
+.g-stat--sm { font-size: clamp(26px, 2.2vw, 32px); }
 
 /* ---------------- GlassCard ---------------- */
 .g-card {
   position: relative;
-  background: var(--g-surface);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.095) 0%, rgba(255, 255, 255, 0.055) 100%);
   border: 1px solid var(--g-border);
   border-radius: var(--g-radius-lg);
   box-shadow: var(--g-highlight), var(--g-shadow-md);
-  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.2);
-  backdrop-filter: blur(var(--g-blur)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.35);
+  backdrop-filter: blur(var(--g-blur)) saturate(1.35);
   transition:
     transform var(--g-dur-2) var(--g-ease),
     border-color var(--g-dur-2) var(--g-ease),
@@ -111,10 +127,34 @@
 }
 .g-card--pad { padding: var(--g-pad); }
 @media (min-width: 1024px) { .g-card--pad { padding: var(--g-pad-lg); } }
+/* Borda iluminada: mais clara no topo, some pra baixo (luz vindo de cima). */
+.g-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.06) 34%, rgba(255, 255, 255, 0) 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
 .g-card--hover:hover {
   transform: translateY(-2px);
   border-color: var(--g-border-hover);
-  background: var(--g-surface-hover);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.115) 0%, rgba(255, 255, 255, 0.07) 100%);
+}
+/* Card de destaque (hero): brilho dourado sutil no canto. */
+.g-card--hero {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.055) 100%);
+}
+.g-card--hero:hover {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.07) 100%);
 }
 /* Sem suporte a backdrop-filter: vidro mais opaco pra manter contraste. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -130,8 +170,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px; height: 36px;
-  border-radius: var(--g-radius-sm);
+  width: 38px; height: 38px;
+  border-radius: 12px;
   background: var(--g-surface-strong);
   border: 1px solid var(--g-border);
   color: var(--g-fg-2);
@@ -704,3 +744,49 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
   .g-btn-spinner { animation: g-spin 1.2s linear infinite !important; }
 }
 @keyframes g-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------------- Seletor de período (pílula de vidro) ---------------- */
+.g-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--g-border);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--g-blur)) saturate(1.3);
+}
+.g-period-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 9999px;
+  color: var(--g-fg-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--g-dur-2) var(--g-ease), color var(--g-dur-2) var(--g-ease), transform var(--g-dur-1) var(--g-ease);
+}
+.g-period-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.10); color: var(--g-fg-1); }
+.g-period-btn:active:not(:disabled) { transform: scale(0.92); }
+.g-period-btn:disabled { opacity: 0.3; cursor: default; }
+.g-period-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--g-accent-line); }
+.g-period-label {
+  position: relative;
+  min-width: 148px;
+  padding: 0 6px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--g-fg-1);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Faixa de métricas operacionais (vários números num card) */
+.g-stat-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g-stat-strip > * + * { border-left: 1px solid var(--g-border); }
+.g-icon-chip--sm { width: 30px; height: 30px; border-radius: 10px; }
