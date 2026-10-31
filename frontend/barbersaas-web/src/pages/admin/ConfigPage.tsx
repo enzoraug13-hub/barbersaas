@@ -14,6 +14,8 @@ import { useLoyaltyProgram, useUpdateLoyaltyProgram, unitLabel } from '../../fea
 import type { LoyaltyMode } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { motion, useReducedMotion } from 'framer-motion'
+import { DUR, EASE } from '../../components/motion'
 
 interface BusinessHour { dayOfWeek: number; isOpen: boolean; openTime: string | null; closeTime: string | null }
 
@@ -123,6 +125,7 @@ function ThemePreview({ brand, hero, logoUrl, name }: {
 }
 
 export default function ConfigPage() {
+  const reduce = useReducedMotion()
   const qc = useQueryClient()
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
@@ -189,6 +192,8 @@ export default function ConfigPage() {
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)}
               className={`ds-config-tab ${tab === id ? 'ds-config-tab-active' : ''}`}>
+              {tab === id && <motion.span layoutId="config-tab-pill" className="g-config-pill" aria-hidden="true"
+                transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }} />}
               <Icon size={16} />
               {label}
             </button>
@@ -198,7 +203,9 @@ export default function ConfigPage() {
         {/* Conteúdo da aba ativa — o form continua único no componente pai;
             trocar de aba só troca qual SectionCard é renderizado, sem refetch
             nem perda de dado digitado nas outras abas. */}
-        <div className="flex-1 space-y-6 min-w-0">
+        <motion.div key={tab} className="flex-1 space-y-6 min-w-0"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduce ? DUR.reduced : DUR.page, ease: EASE }}>
           {tab === 'aparencia' && (
             <SectionCard icon={Palette} title="Aparência" desc="As cores da sua marca — aplicadas no painel e na página pública dos clientes.">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -290,7 +297,7 @@ export default function ConfigPage() {
               </div>
             </SectionCard>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   )
