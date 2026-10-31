@@ -14,6 +14,7 @@ import { NumberField } from '../../components/ui/NumberField'
 import { toE164BR, formatPhoneBR } from '../../lib/masks'
 import type { Barber } from '../../types'
 import toast from 'react-hot-toast'
+import { Stagger, StaggerItem } from '../../components/motion'
 
 const DAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
@@ -151,9 +152,10 @@ export default function BarbersPage() {
         <EmptyState icon={User} title="Nenhum barbeiro cadastrado"
           action={<Button onClick={() => setShowForm(true)}>Cadastrar primeiro barbeiro</Button>} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {barbers.map((b, i) => (
-            <Card key={b.id} style={{ animationDelay: `${i * 45}ms` }} className="animate-slide-up">
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {barbers.map(b => (
+            <StaggerItem key={b.id}>
+            <Card className="h-full">
               <div role="button" tabIndex={0} onClick={() => navigate(`/admin/barbeiros/${b.id}`)}
                 onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/admin/barbeiros/${b.id}`) }}
                 className="flex items-center gap-4 group" style={{ cursor: 'pointer' }}>
@@ -191,8 +193,9 @@ export default function BarbersPage() {
                 </Button>
               </div>
             </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {/* Modal novo barbeiro */}
