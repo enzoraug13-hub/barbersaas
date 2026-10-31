@@ -22,6 +22,7 @@ import { chartAxisTick, chartGridStroke } from '../../components/ui/chartTheme'
 import { ChartTooltip } from '../../components/ui/ChartTooltip'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { TBody, TR } from '../../components/ui/glass/Table'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
@@ -174,9 +175,9 @@ export default function SuperAdminInvoicesPage() {
                 <th style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
-            <tbody>
+            <TBody>
               {invoices.map(i => (
-                <tr key={i.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <TR key={i.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-primary font-medium">{i.tenantName}</td>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-secondary">{competence(i)}</td>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }} className="ds-text-primary font-medium">{fmt(i.amount)}</td>
@@ -197,9 +198,9 @@ export default function SuperAdminInvoicesPage() {
                       <InvoiceReceiptButton invoice={i} />
                     </div>
                   </td>
-                </tr>
+                </TR>
               ))}
-            </tbody>
+            </TBody>
           </table>
         </Card>
       )}

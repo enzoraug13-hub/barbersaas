@@ -15,6 +15,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { TBody, TR } from '../../components/ui/glass/Table'
 
 const EMPTY_FORM = { businessName: '', ownerName: '', ownerEmail: '', provisionalPassword: '' }
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -109,9 +110,9 @@ export default function SuperAdminPage() {
                 <th style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
-            <tbody>
+            <TBody>
               {tenants.map(t => (
-                <tr key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <TR key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
                     {/* O nome abre o "mundo" da barbearia (detalhe da conta). */}
                     <Link to={`/super-admin/contas/${t.id}`}
@@ -153,9 +154,9 @@ export default function SuperAdminPage() {
                       </Button>
                     </div>
                   </td>
-                </tr>
+                </TR>
               ))}
-            </tbody>
+            </TBody>
           </table>
         </Card>
       )}
