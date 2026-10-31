@@ -22,10 +22,10 @@ export function ClientFlowHeader({ subtitle, logoUrl, businessName }: {
           style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)' }} />
       ) : (
         <div className="w-14 h-14 flex items-center justify-center mb-4 animate-scale-in" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
-          <Scissors size={26} style={{ color: 'var(--bg-base)' }} />
+          <Scissors size={26} style={{ color: 'var(--accent-fg)' }} />
         </div>
       )}
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-xl)', color: 'var(--text-primary)' }}>
+      <h1 style={{ fontFamily: 'var(--g-font)', fontWeight: 700, fontSize: 'var(--text-xl)', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
         {businessName ?? 'Minha conta'}
       </h1>
       {subtitle && <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)' }}>{subtitle}</p>}

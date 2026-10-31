@@ -281,3 +281,89 @@
 
 /* ---------- Divisores ---------- */
 :is(.g-shell, .g-modal, .g-drawer) .ds-divider { border-color: var(--g-border); }
+
+/* ============================================================
+   ÁREA PÚBLICA (/b/:slug, conta do cliente, telas de auth)
+   Mesma ponte (as raízes recebem g-shell + g-public), com duas diferenças:
+   - o fundo é o ambiente de vidro (as raízes pintavam var(--bg-base));
+   - a cor da barbearia (applyTenantTheme → --accent) manda: a mancha
+     principal do fundo e todos os destaques seguem a marca do tenant.
+   ============================================================ */
+.g-public {
+  --bg-base: transparent;
+  --g-blob-1: color-mix(in srgb, var(--accent) 38%, transparent);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Pílula de vidro sobre a capa (ex.: "Minha conta") */
+.g-pill-glass {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 13px; font-weight: 550;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(10, 8, 6, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  transition: background-color var(--g-dur-2) var(--g-ease), transform var(--g-dur-1) var(--g-ease);
+}
+.g-pill-glass:hover { background: rgba(10, 8, 6, 0.52); }
+.g-pill-glass:active { transform: scale(0.96); }
+
+/* Progresso das etapas do agendamento (preenche por transform) */
+.g-steps { display: flex; gap: 6px; }
+.g-step-track { position: relative; flex: 1; height: 4px; border-radius: 9999px; overflow: hidden; background: rgba(255, 255, 255, 0.10); }
+.g-step-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--accent); transform-origin: left center; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* Cartão selecionável do fluxo público (profissional, serviço, data, horário) */
+.g-pick {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--g-border);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+  -webkit-backdrop-filter: blur(var(--g-blur-sm)) saturate(1.3);
+  backdrop-filter: blur(var(--g-blur-sm)) saturate(1.3);
+  transition: transform var(--g-dur-2) var(--g-ease), border-color var(--g-dur-2) var(--g-ease), background-color var(--g-dur-2) var(--g-ease);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.g-pick:hover { transform: translateY(-2px); border-color: var(--g-border-hover); }
+.g-pick:active { transform: scale(0.98); }
+.g-pick:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--g-accent-line), var(--g-shadow-md); }
+.g-pick[aria-pressed='true'] {
+  border-color: var(--g-accent-line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
+}
+.g-pick[aria-disabled='true'] { cursor: not-allowed; transform: none; }
+
+/* Sucesso: anel que expande + check que se desenha */
+.g-success { position: relative; width: 88px; height: 88px; margin: 0 auto; }
+.g-success-ring { position: absolute; inset: 0; border-radius: 9999px; border: 2px solid var(--success); }
+.g-success-disc {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--success) 38%, transparent), color-mix(in srgb, var(--success) 14%, transparent));
+  border: 1px solid var(--success-line);
+  box-shadow: 0 12px 36px -12px color-mix(in srgb, var(--success) 70%, transparent);
+}
+
+/* Cartão de vidro do fluxo do cliente (OTP, cadastro) no padrão novo */
+:is(.g-shell, .g-modal, .g-drawer) .ds-card-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.055));
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-xl);
+  box-shadow: var(--g-highlight), var(--g-shadow-md);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.35);
+  backdrop-filter: blur(var(--g-blur)) saturate(1.35);
+}
+:is(.g-shell, .g-modal, .g-drawer) .ds-card-glass:focus-within {
+  border-color: var(--g-accent-line);
+  box-shadow: var(--g-highlight), var(--g-shadow-md), 0 0 0 3px var(--g-accent-soft);
+}
