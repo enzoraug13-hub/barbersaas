@@ -10,6 +10,8 @@ import { Button } from '../../components/ui/Button'
 import { Skeleton } from '../../components/ui/Skeleton'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { DUR, EASE } from '../../components/motion'
 
 const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { locale: ptBR })
 
@@ -20,6 +22,7 @@ const when = (iso: string) => format(parseISO(iso), "dd/MM 'às' HH:mm", { local
  * apagando o pontinho do menu.
  */
 export default function SupportPage() {
+  const reduce = useReducedMotion()
   const { data: messages, isLoading } = useMySupportMessages(true)
   const send = useSendSupportMessage()
   const markRead = useMarkSupportRepliesRead()
@@ -71,10 +74,15 @@ export default function SupportPage() {
           </p>
         ) : (
           <div ref={threadRef} className="space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '55vh' }}>
+            {/* Histórico aparece direto; só mensagens novas entram animadas. */}
+            <AnimatePresence initial={false}>
             {messages.map(m => {
               const mine = m.author === 'owner'
               return (
-                <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <motion.div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                  style={{ transformOrigin: mine ? 'bottom right' : 'bottom left' }}
+                  transition={{ duration: reduce ? DUR.reduced : DUR.page, ease: EASE }}>
                   <div className="max-w-[80%] rounded-2xl px-4 py-2.5"
                     style={mine
                       ? { background: 'var(--accent)', color: 'var(--accent-fg)' }
@@ -91,9 +99,10 @@ export default function SupportPage() {
                       {mine && m.readAt && <CheckCheck size={12} />}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
+            </AnimatePresence>
           </div>
         )}
 
