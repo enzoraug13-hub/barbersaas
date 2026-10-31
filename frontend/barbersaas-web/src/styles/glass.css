@@ -572,6 +572,7 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
   color: var(--accent-fg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), var(--g-accent-glow);
 }
+.g-trimly-mark { display: block; filter: drop-shadow(0 6px 16px rgba(201, 168, 76, 0.28)); }
 .g-brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; color: var(--g-fg-1); }
 
 .g-side {

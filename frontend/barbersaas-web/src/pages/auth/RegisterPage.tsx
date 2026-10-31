@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Scissors, Check, MailCheck, User, Building2, ArrowLeft } from 'lucide-react'
+import { Check, MailCheck, User, Building2, ArrowLeft } from 'lucide-react'
 import { useRegister } from '../../features/auth/authApi'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -9,6 +9,7 @@ import { toE164BR, isValidBRPhone, onlyDigits, maskCPF, maskCNPJ, isValidCPF, is
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 import { AmbientBackground } from '../../components/ui/glass/AmbientBackground'
+import { TrimlyMark } from '../../components/ui/glass/TrimlyMark'
 
 type PersonType = 'PF' | 'PJ'
 
@@ -104,9 +105,7 @@ export default function RegisterPage() {
           <ArrowLeft size={16} /> Voltar para o login
         </Link>
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 flex items-center justify-center mb-4" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
-            <Scissors size={28} style={{ color: 'var(--accent-fg)' }} />
-          </div>
+          <TrimlyMark size={56} className="mx-auto mb-3" />
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>Criar sua Barbearia</h1>
           <p className="ds-page-sub">14 dias grátis, sem cartão de crédito</p>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight, Scissors } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
+import { TrimlyMark } from '../../components/ui/glass/TrimlyMark'
 import { useLogin } from '../../features/auth/authApi'
 import { homeRouteFor } from '../../lib/roles'
 import { Button } from '../../components/ui/Button'
@@ -60,9 +61,7 @@ export default function LoginPage() {
           {/* Marca */}
           <Stagger delay={0.2} stagger={0.07}>
           <StaggerItem className="flex flex-col items-center mb-8 text-center">
-            <span className="g-brand-mark mb-4" style={{ width: 52, height: 52, borderRadius: 16 }} aria-hidden="true">
-              <Scissors size={24} strokeWidth={2} />
-            </span>
+            <TrimlyMark size={60} className="mb-4" />
             <h1 className="login-brand" style={{ fontSize: '34px', lineHeight: 1.1 }}>Trimly</h1>
             <p className="mt-2" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.72)' }}>
               Gestão e agendamento para barbearias

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
-import { PanelLeftClose, Pin, Scissors } from 'lucide-react'
+import { PanelLeftClose, Pin } from 'lucide-react'
+import { TrimlyMark } from '../../ui/glass/TrimlyMark'
 import { DUR, EASE } from '../../motion/tokens'
 import { ICON, isActive, type NavGroup } from './navConfig'
 
@@ -66,7 +67,7 @@ export function Sidebar({ groups, pinned, onTogglePin, brandSub, counts = {}, fo
       >
         {/* Marca */}
         <div className="g-side-brand">
-          <span className="g-brand-mark"><Scissors size={17} strokeWidth={2} /></span>
+          <TrimlyMark size={36} className="flex-shrink-0" />
           <div className="g-side-label min-w-0">
             <p className="g-brand-name leading-tight">Trimly</p>
             {brandSub && <p className="g-side-sub truncate">{brandSub}</p>}

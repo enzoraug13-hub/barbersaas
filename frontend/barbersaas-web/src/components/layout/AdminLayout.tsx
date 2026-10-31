@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Scissors, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
+import { TrimlyMark } from '../ui/glass/TrimlyMark'
 import { useAuthStore } from '../../store/authStore'
 import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
@@ -111,9 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Topbar */}
         <header className="g-topbar flex items-center justify-between gap-3 px-4 lg:px-8 flex-shrink-0"
           style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(64px + env(safe-area-inset-top))' }}>
-          <span className="g-brand-mark lg:hidden" style={{ width: 30, height: 30, borderRadius: 10 }} aria-hidden="true">
-            <Scissors size={15} strokeWidth={2} />
-          </span>
+          <TrimlyMark size={32} className="lg:hidden flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <AnimatePresence mode="wait" initial={false}>
               <motion.h1 key={pageTitle} className="g-topbar-title truncate"

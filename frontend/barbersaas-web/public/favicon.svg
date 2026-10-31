@@ -1,12 +1,15 @@
-<!-- Marca do Trimly: tesoura dourada sobre o fundo do app (#030712) — mesma
-     identidade dos ícones do PWA (icon-192/512.png) e da sidebar. -->
+<!-- Marca do Trimly: "T de corte" dourado sobre ladrilho escuro com aro dourado —
+     mesmo desenho do <TrimlyMark> (sidebar, login) e dos ícones do app. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <rect width="48" height="48" rx="9" fill="#030712"/>
-  <g transform="translate(11.5 11.5) scale(1.042)" fill="none" stroke="#eab308" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="6" cy="6" r="3"/>
-    <path d="M8.12 8.12 12 12"/>
-    <path d="M20 4 8.12 15.88"/>
-    <circle cx="6" cy="18" r="3"/>
-    <path d="M14.8 14.8 20 20"/>
+  <defs>
+    <linearGradient id="gold" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#F4DC97"/><stop offset=".5" stop-color="#C9A84C"/><stop offset="1" stop-color="#8E6C27"/></linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#231D15"/><stop offset="1" stop-color="#0B0907"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#E9CF86" stop-opacity=".75"/><stop offset=".6" stop-color="#C9A84C" stop-opacity=".25"/><stop offset="1" stop-color="#C9A84C" stop-opacity=".55"/></linearGradient>
+    <mask id="cut"><rect width="48" height="48" fill="#fff"/><path d="M9 33.5L39.5 15.5" stroke="#000" stroke-width="2.1"/></mask>
+  </defs>
+  <rect x=".75" y=".75" width="46.5" height="46.5" rx="13" fill="url(#tile)" stroke="url(#rim)" stroke-width="1.5"/>
+  <g mask="url(#cut)" fill="url(#gold)">
+    <path d="M12.6 12.5H36.6L34.9 18.3H10.9Z"/>
+    <path d="M21.2 18.3H27.6L26.1 31.5L24.1 37.6L22.4 31.5Z"/>
   </g>
 </svg>
