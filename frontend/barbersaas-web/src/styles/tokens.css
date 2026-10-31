@@ -106,11 +106,26 @@
   --g-accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
   --g-accent-glow: 0 8px 28px -10px color-mix(in srgb, var(--accent) 55%, transparent);
 
-  /* Semânticos suaves (status/tendência) */
-  --g-success: #5BC48F;
-  --g-danger: #EE6B6B;
-  --g-warning: #E6B04B;
-  --g-info: #6FA8E8;
+  /* Semânticos — SEPARADOS do accent (accent = marca/CTA/ativo; estes = status).
+     Tons suaves pensados pro vidro escuro: cor do texto/ícone + fundo (-soft)
+     + contorno (-line). Usados nos badges de status do app inteiro. */
+  --success: #74D3A2;
+  --success-soft: rgba(116, 211, 162, 0.14);
+  --success-line: rgba(116, 211, 162, 0.30);
+  --warning: #F3A95F;
+  --warning-soft: rgba(243, 169, 95, 0.14);
+  --warning-line: rgba(243, 169, 95, 0.30);
+  --danger: #F08A84;
+  --danger-soft: rgba(240, 138, 132, 0.14);
+  --danger-line: rgba(240, 138, 132, 0.30);
+  --info: #8DB6F0;
+  --info-soft: rgba(141, 182, 240, 0.14);
+  --info-line: rgba(141, 182, 240, 0.30);
+  /* aliases usados pelos componentes glass */
+  --g-success: var(--success);
+  --g-danger: var(--danger);
+  --g-warning: var(--warning);
+  --g-info: var(--info);
 
   /* Gráficos */
   --g-chart-grid: rgba(255, 255, 255, 0.06);

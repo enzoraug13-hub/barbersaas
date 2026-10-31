@@ -80,10 +80,10 @@
   .input:focus { border-color: var(--accent); box-shadow: var(--shadow-accent); }
   .label { @apply block text-sm font-medium mb-1.5; color: var(--text-secondary); }
 
-  .badge-pending   { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(224,160,48,0.15); color: var(--color-warning); }
-  .badge-confirmed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(91,155,213,0.15); color: var(--color-info); }
-  .badge-completed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(76,175,125,0.15); color: var(--color-success); }
-  .badge-cancelled { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: rgba(224,92,92,0.15); color: var(--color-error); }
+  .badge-pending   { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: var(--warning-soft); color: var(--warning); }
+  .badge-confirmed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: var(--info-soft); color: var(--info); }
+  .badge-completed { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: var(--success-soft); color: var(--success); }
+  .badge-cancelled { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; background: var(--danger-soft); color: var(--danger); }
   .kpi-card { @apply card flex flex-col gap-1; }
 
   /* Card selecionável (fluxo do cliente): profundidade sutil + micro-interação. */

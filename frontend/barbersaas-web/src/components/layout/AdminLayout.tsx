@@ -11,7 +11,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { isSuperAdmin } from '../../lib/roles'
 import { api } from '../../lib/api'
-import { applyTenantTheme } from '../../lib/theme-tenant'
+import { resetTenantTheme } from '../../lib/theme-tenant'
 import { AnnouncementsBell } from '../admin/AnnouncementsBell'
 import { useMySupportMessages } from '../../features/support/supportApi'
 import { useLoyaltyProgram } from '../../features/loyalty/loyaltyApi'
@@ -112,8 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     .sort((a, b) => b.to.length - a.to.length)[0]?.label ?? 'Painel'
 
   // Super admin não tem barbearia: não consulta /settings (o endpoint é de
-  // barbearia e responderia 403 — ele não pertence a tenant nenhum) e não aplica
-  // tema de tenant — o painel dele fica com a identidade padrão do Trimly.
+  // barbearia e responderia 403 — ele não pertence a tenant nenhum).
   const superAdmin = isSuperAdmin(user?.role)
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -121,7 +120,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     staleTime: 5 * 60 * 1000,
     enabled: !superAdmin,
   })
-  useEffect(() => { if (settings && !superAdmin) applyTenantTheme(settings) }, [settings, superAdmin])
+  // Painel admin SEMPRE na identidade Trimly (dourado #C9A84C de tokens.css). A cor
+  // da barbearia vale só na área pública (/b/:slug e conta do cliente), que aplica
+  // o tema dela; ao entrar no painel, limpa qualquer override que tenha ficado.
+  useEffect(() => { resetTenantTheme() }, [])
 
   const handleLogout = () => { logout(); navigate('/login') }
 

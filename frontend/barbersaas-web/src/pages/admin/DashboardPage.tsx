@@ -33,8 +33,8 @@ const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 const growBars = growBarShape(70)
 const growMiniBars = growBarShape(45)
 
-// Série secundária neutra — o destaque (accent) fica só na série principal.
-const MUTED = 'var(--g-chart-muted)'
+// Despesas: semântico danger (suave), separado do accent da série principal.
+const DANGER = 'var(--danger)'
 
 function BarberPerformanceCard({ b }: { b: BarberPerformance }) {
   const chartData = weekdayLabels.map((label, idx) => ({ label, count: b.weeklyAppointments[idx] ?? 0 }))
@@ -173,14 +173,14 @@ export default function DashboardPage() {
                 <AreaChart data={monthlyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     {gAreaGradient('revenueFill', 'var(--accent)', 0.32)}
-                    {gAreaGradient('expenseFill', 'rgb(255,255,255)', 0.06)}
+                    {gAreaGradient('expenseFill', DANGER, 0.14)}
                   </defs>
                   <CartesianGrid stroke={gGridStroke} vertical={false} />
                   <XAxis dataKey="label" tick={gAxisTick} axisLine={false} tickLine={false} dy={6} />
                   <YAxis tick={gAxisTick} axisLine={false} tickLine={false} width={80} tickFormatter={v => fmt(v)} />
                   <Tooltip cursor={gLineCursor} content={<GlassTooltip series={{
                     revenue: { label: 'Receita', color: 'var(--accent)', fmt },
-                    expense: { label: 'Despesas', color: MUTED, fmt },
+                    expense: { label: 'Despesas', color: DANGER, fmt },
                   }} />} />
                   <Legend
                     iconType="circle" iconSize={8}
@@ -189,8 +189,8 @@ export default function DashboardPage() {
                   <Area type="monotone" dataKey="revenue" name="revenue" stroke="var(--accent)" strokeWidth={2.25}
                     fill="url(#revenueFill)" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--accent)' }}
                     isAnimationActive={!reduce} {...gChartAnim} />
-                  <Area type="monotone" dataKey="expense" name="expense" stroke={MUTED} strokeWidth={1.75} strokeDasharray="5 4"
-                    fill="url(#expenseFill)" dot={false} activeDot={{ r: 3.5, strokeWidth: 0, fill: 'rgba(255,255,255,0.7)' }}
+                  <Area type="monotone" dataKey="expense" name="expense" stroke={DANGER} strokeWidth={2}
+                    fill="url(#expenseFill)" dot={false} activeDot={{ r: 3.5, strokeWidth: 0, fill: DANGER }}
                     isAnimationActive={!reduce} {...gChartAnim} animationBegin={120} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -205,7 +205,7 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row xl:flex-col items-center gap-6">
               <Donut segments={[
                 { value: Math.max(0, data.netProfit), color: 'var(--accent)' },
-                { value: data.totalExpense, color: 'rgba(255,255,255,0.28)' },
+                { value: data.totalExpense, color: DANGER },
               ]}>
                 <span className="g-fg-3 text-[11px]">Lucro</span>
                 <CountUp value={data.netProfit} className="g-fg-1 font-semibold text-sm mt-0.5" />
@@ -213,7 +213,7 @@ export default function DashboardPage() {
               <div className="w-full flex-1">
                 {[
                   { label: 'Receitas', value: data.totalRevenue, color: 'rgba(255,255,255,0.85)' },
-                  { label: 'Despesas', value: data.totalExpense, color: 'rgba(255,255,255,0.28)' },
+                  { label: 'Despesas', value: data.totalExpense, color: DANGER },
                   { label: 'Lucro',    value: data.netProfit,    color: 'var(--accent)' },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between py-2.5 border-b g-divider last:border-0">

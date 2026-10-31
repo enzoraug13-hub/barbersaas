@@ -22,6 +22,11 @@ export default {
         accent:       'var(--accent)',
         accentHover:  'var(--accent-hover)',
         accentFg:     'var(--bg-base)',
+        // Semânticos (status) — separados do accent. Ver tokens.css.
+        success:      'var(--success)',
+        warning:      'var(--warning)',
+        danger:       'var(--danger)',
+        info:         'var(--info)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

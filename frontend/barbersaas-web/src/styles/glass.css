@@ -301,10 +301,10 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
 }
 .g-badge--neutral { --tone: rgba(255, 255, 255, 0.62); background: var(--g-surface-strong); border-color: var(--g-border); }
 .g-badge--accent  { --tone: var(--accent); }
-.g-badge--success { --tone: var(--g-success); }
-.g-badge--warning { --tone: var(--g-warning); }
-.g-badge--danger  { --tone: var(--g-danger); }
-.g-badge--info    { --tone: var(--g-info); }
+.g-badge--success { color: var(--success); background: var(--success-soft); border-color: var(--success-line); }
+.g-badge--warning { color: var(--warning); background: var(--warning-soft); border-color: var(--warning-line); }
+.g-badge--danger  { color: var(--danger);  background: var(--danger-soft);  border-color: var(--danger-line); }
+.g-badge--info    { color: var(--info);    background: var(--info-soft);    border-color: var(--info-line); }
 .g-badge-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; flex-shrink: 0; }
 
 /* Tendência (↑ ↓ %) */
@@ -319,8 +319,8 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.g-trend--up   { color: var(--g-success); background: color-mix(in srgb, var(--g-success) 12%, transparent); }
-.g-trend--down { color: var(--g-danger);  background: color-mix(in srgb, var(--g-danger) 12%, transparent); }
+.g-trend--up   { color: var(--success); background: var(--success-soft); }
+.g-trend--down { color: var(--danger);  background: var(--danger-soft); }
 
 /* ---------------- Progresso ---------------- */
 .g-progress {

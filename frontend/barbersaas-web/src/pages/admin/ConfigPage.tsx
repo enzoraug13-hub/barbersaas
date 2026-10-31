@@ -3,7 +3,6 @@ import { Loader2, Save, Image as ImageIcon, Palette, Store, CalendarClock, Clock
 import type { LucideIcon } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, assetUrl } from '../../lib/api'
-import { applyTenantTheme } from '../../lib/theme-tenant'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ImageField } from '../../components/ui/ImageField'
@@ -152,8 +151,8 @@ export default function ConfigPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['settings'] })
       qc.invalidateQueries({ queryKey: ['public-info'] })
-      // aplica o tema imediatamente em todo o painel
-      applyTenantTheme({ primaryColor: form.primaryColor, secondaryColor: form.secondaryColor, accentColor: form.accentColor })
+      // As cores da barbearia valem só na área pública (/b/:slug) — o painel fica
+      // sempre no dourado Trimly, então nada é aplicado aqui.
       toast.success('Configurações salvas e tema aplicado!')
     },
     onError: () => toast.error('Erro ao salvar.'),
