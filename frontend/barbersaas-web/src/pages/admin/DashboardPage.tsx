@@ -250,13 +250,14 @@ export default function DashboardPage() {
                   { title: 'Cancelamentos',   value: data.cancelledCount,    icon: CalendarX, sub: `${data.cancellationRate.toFixed(1)}% de taxa` },
                   { title: 'Clientes Únicos', value: data.uniqueClients,     icon: Users,     sub: undefined },
                 ].map(s => (
-                  <div key={s.title} className="p-4 sm:p-6 lg:p-7 min-w-0">
+                  <div key={s.title} className="px-3 py-4 sm:p-6 lg:p-7 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5">
                       <span className="g-icon-chip g-icon-chip--sm"><s.icon size={15} strokeWidth={1.75} /></span>
-                      <p className="g-eyebrow truncate">{s.title}</p>
+                      {/* No celular a coluna é estreita: o rótulo quebra linha em vez de cortar. */}
+                      <p className="g-eyebrow text-[12px] sm:text-[13px] leading-tight sm:truncate">{s.title}</p>
                     </div>
-                    <CountUp value={s.value} format={fmtInt} className="g-stat block mt-4" />
-                    {s.sub && <p className="g-fg-3 text-xs mt-2 truncate">{s.sub}</p>}
+                    <CountUp value={s.value} format={fmtInt} className="g-stat block mt-3 sm:mt-4" />
+                    {s.sub && <p className="g-fg-3 text-[11px] sm:text-xs mt-2 leading-tight">{s.sub}</p>}
                   </div>
                 ))}
               </div>
