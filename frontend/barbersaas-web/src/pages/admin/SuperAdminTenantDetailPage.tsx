@@ -28,6 +28,7 @@ import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButto
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 import { TBody, TR } from '../../components/ui/glass/Table'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
@@ -199,33 +200,29 @@ export default function SuperAdminTenantDetailPage() {
       </div>
 
       {/* Resumo financeiro da barbearia */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Total pago (histórico)</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>
-            {fmt(tenant.totalPaid)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Em aberto</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: tenant.totalOpen > 0 ? 'var(--color-warning)' : 'var(--text-primary)' }}>
-            {fmt(tenant.totalOpen)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Última fatura</p>
+      <Stagger className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Total pago (histórico)</p>
+          <CountUp value={tenant.totalPaid} format={fmt} className="g-stat g-stat--sm block mt-3" style={{ color: 'var(--color-success)' }} />
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Em aberto</p>
+          <CountUp value={tenant.totalOpen} format={fmt} className="g-stat g-stat--sm block mt-3" style={{ color: tenant.totalOpen > 0 ? 'var(--color-warning)' : 'var(--text-primary)' }} />
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Última fatura</p>
           {tenant.lastCompetence ? (
-            <p className="mt-1 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <p className="g-stat g-stat--sm mt-3 flex items-center gap-2">
               {tenant.lastCompetence}
               <Badge variant={tenant.lastStatus === 'Paid' ? 'success' : 'warning'}>
                 {tenant.lastStatus === 'Paid' ? 'Paga' : 'Em aberto'}
               </Badge>
             </p>
           ) : (
-            <p className="ds-text-secondary mt-2" style={{ fontSize: 'var(--text-sm)' }}>Nenhuma fatura emitida ainda.</p>
+            <p className="ds-text-secondary mt-3" style={{ fontSize: 'var(--text-sm)' }}>Nenhuma fatura emitida ainda.</p>
           )}
-        </Card>
-      </div>
+        </Card></StaggerItem>
+      </Stagger>
 
       {/* Faturas da barbearia */}
       <div>

@@ -18,13 +18,15 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { NumberField } from '../../components/ui/NumberField'
 import { InvoiceReceiptButton } from '../../components/admin/InvoiceReceiptButton'
-import { chartAxisTick, chartGridStroke } from '../../components/ui/chartTheme'
-import { ChartTooltip } from '../../components/ui/ChartTooltip'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
 import { TBody, TR } from '../../components/ui/glass/Table'
+import { useReducedMotion } from 'framer-motion'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
+import { gAxisTick, gGridStroke, gLineCursor, gAreaGradient, gChartAnim, GlassTooltip, Tabs } from '../../components/ui/glass'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtInt = (n: number) => String(Math.round(n))
 const competence = (i: Invoice) => `${String(i.competenceMonth).padStart(2, '0')}/${i.competenceYear}`
 
 const now = new Date()
@@ -39,6 +41,7 @@ const emptyForm = () => ({
 
 export default function SuperAdminInvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all')
+  const reduce = useReducedMotion()
   const filters = statusFilter === 'all' ? {} : { status: statusFilter }
 
   const { data: invoices, isLoading } = useInvoices(filters)
@@ -95,32 +98,24 @@ export default function SuperAdminInvoicesPage() {
       </div>
 
       {/* Resumo do mês */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Recebido no mês</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>
-            {fmt(summary?.received ?? 0)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Em aberto</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-warning)' }}>
-            {fmt(summary?.outstanding ?? 0)}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Faturas pagas</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {summary?.paidCount ?? 0}
-          </p>
-        </Card>
-        <Card>
-          <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Faturas em aberto</p>
-          <p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {summary?.openCount ?? 0}
-          </p>
-        </Card>
-      </div>
+      <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Recebido no mês</p>
+          <CountUp value={summary?.received ?? 0} format={fmt} className="g-stat g-stat--sm block mt-3" style={{ color: 'var(--color-success)' }} />
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Em aberto</p>
+          <CountUp value={summary?.outstanding ?? 0} format={fmt} className="g-stat g-stat--sm block mt-3" style={{ color: 'var(--color-warning)' }} />
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Faturas pagas</p>
+          <CountUp value={summary?.paidCount ?? 0} format={fmtInt} className="g-stat g-stat--sm block mt-3" style={{ color: 'var(--text-primary)' }} />
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full">
+          <p className="g-eyebrow">Faturas em aberto</p>
+          <CountUp value={summary?.openCount ?? 0} format={fmtInt} className="g-stat g-stat--sm block mt-3" style={{ color: 'var(--text-primary)' }} />
+        </Card></StaggerItem>
+      </Stagger>
 
       {/* Receita ao longo do tempo */}
       <Card>
@@ -130,33 +125,23 @@ export default function SuperAdminInvoicesPage() {
         ) : (
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={summary?.monthly ?? []}>
-              <defs>
-                <linearGradient id="trimlyRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false} />
-              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={64} tickFormatter={v => fmt(v)} />
-              <Tooltip content={<ChartTooltip series={{
+              <defs>{gAreaGradient('trimlyRevenueFill', 'var(--accent)', 0.34)}</defs>
+              <CartesianGrid stroke={gGridStroke} vertical={false} />
+              <XAxis dataKey="label" tick={gAxisTick} axisLine={false} tickLine={false} dy={6} />
+              <YAxis tick={gAxisTick} axisLine={false} tickLine={false} width={80} tickFormatter={v => fmt(v)} />
+              <Tooltip cursor={gLineCursor} content={<GlassTooltip series={{
                 received: { label: 'Recebido', color: 'var(--accent)', fmt },
               }} />} />
-              <Area type="monotone" dataKey="received" name="received" stroke="var(--accent)" strokeWidth={2} fill="url(#trimlyRevenueFill)" />
+              <Area type="monotone" dataKey="received" name="received" stroke="var(--accent)" strokeWidth={2.5} fill="url(#trimlyRevenueFill)"
+                dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--accent)' }} isAnimationActive={!reduce} {...gChartAnim} />
             </AreaChart>
           </ResponsiveContainer>
         )}
       </Card>
 
       {/* Filtro + lista */}
-      <div className="flex items-center gap-2">
-        {(['all', 'Open', 'Paid'] as const).map(s => (
-          <Button key={s} variant={statusFilter === s ? 'primary' : 'ghost'} onClick={() => setStatusFilter(s)}
-            style={{ height: 32, fontSize: 'var(--text-xs)' }}>
-            {s === 'all' ? 'Todas' : s === 'Open' ? 'Em aberto' : 'Pagas'}
-          </Button>
-        ))}
-      </div>
+      <Tabs value={statusFilter} onChange={setStatusFilter} aria-label="Filtrar faturas"
+        items={(['all', 'Open', 'Paid'] as const).map(s => ({ value: s, label: s === 'all' ? 'Todas' : s === 'Open' ? 'Em aberto' : 'Pagas' }))} />
 
       {isLoading ? (
         <Card><Skeleton className="h-40" /></Card>
