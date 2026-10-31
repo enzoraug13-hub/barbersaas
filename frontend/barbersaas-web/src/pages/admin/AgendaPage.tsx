@@ -16,6 +16,8 @@ import { toE164BR, isValidBRPhone, formatPhoneBR } from '../../lib/masks'
 import type { Appointment } from '../../types'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Stagger, StaggerItem } from '../../components/motion'
 
 const PAYMENT_METHODS = [
   { value: 0, label: 'Dinheiro' },
@@ -102,14 +104,15 @@ export default function AgendaPage() {
       setNewAppt(f => ({ ...f, [k]: e.target.value }))
 
   const isActive = (s: string) => s !== 'Cancelled' && s !== 'Completed' && s !== 'NoShow'
+  const reduce = useReducedMotion()
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 pb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '32px', color: 'var(--text-primary)' }}>Agenda</h2>
-          <p className="ds-text-secondary mt-1 capitalize" style={{ fontSize: '13px' }}>{format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
+          <h2 className="g-page-title">Agenda</h2>
+          <p className="g-page-sub capitalize">{format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select className="ds-input ds-agenda-filter" style={{ width: 180, background: 'var(--bg-subtle)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}
@@ -129,7 +132,10 @@ export default function AgendaPage() {
           {weekDays.map(d => {
             const active = isSameDay(d, date)
             return (
-              <button key={d.toISOString()} onClick={() => setDate(d)} className={`ds-week-day ${active ? 'ds-week-day-active' : ''}`}>
+              <button key={d.toISOString()} onClick={() => setDate(d)} className={`ds-week-day relative ${active ? 'ds-week-day-active' : ''}`}>
+                {/* Dia selecionado: pílula de vidro que desliza entre os dias */}
+                {active && <motion.span layoutId="agenda-day-pill" className="g-week-pill" aria-hidden="true"
+                  transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }} />}
                 <span className="ds-week-day-label capitalize">{format(d, 'EEE', { locale: ptBR })}</span>
                 <span className="ds-week-day-number">{format(d, 'dd')}</span>
               </button>
@@ -146,10 +152,11 @@ export default function AgendaPage() {
         <EmptyState icon={Calendar} title="Nenhum agendamento" hint="Clique em + Novo para criar" className="ds-empty-elegant"
           action={<Button onClick={() => setShowNew(true)} style={{ height: 34, padding: '0 var(--space-3)', fontSize: 'var(--text-xs)' }}><Plus size={14} /> Criar agendamento</Button>} />
       ) : (
-        <div className="space-y-3">
-          {appointments.map((appt, i) => (
-            <Card key={appt.id} interactive style={{ animationDelay: `${i * 40}ms` }}
-              className="animate-slide-up"
+        // Blocos de horário entram em sequência; trocar dia/barbeiro redispara.
+        <Stagger key={`${dateStr}-${barberFilter}`} className="space-y-3" stagger={0.04}>
+          {appointments.map(appt => (
+            <StaggerItem key={appt.id}>
+            <Card interactive
               onClick={() => { setSelected(appt); setPayMethod(1) }}>
               <div className="flex items-start gap-4">
                 <div className="text-center w-14 flex-shrink-0">
@@ -173,8 +180,9 @@ export default function AgendaPage() {
                 </div>
               </div>
             </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {/* Modal detalhe */}
