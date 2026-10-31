@@ -1,0 +1,20 @@
+// Componentes do redesign glass. As telas migram para cá uma a uma; os
+// componentes legados (components/ui/*.tsx, classes ds-*) seguem existindo até
+// a última tela ser migrada.
+export { GlassCard } from './GlassCard'
+export { Button, type ButtonProps } from './Button'
+export { Input, Textarea, Field, type InputProps, type TextareaProps } from './Input'
+export { Select, type SelectProps } from './Select'
+export { Badge, Trend, type BadgeTone } from './Badge'
+export { Progress } from './Progress'
+export { Skeleton, KpiSkeleton, ListSkeleton, ChartSkeleton } from './Skeleton'
+export { Tabs, type TabItem } from './Tabs'
+export { Table, THead, TBody, TR, TH, TD } from './Table'
+export { Modal, type ModalProps } from './Modal'
+export { Drawer } from './Drawer'
+export { EmptyState } from './EmptyState'
+export { AmbientBackground } from './AmbientBackground'
+export { GlassTooltip, type GlassTooltipSeries } from './GlassTooltip'
+export { Donut, type DonutSegment } from './Donut'
+export { gAxisTick, gGridStroke, gBarCursor, gLineCursor, gChartAnim, gBarGradient, gAreaGradient, gBarCells, growBarShape } from './chartKit'
+export { cx } from './cx'
