@@ -67,6 +67,85 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
   --shadow-accent: 0 0 0 3px var(--accent-focus);
+
+  /* ================================================================
+     GLASS — linguagem visual do redesign (2026). Namespace --g-* para
+     conviver com os tokens legados acima enquanto as telas migram uma a
+     uma (componentes em components/ui/glass e components/motion).
+     O destaque continua sendo var(--accent): dourado Trimly por padrão,
+     sobrescrito pela cor da barbearia via applyTenantTheme().
+     ================================================================ */
+
+  /* Canvas + manchas de cor (quentes, bem escuras) do fundo ambiente */
+  --g-canvas: #0A0807;
+  --g-blob-1: rgba(176, 112, 48, 0.22);   /* âmbar / couro */
+  --g-blob-2: rgba(122, 38, 30, 0.22);    /* bordô / oxblood */
+  --g-blob-3: rgba(96, 70, 40, 0.20);     /* bronze */
+
+  /* Superfícies de vidro */
+  --g-surface: rgba(255, 255, 255, 0.045);
+  --g-surface-hover: rgba(255, 255, 255, 0.065);
+  --g-surface-strong: rgba(255, 255, 255, 0.08);
+  --g-surface-sunken: rgba(0, 0, 0, 0.22);
+  --g-border: rgba(255, 255, 255, 0.08);
+  --g-border-hover: rgba(255, 255, 255, 0.15);
+  --g-border-strong: rgba(255, 255, 255, 0.20);
+  --g-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --g-blur: 24px;          /* backdrop-blur-xl */
+  --g-blur-sm: 12px;
+  --g-overlay: rgba(6, 5, 4, 0.55);
+
+  /* Texto */
+  --g-fg-1: rgba(255, 255, 255, 0.92);
+  --g-fg-2: rgba(255, 255, 255, 0.55);
+  --g-fg-3: rgba(255, 255, 255, 0.36);
+  --g-fg-4: rgba(255, 255, 255, 0.18);
+
+  /* Destaque (derivado do --accent → segue a cor do tenant) */
+  --g-accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --g-accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --g-accent-glow: 0 8px 28px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+
+  /* Semânticos suaves (status/tendência) */
+  --g-success: #5BC48F;
+  --g-danger: #EE6B6B;
+  --g-warning: #E6B04B;
+  --g-info: #6FA8E8;
+
+  /* Gráficos */
+  --g-chart-grid: rgba(255, 255, 255, 0.06);
+  --g-chart-axis: rgba(255, 255, 255, 0.40);
+  --g-chart-muted: rgba(255, 255, 255, 0.32);  /* série secundária: neutra */
+
+  /* Tipografia */
+  --g-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Raios */
+  --g-radius-xs: 8px;
+  --g-radius-sm: 10px;
+  --g-radius-md: 14px;
+  --g-radius-lg: 18px;     /* cards */
+  --g-radius-xl: 22px;     /* modais / sidebar */
+
+  /* Sombras */
+  --g-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --g-shadow-md: 0 12px 32px -16px rgba(0, 0, 0, 0.70);
+  --g-shadow-lg: 0 32px 64px -24px rgba(0, 0, 0, 0.80);
+
+  /* Espaçamento (escala 4px — complementa --space-*) */
+  --g-gap: 16px;
+  --g-gap-lg: 24px;
+  --g-pad: 20px;
+  --g-pad-lg: 24px;
+
+  /* Motion — espelhado em components/motion/tokens.ts */
+  --g-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --g-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --g-dur-1: 150ms;  /* micro (hover, press) */
+  --g-dur-2: 250ms;  /* componentes */
+  --g-dur-3: 350ms;  /* página / modal */
+  --g-dur-4: 900ms;  /* gráficos, contadores */
+  --g-stagger: 50ms;
 }
 
 /* Tema claro — INATIVO. Decisão: o app fica fixo no escuro por ora
