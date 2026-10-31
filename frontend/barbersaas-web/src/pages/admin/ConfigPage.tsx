@@ -207,7 +207,7 @@ export default function ConfigPage() {
           initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduce ? DUR.reduced : DUR.page, ease: EASE }}>
           {tab === 'aparencia' && (
-            <SectionCard icon={Palette} title="Aparência" desc="As cores da sua marca — aplicadas no painel e na página pública dos clientes.">
+            <SectionCard icon={Palette} title="Aparência" desc="As cores da sua marca — aplicadas na página pública dos clientes.">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <div className="space-y-3">
                   <ColorField label="Cor da marca" hint="Botões, links e destaques em todo o site."
