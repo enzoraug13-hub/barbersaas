@@ -15,6 +15,8 @@ import { useDashboard, useBarberPerformance, usePaymentMethods } from '../../fea
 import { useBarbers } from '../../features/barbers/barbersApi'
 import { useSettings } from '../../features/settings/settingsApi'
 import { generateMonthlyReport } from '../../lib/pdf/monthlyReport'
+import { TBody, TR } from '../../components/ui/glass/Table'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -109,11 +111,12 @@ export default function FinancialPage() {
 
       {/* Resumo */}
       {summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Receitas</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(summary.revenue)}</p></Card>
-          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Despesas</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-error)' }}>{fmt(summary.expense)}</p></Card>
-          <Card><p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Lucro</p><p className="mt-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: summary.netProfit >= 0 ? 'var(--accent)' : 'var(--color-error)' }}>{fmt(summary.netProfit)}</p></Card>
-        </div>
+        // Totais contam até o valor (e recontam ao trocar o período).
+        <Stagger className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StaggerItem><Card className="h-full"><p className="g-eyebrow">Receitas</p><CountUp value={summary.revenue} format={fmt} className="g-stat block mt-3" style={{ color: 'var(--color-success)' }} /></Card></StaggerItem>
+          <StaggerItem><Card className="h-full"><p className="g-eyebrow">Despesas</p><CountUp value={summary.expense} format={fmt} className="g-stat block mt-3" style={{ color: 'var(--color-error)' }} /></Card></StaggerItem>
+          <StaggerItem><Card className="h-full"><p className="g-eyebrow">Lucro</p><CountUp value={summary.netProfit} format={fmt} className="g-stat block mt-3" style={{ color: summary.netProfit >= 0 ? 'var(--accent)' : 'var(--color-error)' }} /></Card></StaggerItem>
+        </Stagger>
       )}
 
       {/* Lista */}
@@ -133,9 +136,9 @@ export default function FinancialPage() {
                   <th className="text-center hidden md:table-cell">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <TBody>
                 {transactions?.map(t => (
-                  <tr key={t.id}>
+                  <TR key={t.id}>
                     <td>
                       <div className="flex items-center gap-2">
                         {t.type === 'Revenue' ? <TrendingUp size={14} style={{ color: 'var(--color-success)' }} className="flex-shrink-0" /> : <TrendingDown size={14} style={{ color: 'var(--color-error)' }} className="flex-shrink-0" />}
@@ -150,9 +153,9 @@ export default function FinancialPage() {
                         {t.status === 'Paid' ? 'Pago' : t.status === 'Partial' ? 'Parcial' : 'Pendente'}
                       </Badge>
                     </td>
-                  </tr>
+                  </TR>
                 ))}
-              </tbody>
+              </TBody>
             </table>
           </div>
         </div>
