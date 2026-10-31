@@ -10,8 +10,9 @@ import {
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
-import { chartAxisTick, chartGridStroke, chartBarCursor, accentBarGradient, barCells } from '../../components/ui/chartTheme'
-import { ChartTooltip } from '../../components/ui/ChartTooltip'
+import { useReducedMotion } from 'framer-motion'
+import { gAxisTick, gGridStroke, gBarCursor, gBarGradient, gBarCells, gChartAnim, growBarShape, GlassTooltip } from '../../components/ui/glass'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
 import { useBarber, useBarberServices, useBarberSchedule, useBarberPerformanceSeries, useGoogleStatus, useConnectGoogle, useDisconnectGoogle } from '../../features/barbers/barbersApi'
 import { useBarberPerformance } from '../../features/dashboard/dashboardApi'
 import { useSettings } from '../../features/settings/settingsApi'
@@ -36,30 +37,20 @@ const dayNames: Record<number, string> = { 1: 'Segunda', 2: 'Terça', 3: 'Quarta
 const dayOrder = [1, 2, 3, 4, 5, 6, 0]
 const hhmm = (t: string) => (t ?? '').slice(0, 5)
 
-const kpiColors: Record<string, string> = {
-  success: 'var(--color-success)', error: 'var(--color-error)',
-  warning: 'var(--color-warning)', info: 'var(--color-info)', accent: 'var(--accent)',
-}
+// Barras crescendo de baixo pra cima com stagger (definidas uma vez).
+const growBars = growBarShape(70)
 
-function KPICard({ title, value, sub, icon: Icon, chip }: {
-  title: string; value: string; sub?: string; icon: LucideIcon; chip: string
+function KPICard({ title, value, format: formatValue, sub, icon: Icon }: {
+  title: string; value: number; format: (n: number) => string; sub?: string; icon: LucideIcon
 }) {
-  const color = kpiColors[chip] ?? 'var(--accent)'
   return (
-    <Card style={{ borderBottom: `2px solid ${color}` }}>
-      <div className="flex items-start gap-3">
-        <div className="flex items-center justify-center flex-shrink-0" style={{
-          width: 40, height: 40, borderRadius: '50%',
-          background: `color-mix(in srgb, ${color} 15%, transparent)`, color,
-        }}>
-          <Icon size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="ds-text-secondary" style={{ fontSize: '12px' }}>{title}</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'var(--text-primary)', marginTop: 4, lineHeight: 1 }}>{value}</p>
-          {sub && <p className="ds-text-disabled mt-1" style={{ fontSize: 'var(--text-xs)' }}>{sub}</p>}
-        </div>
+    <Card className="h-full">
+      <div className="flex items-start justify-between gap-3">
+        <p className="g-eyebrow pt-0.5">{title}</p>
+        <span className="g-icon-chip g-icon-chip--sm"><Icon size={16} strokeWidth={1.75} /></span>
       </div>
+      <CountUp value={value} format={formatValue} className="g-stat g-stat--sm block mt-3" />
+      {sub && <p className="ds-text-disabled mt-1" style={{ fontSize: 'var(--text-xs)' }}>{sub}</p>}
     </Card>
   )
 }
@@ -67,6 +58,7 @@ function KPICard({ title, value, sub, icon: Icon, chip }: {
 export default function BarberProfilePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const reduce = useReducedMotion()
   const [editing, setEditing] = useState(false)
 
   const today = new Date()
@@ -175,7 +167,7 @@ export default function BarberProfilePage() {
           )}
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px', color: 'var(--text-primary)' }}>{barber.name}</h2>
+              <h2 className="g-page-title">{barber.name}</h2>
               <Badge variant={barber.isActive ? 'success' : 'default'}>{barber.isActive ? 'Ativo' : 'Inativo'}</Badge>
               {barber.showInPublicPage && <Badge variant="info">Visível ao público</Badge>}
             </div>
@@ -206,12 +198,12 @@ export default function BarberProfilePage() {
         <p className="ds-text-disabled mb-2" style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {format(today, "MMMM 'de' yyyy", { locale: ptBR })}
         </p>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KPICard title="Faturamento" value={fmt(perf?.revenue ?? 0)} icon={TrendingUp} chip="success" />
-          <KPICard title="Atendimentos" value={fmtN(perf?.totalAppointments ?? 0)} icon={Calendar} chip="accent" />
-          <KPICard title="Ocupação" value={`${(perf?.occupancyRate ?? 0).toFixed(0)}%`} icon={Percent} chip="info" />
-          <KPICard title="Ticket médio" value={fmt(ticket)} icon={DollarSign} chip="warning" />
-        </div>
+        <Stagger className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <StaggerItem><KPICard title="Faturamento" value={perf?.revenue ?? 0} format={fmt} icon={TrendingUp} /></StaggerItem>
+          <StaggerItem><KPICard title="Atendimentos" value={perf?.totalAppointments ?? 0} format={n => fmtN(Math.round(n))} icon={Calendar} /></StaggerItem>
+          <StaggerItem><KPICard title="Ocupação" value={perf?.occupancyRate ?? 0} format={n => `${n.toFixed(0)}%`} icon={Percent} /></StaggerItem>
+          <StaggerItem><KPICard title="Ticket médio" value={ticket} format={fmt} icon={DollarSign} /></StaggerItem>
+        </Stagger>
       </div>
 
       {/* Gráfico de desempenho (6 meses) */}
@@ -225,21 +217,23 @@ export default function BarberProfilePage() {
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={seriesData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="24%">
-              <defs>{accentBarGradient('barberRevFill')}</defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={{ stroke: 'var(--border-default)' }} tickLine={false} />
-              <YAxis yAxisId="rev" tick={chartAxisTick} axisLine={false} tickLine={false} width={52} tickFormatter={(v: number) => fmt(v)} />
-              <YAxis yAxisId="appt" orientation="right" tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
-              <Tooltip cursor={chartBarCursor} content={<ChartTooltip series={{
+              <defs>{gBarGradient('barberRevFill')}</defs>
+              <CartesianGrid stroke={gGridStroke} vertical={false} />
+              <XAxis dataKey="label" tick={gAxisTick} axisLine={false} tickLine={false} dy={6} />
+              <YAxis yAxisId="rev" tick={gAxisTick} axisLine={false} tickLine={false} width={80} tickFormatter={(v: number) => fmt(v)} />
+              <YAxis yAxisId="appt" orientation="right" tick={gAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+              <Tooltip cursor={gBarCursor} content={<GlassTooltip series={{
                 revenue: { label: 'Faturamento', color: 'var(--accent)', fmt },
-                appointments: { label: 'Atendimentos', color: 'var(--color-info)', fmt: fmtN },
+                appointments: { label: 'Atendimentos', color: 'rgba(255,255,255,0.75)', fmt: fmtN },
               }} />} />
-              <Legend formatter={(value: string) => value === 'revenue' ? 'Faturamento' : 'Atendimentos'}
-                wrapperStyle={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-ui)', color: 'var(--text-secondary)' }} />
-              <Bar yAxisId="rev" dataKey="revenue" name="revenue" fill="url(#barberRevFill)" radius={[5, 5, 0, 0]} maxBarSize={46}>
-                {barCells(seriesData ?? [], 'revenue')}
+              <Legend iconType="circle" iconSize={8} formatter={(value: string) => value === 'revenue' ? 'Faturamento' : 'Atendimentos'}
+                wrapperStyle={{ fontSize: 12, fontFamily: 'var(--g-font)', color: 'var(--g-fg-2)', paddingTop: 10 }} />
+              <Bar yAxisId="rev" dataKey="revenue" name="revenue" fill="url(#barberRevFill)" radius={[7, 7, 3, 3]} maxBarSize={46}
+                isAnimationActive={false} shape={growBars}>
+                {gBarCells(seriesData ?? [], 'revenue')}
               </Bar>
-              <Line yAxisId="appt" type="monotone" dataKey="appointments" name="appointments" stroke="var(--color-info)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-info)' }} />
+              <Line yAxisId="appt" type="monotone" dataKey="appointments" name="appointments" stroke="rgba(255,255,255,0.75)" strokeWidth={2}
+                dot={{ r: 3, fill: 'rgba(255,255,255,0.85)', strokeWidth: 0 }} isAnimationActive={!reduce} {...gChartAnim} animationBegin={300} />
             </ComposedChart>
           </ResponsiveContainer>
         )}
@@ -359,14 +353,14 @@ export default function BarberProfilePage() {
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={weeklyData} barCategoryGap="22%">
-              <defs>{accentBarGradient('barberWeekly')}</defs>
-              <CartesianGrid stroke={chartGridStroke} vertical={false} />
-              <XAxis dataKey="label" tick={chartAxisTick} axisLine={false} tickLine={false} />
-              <YAxis tick={chartAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
-              <Tooltip cursor={chartBarCursor}
-                content={<ChartTooltip series={{ count: { label: 'Atendimentos', color: 'var(--accent)', fmt: fmtN } }} />} />
-              <Bar dataKey="count" fill="url(#barberWeekly)" radius={[5, 5, 0, 0]} maxBarSize={48}>
-                {barCells(weeklyData, 'count')}
+              <defs>{gBarGradient('barberWeekly')}</defs>
+              <CartesianGrid stroke={gGridStroke} vertical={false} />
+              <XAxis dataKey="label" tick={gAxisTick} axisLine={false} tickLine={false} dy={6} />
+              <YAxis tick={gAxisTick} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+              <Tooltip cursor={gBarCursor}
+                content={<GlassTooltip series={{ count: { label: 'Atendimentos', color: 'var(--accent)', fmt: fmtN } }} />} />
+              <Bar dataKey="count" fill="url(#barberWeekly)" radius={[7, 7, 3, 3]} maxBarSize={48} isAnimationActive={false} shape={growBars}>
+                {gBarCells(weeklyData, 'count')}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
