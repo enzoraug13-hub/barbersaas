@@ -10,6 +10,8 @@ import { NumberField } from '../../components/ui/NumberField'
 import { useGoals, useCreateGoal, useUpdateGoal, useContributeGoal } from '../../features/goals/goalsApi'
 import type { Goal } from '../../types'
 import toast from 'react-hot-toast'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
+import { Progress, Tabs } from '../../components/ui/glass'
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const emptyForm = { name: '', description: '', targetAmount: 0, targetDate: '' }
@@ -90,27 +92,16 @@ export default function GoalsPage() {
       ) : (
         <>
           {/* Abas: Ativas | Concluídas | Todas */}
-          <div className="inline-flex gap-1 p-1" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)' }}>
-            {tabs.map(t => (
-              <button key={t.key} type="button" onClick={() => setTab(t.key)}
-                className="inline-flex items-center gap-1.5 transition-colors"
-                style={{
-                  padding: '6px var(--space-3)', borderRadius: 'var(--radius-md)',
-                  fontSize: 'var(--text-sm)', fontWeight: 500, border: 'none', cursor: 'pointer',
-                  background: tab === t.key ? 'var(--bg-elevated)' : 'transparent',
-                  color: tab === t.key ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  boxShadow: tab === t.key ? 'var(--shadow-sm)' : 'none',
-                }}>
-                {t.label}
-                <span style={{
-                  fontSize: 'var(--text-xs)', fontWeight: 600, minWidth: 18, textAlign: 'center',
-                  padding: '0 6px', borderRadius: 'var(--radius-full)',
-                  background: tab === t.key ? 'var(--accent-soft)' : 'transparent',
-                  color: tab === t.key ? 'var(--accent)' : 'var(--text-disabled)',
-                }}>{t.count}</span>
-              </button>
-            ))}
-          </div>
+          <Tabs value={tab} onChange={setTab} aria-label="Filtrar metas"
+            items={tabs.map(t => ({
+              value: t.key,
+              label: <>{t.label}<span style={{
+                fontSize: 'var(--text-xs)', fontWeight: 600, minWidth: 18, textAlign: 'center',
+                padding: '0 6px', borderRadius: 'var(--radius-full)',
+                background: tab === t.key ? 'var(--g-accent-soft)' : 'transparent',
+                color: tab === t.key ? 'var(--accent)' : 'var(--text-disabled)',
+              }}>{t.count}</span></>,
+            }))} />
 
           {!filtered.length ? (
             <EmptyState
@@ -120,16 +111,16 @@ export default function GoalsPage() {
                 ? 'Bata o alvo de uma meta para vê-la aqui como conquista.'
                 : 'Crie uma nova meta ou contribua nas existentes para alcançar o alvo.'} />
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map((g, i) => {
+          <Stagger key={tab} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map(g => {
               const done = isDone(g)
               return (
-              <Card key={g.id} style={{
-                animationDelay: `${i * 45}ms`,
+              <StaggerItem key={g.id}>
+              <Card style={{
                 borderColor: done ? 'var(--color-success)' : undefined,
                 // brilho sutil de conquista nas concluídas
                 boxShadow: done ? '0 0 0 1px var(--color-success), 0 10px 30px -12px color-mix(in srgb, var(--color-success) 55%, transparent)' : undefined,
-              }} className="space-y-4 animate-slide-up">
+              }} className="space-y-4 h-full">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="ds-text-primary font-semibold inline-flex items-center gap-1.5">
@@ -152,18 +143,13 @@ export default function GoalsPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5" style={{ fontSize: 'var(--text-sm)' }}>
-                    <span className="ds-text-secondary">{fmt(g.currentAmount)}</span>
+                    <CountUp value={g.currentAmount} format={fmt} className="ds-text-secondary" />
                     <span className="font-semibold" style={{ color: done ? 'var(--color-success)' : 'var(--text-primary)' }}>
-                      {done ? '100%' : `${g.percentageComplete.toFixed(1)}%`}
+                      {done ? '100%' : <CountUp value={g.percentageComplete} format={n => `${n.toFixed(1)}%`} />}
                     </span>
                   </div>
-                  <div className="ds-progress-track" style={{ width: '100%' }}>
-                    <div className="ds-progress-fill" style={{
-                      width: `${done ? 100 : Math.min(100, g.percentageComplete)}%`,
-                      background: done ? 'var(--color-success)' : undefined,
-                      transition: 'width 500ms ease-out',
-                    }} />
-                  </div>
+                  {/* Enche ao entrar na tela (só transform) */}
+                  <Progress value={done ? 100 : Math.min(100, g.percentageComplete)} tone={done ? 'success' : 'accent'} aria-label={g.name} />
                   <div className="ds-text-disabled flex justify-between mt-1" style={{ fontSize: 'var(--text-xs)' }}>
                     <span>Meta: {fmt(g.targetAmount)}</span>
                     {done
@@ -178,9 +164,10 @@ export default function GoalsPage() {
                   </Button>
                 )}
               </Card>
+              </StaggerItem>
               )
             })}
-          </div>
+          </Stagger>
           )}
         </>
       )}

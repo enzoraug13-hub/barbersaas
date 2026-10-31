@@ -365,6 +365,7 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
+.g-progress-fill--success { background: linear-gradient(90deg, color-mix(in srgb, var(--success) 60%, transparent), var(--success)) !important; }
 .g-progress-fill {
   position: absolute;
   inset: 0;

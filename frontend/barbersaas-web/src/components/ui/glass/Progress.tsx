@@ -8,6 +8,8 @@ interface ProgressProps {
   className?: string
   /** Atraso da animação (s) — útil em listas. */
   delay?: number
+  /** Cor do preenchimento: accent (padrão) ou success (ex.: meta concluída). */
+  tone?: 'accent' | 'success'
   'aria-label'?: string
 }
 
@@ -16,14 +18,14 @@ interface ProgressProps {
  * (translateX do preenchimento dentro de um trilho com overflow hidden),
  * então as pontas arredondadas não distorcem.
  */
-export function Progress({ value, className, delay = 0, ...aria }: ProgressProps) {
+export function Progress({ value, className, delay = 0, tone = 'accent', ...aria }: ProgressProps) {
   const reduce = useReducedMotion()
   const pct = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0))
   return (
     <div className={cx('g-progress', className)} role="progressbar" aria-valuemin={0} aria-valuemax={100}
       aria-valuenow={Math.round(pct)} {...aria}>
       <motion.div
-        className="g-progress-fill"
+        className={cx('g-progress-fill', tone === 'success' && 'g-progress-fill--success')}
         initial={reduce ? { opacity: 0, x: `${pct - 100}%` } : { x: '-100%' }}
         whileInView={{ opacity: 1, x: `${pct - 100}%` }}
         viewport={{ once: true }}
