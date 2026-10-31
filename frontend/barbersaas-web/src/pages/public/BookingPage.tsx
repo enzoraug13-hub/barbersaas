@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Scissors, CheckCircle, Loader2, ChevronLeft, Clock, DollarSign, User, MapPin, Calendar as CalendarIcon } from 'lucide-react'
+import { Scissors, Loader2, ChevronLeft, Clock, DollarSign, User, MapPin, Calendar as CalendarIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { publicApi, assetUrl } from '../../lib/api'
@@ -17,6 +17,9 @@ import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion'
+import { AmbientBackground } from '../../components/ui/glass/AmbientBackground'
+import { Stagger, StaggerItem, DUR, EASE } from '../../components/motion'
 
 type Step = 'home' | 'service' | 'barber' | 'date' | 'slots' | 'confirm' | 'phone' | 'profile' | 'done'
 // Identificação (OTP) é a PRIMEIRA etapa: o cliente só escolhe barbeiro/serviço/
@@ -28,6 +31,43 @@ const MAIN_STEPS: Step[] = ['phone', 'barber', 'service', 'date', 'slots', 'conf
 // Campos do agendamento confirmado exibidos na tela de sucesso.
 interface BookingResult { barberName: string; serviceName: string; date: string; startTime: string }
 const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
+// Ordem visual das telas — decide o sentido da transição lateral (avançar →, voltar ←).
+const STEP_ORDER: Step[] = ['home', 'phone', 'profile', 'barber', 'service', 'date', 'slots', 'confirm', 'done']
+
+const stepVariants: Variants = {
+  enter: (dir: number) => ({ opacity: 0, x: 48 * dir, filter: 'blur(6px)' }),
+  center: { opacity: 1, x: 0, filter: 'blur(0px)', transition: { duration: DUR.page, ease: EASE }, transitionEnd: { filter: 'none' } },
+  exit: (dir: number) => ({ opacity: 0, x: -48 * dir, filter: 'blur(6px)', transition: { duration: DUR.pageExit, ease: EASE } }),
+}
+const stepVariantsReduced: Variants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1, transition: { duration: DUR.reduced } },
+  exit: { opacity: 0, transition: { duration: DUR.reduced } },
+}
+
+/* ---- Sucesso: anel que expande + check que se desenha ---- */
+function SuccessMark() {
+  const reduce = useReducedMotion()
+  return (
+    <div className="g-success mb-5" aria-hidden="true">
+      {!reduce && (
+        <motion.span className="g-success-ring"
+          initial={{ scale: 0.7, opacity: 0.9 }} animate={{ scale: 1.7, opacity: 0 }}
+          transition={{ duration: 1.1, ease: EASE, delay: 0.25 }} />
+      )}
+      <motion.div className="g-success-disc"
+        initial={reduce ? { opacity: 0 } : { scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        transition={reduce ? { duration: DUR.reduced } : { type: 'spring', stiffness: 320, damping: 18 }}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <motion.path d="M5 12.5l4.2 4.2L19 7" stroke="var(--success)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"
+            initial={{ pathLength: reduce ? 1 : 0 }} animate={{ pathLength: 1 }}
+            transition={{ duration: reduce ? 0 : 0.5, ease: EASE, delay: reduce ? 0 : 0.3 }} />
+        </svg>
+      </motion.div>
+    </div>
+  )
+}
 
 /* ---- Estados de carregamento (skeleton com shimmer) ---- */
 const ListSkeleton = ({ rows = 3 }: { rows?: number }) => (
@@ -77,6 +117,15 @@ export default function BookingPage() {
   // sozinho nunca conta como logado.
   const session = useClientSession()
   const loggedIn = session.slug === slug && session.loggedIn
+  const reduce = useReducedMotion()
+
+  // Sentido da transição: avançou no fluxo → entra pela direita; voltou → pela esquerda.
+  const [prevStep, setPrevStep] = useState<Step>(step)
+  const [dir, setDir] = useState(1)
+  if (prevStep !== step) {
+    setDir(STEP_ORDER.indexOf(step) >= STEP_ORDER.indexOf(prevStep) ? 1 : -1)
+    setPrevStep(step)
+  }
 
   const { data: info } = useQuery<TenantPublicInfo>({
     queryKey: ['public-info', slug],
@@ -156,13 +205,15 @@ export default function BookingPage() {
   }
 
   if (!info) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+    <div className="g-shell g-public flex items-center justify-center">
+      <AmbientBackground />
       <Loader2 size={32} className="animate-spin" style={{ color: 'var(--accent)' }} />
     </div>
   )
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+    <div className="g-shell g-public">
+      <AmbientBackground />
       {/* Header — capa imponente que esmaece no fundo escuro da página (sem corte
           seco) com o nome em Sora bold por cima (melhor contraste/legibilidade
           sobre foto que a serifada). O card de endereço/horário fica intocado. */}
@@ -177,38 +228,46 @@ export default function BookingPage() {
           background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-base) 15%, transparent) 0%, color-mix(in srgb, var(--bg-base) 28%, transparent) 50%, color-mix(in srgb, var(--bg-base) 80%, transparent) 84%, var(--bg-base) 100%)',
         }} />
         <Link to={`/b/${slug}/conta`}
-          className="absolute top-3 right-3 z-10 flex items-center gap-1.5 transition-colors"
-          style={{ borderRadius: 'var(--radius-full)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: '6px var(--space-3)', fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff' }}>
+          className="g-pill-glass absolute right-3 z-10"
+          style={{ top: 'calc(12px + env(safe-area-inset-top))' }}>
           <User size={14} /> Minha conta
         </Link>
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <motion.div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, filter: 'blur(6px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+          transition={{ duration: reduce ? DUR.reduced : 0.6, ease: EASE }}>
           {info.logoUrl ? (
             <img src={assetUrl(info.logoUrl)} alt="logo" className="w-20 h-20 object-cover mb-3" style={{ borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-soft)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }} />
           ) : (
             <div className="w-20 h-20 flex items-center justify-center mb-3" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 24px rgba(0,0,0,0.45)' }}>
-              <Scissors size={34} style={{ color: 'var(--bg-base)' }} />
+              <Scissors size={34} style={{ color: 'var(--accent-fg)' }} />
             </div>
           )}
-          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(var(--text-3xl), 7vw, var(--text-4xl))', lineHeight: 1.15, letterSpacing: '-0.02em', color: 'var(--text-primary)', textShadow: '0 2px 16px rgba(0,0,0,0.55)' }}>{info.businessName}</h1>
+          <h1 style={{ fontFamily: 'var(--g-font)', fontWeight: 700, fontSize: 'clamp(var(--text-3xl), 7vw, var(--text-4xl))', lineHeight: 1.15, letterSpacing: '-0.02em', color: 'var(--text-primary)', textShadow: '0 2px 16px rgba(0,0,0,0.55)' }}>{info.businessName}</h1>
           {info.city && <p className="ds-text-secondary mt-1" style={{ fontSize: 'var(--text-sm)', textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>{info.city}</p>}
-        </div>
+        </motion.div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* Progress — etapas principais, começando pela identificação (não aparece
             na tela inicial, no cadastro de perfil nem na tela de concluído) */}
         {MAIN_STEPS.includes(step) && (
-          <div className="flex items-center gap-1 mb-6">
+          <div className="g-steps mb-6">
             {MAIN_STEPS.map((s) => (
-              <div key={s} className="h-1 flex-1 transition-all" style={{
-                borderRadius: 'var(--radius-full)',
-                background: MAIN_STEPS.indexOf(step) >= MAIN_STEPS.indexOf(s) ? 'var(--tenant-primary)' : 'var(--bg-elevated)',
-              }} />
+              <div key={s} className="g-step-track">
+                {/* Etapa alcançada: preenche da esquerda pra direita (scaleX) */}
+                <motion.div className="g-step-fill" initial={false}
+                  animate={{ scaleX: MAIN_STEPS.indexOf(step) >= MAIN_STEPS.indexOf(s) ? 1 : 0 }}
+                  transition={{ duration: reduce ? 0 : DUR.page, ease: EASE }} />
+              </div>
             ))}
           </div>
         )}
 
-        <div key={step} className="animate-fade-in">
+        {/* Troca de etapa com transição lateral (avançar →, voltar ←) */}
+        <AnimatePresence mode="wait" custom={dir} initial={false}>
+        <motion.div key={step} custom={dir} variants={reduce ? stepVariantsReduced : stepVariants}
+          initial="enter" animate="center" exit="exit">
         {/* Tela inicial — logo, nome, cores, horário, endereço */}
         {step === 'home' && (
           <div className="space-y-4">
@@ -258,11 +317,12 @@ export default function BookingPage() {
             {loadBarbers ? <ListSkeleton />
             : !barbers?.length ? <EmptyState icon={User} text="Nenhum profissional disponível no momento." />
             : (
-              <div className="space-y-3">
-                {barbers.map((b, i) => (
-                  <button key={b.id} onClick={() => { setBarber(b); setStep('service') }}
-                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
-                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
+              <Stagger className="space-y-3" delay={0.1}>
+                {barbers.map(b => (
+                  <StaggerItem key={b.id}>
+                  <button onClick={() => { setBarber(b); setStep('service') }}
+                    style={{ minHeight: 64 }}
+                    className="g-pick p-4 flex items-center gap-4">
                     {b.photoUrl
                       ? <img src={assetUrl(b.photoUrl)} alt={b.name} className="w-12 h-12 rounded-full object-cover" />
                       : <div className="ds-icon-chip ds-icon-chip-accent font-bold" style={{ width: 48, height: 48, borderRadius: '50%' }}>{b.name[0]}</div>
@@ -272,8 +332,9 @@ export default function BookingPage() {
                       {b.bio && <p className="ds-text-secondary mt-0.5 line-clamp-1" style={{ fontSize: 'var(--text-xs)' }}>{b.bio}</p>}
                     </div>
                   </button>
+                  </StaggerItem>
                 ))}
-              </div>
+              </Stagger>
             )}
           </div>
         )}
@@ -286,11 +347,12 @@ export default function BookingPage() {
             {loadServices ? <ListSkeleton />
             : !services?.length ? <EmptyState icon={Scissors} text="Nenhum serviço disponível no momento." />
             : (
-              <div className="space-y-3">
-                {services.map((s, i) => (
-                  <button key={s.id} onClick={() => { setService(s); setStep('date') }}
-                    style={{ animationDelay: `${i * 45}ms`, minHeight: 64 }}
-                    className="ds-card ds-card-interactive w-full text-left flex items-center gap-4 animate-slide-up">
+              <Stagger className="space-y-3" delay={0.1}>
+                {services.map(s => (
+                  <StaggerItem key={s.id}>
+                  <button onClick={() => { setService(s); setStep('date') }}
+                    style={{ minHeight: 64 }}
+                    className="g-pick p-4 flex items-center gap-4">
                     <div className="w-3 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: s.colorHex ?? '#c9a84c' }} />
                     <div className="flex-1">
                       <p className="ds-text-primary font-semibold">{s.name}</p>
@@ -301,8 +363,9 @@ export default function BookingPage() {
                       <div className="ds-text-disabled flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-xs)' }}><Clock size={11} />{s.durationMinutes} min</div>
                     </div>
                   </button>
+                  </StaggerItem>
                 ))}
-              </div>
+              </Stagger>
             )}
           </div>
         )}
@@ -312,19 +375,18 @@ export default function BookingPage() {
           <div>
             <BackButton onClick={back} />
             <h2 className="ds-section-title mb-4" style={{ fontSize: 'var(--text-lg)' }}>Escolha a data</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {nextDates.map((d, i) => (
-                <button key={d.value} onClick={() => { setDate(d.value); setStep('slots') }}
-                  style={{
-                    animationDelay: `${i * 30}ms`, minHeight: 56,
-                    borderColor: date === d.value ? 'var(--accent)' : undefined,
-                    background: date === d.value ? 'var(--accent-soft)' : undefined,
-                  }}
-                  className="ds-card ds-card-interactive text-center py-4 capitalize animate-slide-up">
+            <Stagger className="grid grid-cols-2 gap-3" stagger={0.03} delay={0.1}>
+              {nextDates.map(d => (
+                <StaggerItem key={d.value}>
+                <button onClick={() => { setDate(d.value); setStep('slots') }}
+                  aria-pressed={date === d.value}
+                  style={{ minHeight: 56 }}
+                  className="g-pick text-center py-4 px-2 capitalize">
                   <p className="ds-text-primary font-medium">{d.label}</p>
                 </button>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </div>
         )}
 
@@ -336,33 +398,34 @@ export default function BookingPage() {
             {loadSlots ? <GridSkeleton cells={9} h="h-12" />
             : !slots?.length ? <EmptyState icon={Clock} text="Nenhum horário disponível neste dia. Tente outra data." />
             : (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((s, i) => {
+              <Stagger className="grid grid-cols-3 gap-2" stagger={0.02} delay={0.1}>
+                {slots.map(s => {
                   const taken    = s.available === false   // ocupado: tem agendamento/reserva
                   const selected = slot === s.start
                   return (
-                    <button key={s.start} type="button"
+                    <StaggerItem key={s.start}>
+                    <button type="button"
                       // aria-disabled (em vez de `disabled`) mantém o cursor not-allowed
                       // visível; o onChange/onClick é neutralizado pra não deixar selecionar.
                       aria-disabled={taken || undefined}
                       title={taken ? 'Horário ocupado' : undefined}
                       onClick={taken ? undefined : () => { setSlot(s.start); setStep('confirm') }}
+                      aria-pressed={selected}
                       style={{
-                        animationDelay: `${i * 20}ms`, minHeight: 44,
-                        borderColor: selected ? 'var(--accent)' : undefined,
-                        background: selected ? 'var(--accent-soft)' : undefined,
+                        minHeight: 44,
                         color: taken ? 'var(--text-disabled)' : selected ? 'var(--accent)' : 'var(--text-primary)',
                         cursor: taken ? 'not-allowed' : 'pointer',
                         opacity: taken ? 0.4 : undefined,                 // esmaecido
                         filter: taken ? 'blur(0.8px)' : undefined,        // borrado
                         textDecoration: taken ? 'line-through' : undefined, // risco em cima
                       }}
-                      className={`ds-card text-center font-medium animate-slide-up${taken ? '' : ' ds-card-interactive'}`}>
+                      className="g-pick text-center font-medium py-3">
                       <span style={{ fontSize: 'var(--text-sm)' }}>{s.label}</span>
                     </button>
+                    </StaggerItem>
                   )
                 })}
-              </div>
+              </Stagger>
             )}
           </div>
         )}
@@ -411,27 +474,29 @@ export default function BookingPage() {
         {/* Concluído */}
         {step === 'done' && (
           <div className="text-center py-8">
-            <div className="relative w-20 h-20 mx-auto mb-4">
-              <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(76,175,125,0.2)', animationIterationCount: 2 }} />
-              <div className="relative w-20 h-20 rounded-full flex items-center justify-center animate-scale-in" style={{ background: 'rgba(76,175,125,0.2)' }}>
-                <CheckCircle size={40} style={{ color: 'var(--color-success)' }} />
-              </div>
-            </div>
-            <h2 className="mb-2 animate-slide-up" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-2xl)', color: 'var(--text-primary)' }}>Agendado!</h2>
-            <p className="ds-text-secondary mb-6 animate-slide-up" style={{ animationDelay: '60ms' }}>Seu agendamento foi confirmado. Até lá!</p>
+            <SuccessMark />
+            <Stagger delay={0.35} stagger={0.08}>
+            <StaggerItem><h2 className="g-page-title mb-2">Agendado!</h2></StaggerItem>
+            <StaggerItem><p className="ds-text-secondary mb-6">Seu agendamento foi confirmado. Até lá!</p></StaggerItem>
             {result && (
+              <StaggerItem>
               <div className="ds-card text-left space-y-2 mb-6">
                 <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Barbeiro: <span className="ds-text-primary">{result.barberName}</span></p>
                 <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Serviço: <span className="ds-text-primary">{result.serviceName}</span></p>
                 <p className="ds-text-secondary" style={{ fontSize: 'var(--text-sm)' }}>Data: <span className="ds-text-primary">{result.date} às {result.startTime}</span></p>
               </div>
+              </StaggerItem>
             )}
+            <StaggerItem>
             <Button variant="ghost" onClick={resetAll}>
               Novo agendamento
             </Button>
+            </StaggerItem>
+            </Stagger>
           </div>
         )}
-        </div>
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )
