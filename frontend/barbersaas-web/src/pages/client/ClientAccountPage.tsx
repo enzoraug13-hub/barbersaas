@@ -18,6 +18,8 @@ import { unitLabel } from '../../features/loyalty/loyaltyApi'
 import type { LoyaltyMode, LoyaltyRedemptionStatus, LoyaltyRewardType } from '../../features/loyalty/loyaltyApi'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { CountUp, Stagger, StaggerItem } from '../../components/motion'
+import { AmbientBackground } from '../../components/ui/glass/AmbientBackground'
 
 // GET /client/loyalty — programa+saldo+catálogo+meus resgates numa chamada.
 interface MyLoyalty {
@@ -100,8 +102,9 @@ export default function ClientAccountPage() {
   const exitIfIncomplete = () => { if (session.needsProfile) handleLogout() }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
-      <header className="h-16 flex items-center justify-between px-4 max-w-lg w-full mx-auto" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+    <div className="g-shell g-public flex flex-col">
+      <AmbientBackground />
+      <header className="h-16 flex items-center justify-between px-4 max-w-lg w-full mx-auto" style={{ borderBottom: '1px solid var(--border-subtle)', marginTop: 'env(safe-area-inset-top)' }}>
         <Link to={`/b/${slug}`} onClick={exitIfIncomplete} className="flex items-center gap-1.5 transition-colors" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
           <ChevronLeft size={16} /> {info?.businessName ?? 'Voltar'}
         </Link>
@@ -164,7 +167,7 @@ function Account({ name, slug, clientId }: { name?: string; slug: string; client
         {loyaltyOn && (
           <div className="ml-auto text-right flex-shrink-0">
             <div className="ds-text-accent flex items-center gap-1 font-bold">
-              <Star size={15} /> {loyalty.balance} {unitLabel(loyalty.mode, loyalty.balance)}
+              <Star size={15} /> <CountUp value={loyalty.balance} format={n => String(Math.round(n))} /> {unitLabel(loyalty.mode, loyalty.balance)}
             </div>
             <p className="ds-text-disabled" style={{ fontSize: 'var(--text-xs)' }}>{loyalty.totalVisits} visitas</p>
           </div>
@@ -217,11 +220,12 @@ function LoyaltySection({ loyalty, clientId }: { loyalty: MyLoyalty; clientId?: 
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <Stagger className="space-y-3">
           {loyalty.rewards.map(r => {
             const affordable = loyalty.balance >= r.cost
             return (
-              <div key={r.id} className="ds-card flex items-center gap-4">
+              <StaggerItem key={r.id}>
+              <div className="ds-card flex items-center gap-4">
                 <div className="ds-icon-chip ds-icon-chip-accent flex-shrink-0" style={{ width: 40, height: 40 }}>
                   <Gift size={17} />
                 </div>
@@ -238,9 +242,10 @@ function LoyaltySection({ loyalty, clientId }: { loyalty: MyLoyalty; clientId?: 
                   {affordable ? 'Resgatar' : `Faltam ${r.cost - loyalty.balance}`}
                 </Button>
               </div>
+              </StaggerItem>
             )
           })}
-        </div>
+        </Stagger>
       )}
 
       {visible.length > 0 && (
@@ -288,15 +293,15 @@ function Appointments({ appts, isLoading, slug }: { appts?: MyAppointment[]; isL
           <EmptyState icon={Calendar} title="Você ainda não tem agendamentos"
             action={<Link to={`/b/${slug}`}><Button><Calendar size={15} /> Agendar agora</Button></Link>} />
         ) : (
-          <div className="space-y-3">
-            {appts.map((a, i) => {
+          <Stagger className="space-y-3">
+            {appts.map(a => {
               const isFuture = new Date(`${a.date}T${a.startTime}`) >= new Date()
               return (
-                <div key={a.id} style={{
-                  animationDelay: `${i * 50}ms`,
+                <StaggerItem key={a.id}>
+                <div style={{
                   borderLeft: isFuture ? '3px solid var(--accent)' : '3px solid transparent',
                   opacity: isFuture ? 1 : 0.65,
-                }} className="ds-card ds-card-interactive flex items-center gap-4 animate-slide-up">
+                }} className="ds-card ds-card-interactive flex items-center gap-4">
                   <div className="text-center w-14 flex-shrink-0">
                     <p className="ds-text-disabled capitalize" style={{ fontSize: 'var(--text-xs)' }}>{format(parseISO(a.date), 'MMM', { locale: ptBR })}</p>
                     <p className="ds-text-primary font-bold leading-none" style={{ fontSize: 'var(--text-xl)' }}>{format(parseISO(a.date), 'dd')}</p>
@@ -310,9 +315,10 @@ function Appointments({ appts, isLoading, slug }: { appts?: MyAppointment[]; isL
                     <p className="ds-text-primary font-semibold mt-1.5" style={{ fontSize: 'var(--text-sm)' }}>{fmt(a.finalPrice)}</p>
                   </div>
                 </div>
+                </StaggerItem>
               )
             })}
-          </div>
+          </Stagger>
         )}
       </div>
     </>
