@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, Check, ExternalLink, Link2 } from 'lucide-react'
 import { useSettings } from '../../features/settings/settingsApi'
 import { Button } from '../ui/glass/Button'
 import toast from 'react-hot-toast'
@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
  * O domínio vem de window.location.origin — funciona em dev, preview e produção
  * sem configuração extra. Usado no Dashboard e em Configurações → Identidade.
  */
-export function PublicLinkButtons() {
+export function PublicLinkButtons({ compact = false }: { compact?: boolean } = {}) {
   const { data: settings } = useSettings()
   const [copied, setCopied] = useState(false)
 
@@ -25,6 +25,31 @@ export function PublicLinkButtons() {
     } catch {
       toast.error('Não foi possível copiar. Selecione e copie manualmente.')
     }
+  }
+
+  // Versão compacta (rodapé da sidebar / "Mais" no mobile): ícone + link + botões
+  // só de ícone. Na sidebar recolhida, só o ícone da esquerda fica visível.
+  if (compact) {
+    return (
+      <div className="g-side-link">
+        <span className="g-side-icon g-fg-3"><Link2 size={20} strokeWidth={1.75} /></span>
+        <span className="g-side-label flex-1 min-w-0 truncate g-fg-2" title={url}
+          style={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          {url.replace(/^https?:\/\//, '')}
+        </span>
+        <span className="g-side-label flex items-center gap-0.5">
+          <button type="button" className="g-icon-btn g-icon-btn--sm" onClick={copy}
+            aria-label={copied ? 'Copiado!' : 'Copiar'} title={copied ? 'Copiado!' : 'Copiar'}
+            style={copied ? { color: 'var(--success)' } : undefined}>
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+          </button>
+          <button type="button" className="g-icon-btn g-icon-btn--sm" onClick={() => window.open(url, '_blank', 'noopener')}
+            aria-label="Abrir" title="Abrir">
+            <ExternalLink size={15} />
+          </button>
+        </span>
+      </div>
+    )
   }
 
   return (
