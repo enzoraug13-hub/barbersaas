@@ -995,3 +995,65 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
 .g-stat-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .g-stat-strip > * + * { border-left: 1px solid var(--g-border); }
 .g-icon-chip--sm { width: 30px; height: 30px; border-radius: 10px; }
+
+/* ---------------- Fundo da marca (login) ---------------- */
+.g-brand-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #09080B;
+}
+.g-brand-glow { position: absolute; border-radius: 50%; filter: blur(80px); }
+.g-brand-glow--main {               /* aurora dourada atrás do cartão */
+  width: 78vmax; height: 58vmax;
+  left: 50%; top: 46%;
+  margin: -29vmax 0 0 -39vmax;
+  background: radial-gradient(closest-side, rgba(214, 170, 72, 0.42), rgba(201, 168, 76, 0.16) 55%, transparent 75%);
+}
+.g-brand-glow--bronze {
+  width: 52vmax; height: 52vmax;
+  left: -18vmax; bottom: -22vmax;
+  background: radial-gradient(closest-side, rgba(150, 82, 34, 0.38), transparent 72%);
+}
+.g-brand-glow--cool {
+  width: 46vmax; height: 46vmax;
+  right: -16vmax; top: -18vmax;
+  background: radial-gradient(closest-side, rgba(46, 96, 140, 0.30), transparent 72%);
+}
+/* Listras finas em diagonal (poste de barbearia), só no miolo da tela. */
+.g-brand-stripes {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(-45deg, rgba(233, 207, 134, 0.07) 0 1px, transparent 1px 22px);
+  -webkit-mask-image: radial-gradient(60% 55% at 50% 48%, #000 0%, rgba(0, 0, 0, 0.35) 55%, transparent 85%);
+  mask-image: radial-gradient(60% 55% at 50% 48%, #000 0%, rgba(0, 0, 0, 0.35) 55%, transparent 85%);
+}
+/* Tesoura gigante em traço fino — desloca pra direita/baixo, sai da tela. */
+.g-brand-mark-xl {
+  position: absolute;
+  width: min(118vmin, 1100px);
+  height: min(118vmin, 1100px);
+  right: -14vmin;
+  top: 50%;
+  margin-top: max(-59vmin, -550px);
+  transform: rotate(-14deg);
+  opacity: 0.32;
+  filter: drop-shadow(0 0 18px rgba(201, 168, 76, 0.35));
+}
+@media (max-width: 640px) {
+  .g-brand-mark-xl { width: 160vmin; height: 160vmin; right: -52vmin; top: auto; bottom: -30vmin; margin-top: 0; opacity: 0.34; }
+  .g-brand-glow--main {
+    width: 120vmax; height: 90vmax; margin: -45vmax 0 0 -60vmax; top: 40%;
+    background: radial-gradient(closest-side, rgba(214, 170, 72, 0.50), rgba(201, 168, 76, 0.18) 55%, transparent 76%);
+  }
+  .g-brand-stripes {
+    -webkit-mask-image: radial-gradient(85% 60% at 50% 38%, #000 0%, rgba(0, 0, 0, 0.4) 55%, transparent 88%);
+    mask-image: radial-gradient(85% 60% at 50% 38%, #000 0%, rgba(0, 0, 0, 0.4) 55%, transparent 88%);
+  }
+}
+.g-brand-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 95% at 50% 45%, transparent 45%, rgba(4, 3, 5, 0.6) 100%);
+}

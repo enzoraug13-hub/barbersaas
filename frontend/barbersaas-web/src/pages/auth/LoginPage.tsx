@@ -1,22 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight, Scissors } from 'lucide-react'
 import { useLogin } from '../../features/auth/authApi'
 import { homeRouteFor } from '../../lib/roles'
 import { Button } from '../../components/ui/Button'
-import { RainCanvas } from '../../components/ui/RainCanvas'
-import facade from '../../assets/login-facade.jpg'
+import { BrandBackdrop } from '../../components/ui/glass/BrandBackdrop'
+import { resetTenantTheme } from '../../lib/theme-tenant'
 import { apiErrorMessage, apiErrorStatus } from '../../lib/apiError'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Stagger, StaggerItem, DUR, EASE } from '../../components/motion'
 
-/* Cena cinematográfica: fachada da barbearia à noite (asset local otimizado) +
-   chuva leve em canvas + brilho pulsante de letreiro + card de vidro fosco.
-   A cena é sempre noturna — textos do card usam cores fixas claras de propósito
-   (exceção consciente aos tokens de tema, que invertem no modo claro); o dourado
-   da marca continua vindo de var(--accent). Só visual: o fluxo de login é o mesmo. */
+/* Login com a cara da marca: fundo próprio do Trimly (aurora dourada, listras
+   finas de barbearia e a tesoura da marca que se desenha na entrada) + cartão
+   de vidro. Sempre na identidade Trimly — nunca na cor de uma barbearia. Só
+   visual: o fluxo de login é o mesmo.*/
 export default function LoginPage() {
   const reduce = useReducedMotion()
+  // Login é sempre Trimly: limpa a cor de barbearia que possa ter ficado de uma página pública.
+  useEffect(() => { resetTenantTheme() }, [])
   const navigate = useNavigate()
   const login    = useLogin()
   const [form, setForm]         = useState({ email: '', password: '' })
@@ -47,11 +48,8 @@ export default function LoginPage() {
 
   return (
     <div className="login-scene flex items-center justify-center p-4 sm:p-6">
-      {/* Cena de fundo: foto + overlay de contraste + brilho de letreiro + chuva */}
-      <img src={facade} alt="" aria-hidden className="login-scene-img" />
-      <div aria-hidden className="login-overlay" />
-      <div aria-hidden className="login-sign-glow" />
-      <RainCanvas />
+      {/* Fundo com a cara da marca: aurora dourada, listras de barbearia e a tesoura do Trimly */}
+      <BrandBackdrop />
 
       <motion.div className="relative w-full max-w-sm"
         initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.97, filter: 'blur(8px)' }}
@@ -62,6 +60,9 @@ export default function LoginPage() {
           {/* Marca */}
           <Stagger delay={0.2} stagger={0.07}>
           <StaggerItem className="flex flex-col items-center mb-8 text-center">
+            <span className="g-brand-mark mb-4" style={{ width: 52, height: 52, borderRadius: 16 }} aria-hidden="true">
+              <Scissors size={24} strokeWidth={2} />
+            </span>
             <h1 className="login-brand" style={{ fontSize: '34px', lineHeight: 1.1 }}>Trimly</h1>
             <p className="mt-2" style={{ fontSize: 'var(--text-sm)', color: 'rgba(235,230,218,0.72)' }}>
               Gestão e agendamento para barbearias
