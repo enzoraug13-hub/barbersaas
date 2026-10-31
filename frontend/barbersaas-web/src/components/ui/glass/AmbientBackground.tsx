@@ -1,8 +1,8 @@
 /**
  * Fundo ambiente: canvas escuro + manchas de cor desfocadas (dourado, cobre e
- * um azul-petróleo de contraste),
- * derivando bem devagar (só transform; parado sob prefers-reduced-motion),
- * mais um granulado leve contra "banding". Fixo atrás de tudo, decorativo.
+ * um azul-petróleo de contraste), vinheta e granulado leve contra "banding".
+ * Estático (fundo animado faria todo vidro recalcular o blur a cada frame).
+ * Fixo atrás de tudo, decorativo.
  */
 export function AmbientBackground() {
   return (

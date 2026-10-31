@@ -26,31 +26,28 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(90px);
-  will-change: transform;
+  /* Estático de propósito: fundo em movimento obriga todo card de vidro
+     (backdrop-filter) a refazer o blur a cada frame — caro em celular. */
 }
 .g-ambient-blob--1 {               /* dourado — canto superior esquerdo */
   width: 58vmax; height: 58vmax;
   top: -20vmax; left: -12vmax;
   background: radial-gradient(closest-side, var(--g-blob-1), transparent 70%);
-  animation: g-drift-1 38s var(--g-ease-inout) infinite alternate;
 }
 .g-ambient-blob--2 {               /* azul-petróleo — direita */
   width: 52vmax; height: 52vmax;
   top: 18%; right: -18vmax;
   background: radial-gradient(closest-side, var(--g-blob-2), transparent 70%);
-  animation: g-drift-2 46s var(--g-ease-inout) infinite alternate;
 }
 .g-ambient-blob--3 {               /* cobre — embaixo, centro */
   width: 46vmax; height: 46vmax;
   bottom: -22vmax; left: 22%;
   background: radial-gradient(closest-side, var(--g-blob-3), transparent 70%);
-  animation: g-drift-3 54s var(--g-ease-inout) infinite alternate;
 }
 .g-ambient-blob--4 {               /* violeta fundo — profundidade no topo direito */
   width: 34vmax; height: 34vmax;
   top: -14vmax; right: 18%;
   background: radial-gradient(closest-side, var(--g-blob-4), transparent 70%);
-  animation: g-drift-2 60s var(--g-ease-inout) infinite alternate-reverse;
 }
 /* Vinheta: escurece as bordas pra o vidro ler bem por cima da cor. */
 .g-ambient-vignette {
@@ -65,9 +62,6 @@
   opacity: 0.035;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
-@keyframes g-drift-1 { to { transform: translate3d(6vmax, 4vmax, 0) scale(1.06); } }
-@keyframes g-drift-2 { to { transform: translate3d(-5vmax, -6vmax, 0) scale(1.08); } }
-@keyframes g-drift-3 { to { transform: translate3d(-8vmax, 5vmax, 0) scale(0.94); } }
 
 /* ---------------- Tipografia utilitária ---------------- */
 .g-fg-1 { color: var(--g-fg-1); }
@@ -948,7 +942,6 @@ textarea.g-input { height: auto; min-height: 96px; padding: 10px 14px; resize: v
    os componentes glass trocam deslocamento/blur por um fade curto — a
    especificidade de classe + !important vence o seletor universal. */
 @media (prefers-reduced-motion: reduce) {
-  .g-ambient-blob { animation: none !important; }
   .g-bar-grow { animation: g-fade 150ms ease-out both !important; }
   .g-skeleton::after { animation: none !important; }
   .g-card--hover:hover { transform: none; }
