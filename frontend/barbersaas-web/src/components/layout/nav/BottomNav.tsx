@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal } from 'lucide-react'
+import { LiquidTabBar, type LiquidTab } from './LiquidTabBar'
 import { Drawer } from '../../ui/glass/Drawer'
 import { Stagger, StaggerItem } from '../../motion/Stagger'
 import { ICON, isActive, type NavGroup, type NavLeaf } from './navConfig'
@@ -18,50 +18,38 @@ interface BottomNavProps {
 }
 
 /**
- * Navegação mobile: barra de vidro flutuante no rodapé (4 atalhos + "Mais") com
- * indicador deslizante; "Mais" abre uma bottom sheet com o resto do menu,
+ * Navegação mobile: tab bar "Liquid Glass" flutuante no rodapé (4 atalhos +
+ * "Mais") — ver LiquidTabBar; "Mais" abre uma bottom sheet com o resto do menu,
  * agrupado. Respeita a safe-area do iPhone.
  */
 export function BottomNav({ primary, groups, counts = {}, identity, onLogout, extra }: BottomNavProps) {
   const { pathname } = useLocation()
-  const reduce = useReducedMotion()
+  const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(false)
   const primaryTo = new Set(primary.map(p => p.to))
   const moreGroups = groups
     .map(g => ({ ...g, items: g.items.filter(i => !primaryTo.has(i.to)) }))
     .filter(g => g.items.length > 0)
   const activePrimary = primary.find(p => isActive(p.to, pathname))
-  const moreActive = !activePrimary
   const moreCount = moreGroups.flatMap(g => g.items).reduce((n, i) => n + (isActive(i.to, pathname) ? 0 : counts[i.to] ?? 0), 0)
 
-  const pill = (
-    <motion.span layoutId="g-bn-pill" className="g-bn-pill" aria-hidden="true"
-      transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 460, damping: 38 }} />
-  )
+  const tabs: LiquidTab[] = [
+    ...primary.map(p => ({
+      key: p.to, label: p.label, icon: p.icon, kind: 'route' as const,
+      badge: activePrimary?.to !== p.to && (counts[p.to] ?? 0) > 0,
+    })),
+    { key: 'more', label: 'Mais', icon: MoreHorizontal, kind: 'action' as const, badge: moreCount > 0 },
+  ]
+  const activeIndex = activePrimary ? primary.indexOf(activePrimary) : primary.length
 
   return (
     <>
-      <LayoutGroup id="bottom-nav">
-        <nav className="g-bottomnav lg:hidden" aria-label="Menu principal">
-          {primary.map(({ to, label, icon: Icon }) => {
-            const active = activePrimary?.to === to
-            const count = !active ? counts[to] ?? 0 : 0
-            return (
-              <Link key={to} to={to} className="g-bn-item" aria-current={active ? 'page' : undefined}>
-                {active && pill}
-                <span className="g-bn-icon"><Icon {...ICON} />{count > 0 && <span className="g-side-icon-badge" aria-hidden="true" />}</span>
-                <span className="g-bn-label">{label}</span>
-              </Link>
-            )
-          })}
-          <button type="button" className="g-bn-item" aria-current={moreActive ? 'page' : undefined}
-            aria-haspopup="dialog" aria-expanded={moreOpen} onClick={() => setMoreOpen(true)}>
-            {moreActive && pill}
-            <span className="g-bn-icon"><MoreHorizontal {...ICON} />{moreCount > 0 && <span className="g-side-icon-badge" aria-hidden="true" />}</span>
-            <span className="g-bn-label">Mais</span>
-          </button>
-        </nav>
-      </LayoutGroup>
+      {/* Conteúdo some num degradê atrás da barra (como no iOS) */}
+      <div className="g-lg-fade lg:hidden" aria-hidden="true" />
+      <nav className="g-lg-dock lg:hidden" aria-label="Menu principal">
+        <LiquidTabBar items={tabs} activeIndex={activeIndex} aria-label="Menu principal"
+          onSelect={i => (i < primary.length ? navigate(primary[i].to) : setMoreOpen(true))} />
+      </nav>
 
       <Drawer isOpen={moreOpen} onClose={() => setMoreOpen(false)} side="bottom" className="lg:hidden">
         <div className="g-sheet-handle" aria-hidden="true" />
