@@ -136,7 +136,9 @@ export default function AgendaPage() {
                 {/* Dia selecionado: pílula de vidro que desliza entre os dias */}
                 {active && <motion.span layoutId="agenda-day-pill" className="g-week-pill" aria-hidden="true"
                   transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }} />}
-                <span className="ds-week-day-label capitalize">{format(d, 'EEE', { locale: ptBR })}</span>
+                {/* No celular a célula é estreita: forma curta do dia ("seg"); do sm pra cima, a de sempre. */}
+                <span className="ds-week-day-label capitalize hidden sm:inline">{format(d, 'EEE', { locale: ptBR })}</span>
+                <span className="ds-week-day-label capitalize sm:hidden">{format(d, 'EEEEEE', { locale: ptBR })}</span>
                 <span className="ds-week-day-number">{format(d, 'dd')}</span>
               </button>
             )
