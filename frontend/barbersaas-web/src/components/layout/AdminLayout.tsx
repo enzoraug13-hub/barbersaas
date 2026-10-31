@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import {
   LayoutDashboard, Calendar, Users, UsersRound, Scissors, Tag, DollarSign,
-  Target, Package, Settings, LogOut, Menu, X, ChevronRight, ChevronDown, ShieldCheck, Receipt, Megaphone,
+  Target, Package, Settings, LogOut, Menu, X, ChevronDown, ShieldCheck, Receipt, Megaphone,
   LifeBuoy, MessagesSquare, Gift
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -14,6 +15,10 @@ import { applyTenantTheme } from '../../lib/theme-tenant'
 import { AnnouncementsBell } from '../admin/AnnouncementsBell'
 import { useMySupportMessages } from '../../features/support/supportApi'
 import { useLoyaltyProgram } from '../../features/loyalty/loyaltyApi'
+import { AmbientBackground } from '../ui/glass/AmbientBackground'
+import { PageTransition } from '../motion/PageTransition'
+import { Stagger, StaggerItem } from '../motion/Stagger'
+import { DUR, EASE } from '../motion/tokens'
 
 // Um item de navegação é uma folha (link direto) ou um pai com filhos
 // (grupo expansível). Os destinos dos filhos são telas que já existem.
@@ -82,6 +87,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const location = useLocation()
   const navigate  = useNavigate()
   const { user, logout } = useAuthStore()
+  const mainRef = useRef<HTMLElement>(null)
+  const reduceMotion = useReducedMotion()
 
   // Abre automaticamente o submenu que contém a rota atual (sem fechar os que
   // o usuário abriu manualmente). Não força fechamento.
@@ -136,69 +143,92 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // exatamente como antes (com Fidelidade quando o programa está ligado).
   const groups = superAdmin ? superAdminGroups : loyaltyOn ? navGroupsWithLoyalty : navGroups
 
+  // Indicador ativo (pílula deslizante via layoutId) — só um item por vez o recebe.
+  const indicator = (
+    <motion.span layoutId="g-nav-active" className="g-nav-indicator" aria-hidden="true"
+      transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 34 }} />
+  )
+
   return (
     // h-dvh (viewport dinâmico) no lugar de 100vh: no iOS Safari o 100vh inclui a
     // área atrás da barra de endereço, o documento fica rolável e o header (com o
     // botão ☰) some ao rolar. h-screen permanece como fallback pra navegadores
     // sem suporte a dvh. No desktop dvh === vh — nada muda.
-    <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      {/* Overlay Mobile */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
+    <div className="g-shell flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden">
+      <AmbientBackground />
 
-      {/* Sidebar */}
-      <aside className={`ds-sidebar fixed lg:static inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      {/* Overlay Mobile (fundo desfocado atrás do drawer) */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div key="nav-scrim" className="g-overlay lg:hidden" style={{ zIndex: 30 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: DUR.base }}
+            onClick={() => setSidebarOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar — vidro flutuante no desktop, drawer no mobile */}
+      <aside className={`g-sidebar fixed lg:static z-40 top-2 bottom-2 left-2 lg:my-3 lg:ml-3 w-[264px] lg:w-[248px] flex-shrink-0 rounded-[22px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarOpen ? 'translate-x-0' : '-translate-x-[110%] lg:translate-x-0'}`}>
         {/* Logo */}
-        <div className="ds-sidebar-logo flex items-center justify-between px-6 py-5">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-3">
-            <div className="ds-sidebar-logo-mark w-8 h-8 rounded-lg flex items-center justify-center">
-              <Scissors size={16} style={{ color: 'var(--accent-fg)' }} />
+            <div className="g-brand-mark">
+              <Scissors size={16} />
             </div>
-            <span className="ds-sidebar-logo-text">Trimly</span>
+            <span className="g-brand-name">Trimly</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="ds-icon-btn lg:hidden">
-            <X size={20} />
+          <button onClick={() => setSidebarOpen(false)} className="g-icon-btn lg:hidden" aria-label="Fechar menu">
+            <X size={18} />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {groups.map((group, gi) => (
+        <LayoutGroup id="admin-nav">
+        <motion.nav layoutScroll className="flex-1 overflow-y-auto pb-4 px-3">
+          <Stagger stagger={0.03} delay={0.05}>
+          {groups.map(group => (
             <div key={group.label ?? 'root'}>
-              {group.label && <p className="ds-nav-group-label">{group.label}</p>}
-              {group.items.map((item, ii) => {
-                const index = groups.slice(0, gi).reduce((n, g) => n + g.items.length, 0) + ii
-
+              {group.label && <StaggerItem layout="position"><p className="g-nav-group">{group.label}</p></StaggerItem>}
+              {group.items.map(item => {
                 // Pai expansível: cabeçalho clicável + lista de subitens.
                 if (isParent(item)) {
                   const { label, icon: Icon, children } = item
                   const childActive = children.some(c => isActive(c.to, location.pathname))
                   const open = openGroups.has(label)
                   return (
-                    <div key={label}>
+                    <StaggerItem key={label} layout="position">
                       <button type="button" onClick={() => toggleGroup(label)} aria-expanded={open}
-                        className={`ds-nav-item ds-nav-parent ds-nav-anim ${childActive && !open ? 'ds-nav-item-active' : ''} ${childActive && open ? 'ds-nav-parent-active' : ''}`}
-                        style={{ animationDelay: `${index * 30}ms` }}>
+                        className={`g-nav-item ${childActive && !open ? 'g-nav-item--active' : ''} ${childActive && open ? 'g-nav-item--parent-active' : ''}`}>
+                        {childActive && !open && indicator}
                         <Icon size={18} />
-                        {label}
-                        <ChevronDown size={14} className={`ml-auto ds-nav-caret ${open ? 'ds-nav-caret-open' : ''}`} />
+                        <span>{label}</span>
+                        <motion.span className="ml-auto flex" animate={{ rotate: open ? 180 : 0 }}
+                          transition={{ duration: DUR.base, ease: EASE }}>
+                          <ChevronDown size={14} />
+                        </motion.span>
                       </button>
-                      <div className={`ds-nav-sub ${open ? 'ds-nav-sub-open' : ''}`}>
-                        {children.map(({ to, label: clabel, icon: CIcon }) => {
-                          const active = isActive(to, location.pathname)
-                          return (
-                            <Link key={to} to={to}
-                              className={`ds-nav-item ds-nav-subitem ${active ? 'ds-nav-item-active' : ''}`}
-                              onClick={() => setSidebarOpen(false)}>
-                              <CIcon size={16} />
-                              {clabel}
-                              {active && <ChevronRight size={14} className="ml-auto" />}
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    </div>
+                      <AnimatePresence initial={false}>
+                        {open && (
+                          <motion.div key="sub" className="g-nav-sub"
+                            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: DUR.base, ease: EASE }}>
+                            {children.map(({ to, label: clabel, icon: CIcon }) => {
+                              const active = isActive(to, location.pathname)
+                              return (
+                                <Link key={to} to={to}
+                                  className={`g-nav-item ${active ? 'g-nav-item--active' : ''}`}
+                                  aria-current={active ? 'page' : undefined}
+                                  onClick={() => setSidebarOpen(false)}>
+                                  {active && indicator}
+                                  <CIcon size={16} />
+                                  <span>{clabel}</span>
+                                </Link>
+                              )
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </StaggerItem>
                   )
                 }
 
@@ -206,40 +236,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const { to, label, icon: Icon } = item
                 const active = isActive(to, location.pathname)
                 return (
-                  <Link key={to} to={to}
-                    className={`ds-nav-item ds-nav-anim ${active ? 'ds-nav-item-active' : ''}`}
-                    style={{ animationDelay: `${index * 30}ms` }}
-                    onClick={() => setSidebarOpen(false)}>
-                    <Icon size={18} />
-                    {label}
-                    {to === '/admin/suporte' && supportUnread && !active && (
-                      <span className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: 'var(--accent)' }} aria-label="Resposta não lida" />
-                    )}
-                    {active && <ChevronRight size={14} className="ml-auto" />}
-                  </Link>
+                  <StaggerItem key={to} layout="position">
+                    <Link to={to}
+                      className={`g-nav-item ${active ? 'g-nav-item--active' : ''}`}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => setSidebarOpen(false)}>
+                      {active && indicator}
+                      <Icon size={18} />
+                      <span>{label}</span>
+                      {to === '/admin/suporte' && supportUnread && !active && (
+                        <span className="ml-auto w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }} aria-label="Resposta não lida" />
+                      )}
+                    </Link>
+                  </StaggerItem>
                 )
               })}
             </div>
           ))}
-        </nav>
+          </Stagger>
+        </motion.nav>
+        </LayoutGroup>
 
         {/* Rodapé: identidade do Trimly pro super admin (ele não é dono de
             barbearia nenhuma); barbearia + dono pra todos os outros. */}
-        <div className="ds-sidebar-footer px-3 py-4">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="ds-avatar w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0">
+        <div className="px-3 pb-3 pt-2">
+          <div className="g-user-card mb-1">
+            <div className="g-avatar w-9 h-9 text-sm" style={{ background: 'var(--g-accent-soft)', borderColor: 'var(--g-accent-line)', color: 'var(--accent)' }}>
               {superAdmin ? <ShieldCheck size={16} /> : (settings?.businessName ?? user?.name)?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="ds-user-name truncate">{superAdmin ? 'Trimly' : (settings?.businessName || 'Minha barbearia')}</p>
-              <p className="ds-user-role truncate">{superAdmin ? 'Super admin' : user?.name}</p>
-              <p className="ds-user-role truncate">{user?.email}</p>
+              <p className="g-fg-1 truncate text-[13px] font-semibold">{superAdmin ? 'Trimly' : (settings?.businessName || 'Minha barbearia')}</p>
+              <p className="g-fg-2 truncate text-[11px] capitalize">{superAdmin ? 'Super admin' : user?.name}</p>
+              <p className="g-fg-3 truncate text-[11px]">{user?.email}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="ds-logout-btn">
+          <button onClick={handleLogout} className="g-nav-item g-nav-logout">
             <LogOut size={18} />
-            Sair
+            <span>Sair</span>
           </button>
         </div>
       </aside>
@@ -247,12 +281,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="ds-topbar h-16 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="ds-icon-btn lg:hidden">
+        <header className="g-topbar h-16 flex items-center justify-between gap-3 px-4 lg:px-8 flex-shrink-0">
+          <button onClick={() => setSidebarOpen(true)} className="g-icon-btn lg:hidden" aria-label="Abrir menu">
             <Menu size={20} />
           </button>
-          <div className="flex-1 lg:flex-none">
-            <h1 className="ds-topbar-title">{pageTitle}</h1>
+          <div className="flex-1 min-w-0">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.h1 key={pageTitle} className="g-topbar-title truncate"
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: DUR.base, ease: EASE }}>
+                {pageTitle}
+              </motion.h1>
+            </AnimatePresence>
           </div>
           {/* Sino do dono: avisos do Trimly + resgates de fidelidade pendentes
               (duas fontes agregadas no componente — resgate NÃO é Announcement).
@@ -260,9 +300,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <AnnouncementsBell enabled={isOwner} loyaltyEnabled={loyaltyOn} />
         </header>
 
-        {/* Content — fade suave a cada troca de página */}
-        <main key={location.pathname} className="ds-main-content flex-1 overflow-y-auto p-4 lg:p-6 animate-fade-in">
-          {children}
+        {/* Content — transição de página (saída/entrada com blur) a cada rota */}
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-8 pt-2 lg:px-8 lg:pb-10">
+          <PageTransition onExitComplete={() => mainRef.current?.scrollTo({ top: 0 })}>
+            {children}
+          </PageTransition>
         </main>
       </div>
     </div>

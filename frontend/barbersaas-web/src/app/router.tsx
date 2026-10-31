@@ -54,11 +54,14 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 // de uma barbearia): /admin manda ele pra /super-admin. Owner/Admin veem o Dashboard
 // normal, exatamente como antes. As rotas de barbearia seguem existindo pra ele —
 // só não são o destino padrão.
+// Fica DENTRO do <AdminPage> (mesma árvore das outras rotas do painel): assim o
+// AdminLayout não remonta ao entrar/sair do Dashboard e a transição de página e o
+// indicador deslizante do menu funcionam também nessa troca.
 function AdminHome() {
   const user = useAuthStore(s => s.user)
   return isSuperAdmin(user?.role)
     ? <Navigate to="/super-admin" replace />
-    : <AdminPage><DashboardPage /></AdminPage>
+    : <DashboardPage />
 }
 
 // Raiz: super admin logado cai direto na casa dele. Para todos os outros, o
@@ -81,7 +84,7 @@ export const router = createBrowserRouter([
   { path: '/b/:slug/conta', element: <ClientAccountPage /> },
   { path: '/style-guide',   element: <StyleGuidePage /> },
 
-  { path: '/admin',              element: <AdminHome /> },
+  { path: '/admin',              element: <AdminPage><AdminHome /></AdminPage> },
   { path: '/admin/agenda',       element: <AdminPage><AgendaPage /></AdminPage> },
   { path: '/admin/clientes',     element: <AdminPage><ClientsPage /></AdminPage> },
   { path: '/admin/barbeiros',    element: <AdminPage><BarbersPage /></AdminPage> },

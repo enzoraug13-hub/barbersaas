@@ -47,7 +47,7 @@ export function AnnouncementsBell({ enabled, loyaltyEnabled = false }: { enabled
 
   return (
     <div className="relative" ref={panelRef}>
-      <button onClick={() => setOpen(o => !o)} className="ds-icon-btn relative"
+      <button onClick={() => setOpen(o => !o)} className="g-icon-btn relative"
         aria-label={badge ? `Notificações: ${badge} pendente(s)` : 'Notificações'}>
         <Bell size={20} />
         {badge > 0 && (
@@ -59,7 +59,7 @@ export function AnnouncementsBell({ enabled, loyaltyEnabled = false }: { enabled
       </button>
 
       {open && (
-        <div className="ds-card absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] z-40 shadow-lg"
+        <div className="g-popover absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] z-40 animate-scale-in origin-top-right"
           style={{ padding: 0, maxHeight: '70vh', overflowY: 'auto' }}>
 
           {/* Resgates de fidelidade pendentes — ação mora na aba Fidelidade */}
