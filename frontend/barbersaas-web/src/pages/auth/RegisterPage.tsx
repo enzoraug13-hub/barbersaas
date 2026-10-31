@@ -8,6 +8,7 @@ import { PhoneField } from '../../components/ui/PhoneField'
 import { toE164BR, isValidBRPhone, onlyDigits, maskCPF, maskCNPJ, isValidCPF, isValidCNPJ } from '../../lib/masks'
 import toast from 'react-hot-toast'
 import { apiErrorMessage } from '../../lib/apiError'
+import { AmbientBackground } from '../../components/ui/glass/AmbientBackground'
 
 type PersonType = 'PF' | 'PJ'
 
@@ -72,7 +73,8 @@ export default function RegisterPage() {
 
   if (pendingEmail) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
+      <div className="g-shell g-public flex items-center justify-center p-4">
+      <AmbientBackground />
         <div className="w-full max-w-md">
           <Card className="text-center py-10 space-y-4">
             <MailCheck size={40} className="mx-auto" style={{ color: 'var(--accent)' }} />
@@ -94,7 +96,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
+    <div className="g-shell g-public flex items-center justify-center p-4">
+      <AmbientBackground />
       <div className="w-full max-w-md">
         <Link to="/login" className="inline-flex items-center gap-1.5 mb-6 transition-colors hover:underline"
           style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
@@ -102,7 +105,7 @@ export default function RegisterPage() {
         </Link>
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 flex items-center justify-center mb-4" style={{ background: 'var(--tenant-primary)', borderRadius: 'var(--radius-lg)' }}>
-            <Scissors size={28} style={{ color: 'var(--bg-base)' }} />
+            <Scissors size={28} style={{ color: 'var(--accent-fg)' }} />
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>Criar sua Barbearia</h1>
           <p className="ds-page-sub">14 dias grátis, sem cartão de crédito</p>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Loader2, MailCheck, MailX } from 'lucide-react'
 import { useConfirmEmail } from '../../features/auth/authApi'
 import { Card } from '../../components/ui/Card'
+import { AmbientBackground } from '../../components/ui/glass/AmbientBackground'
 
 // Destino do link enviado por e-mail no cadastro: /confirmar-email?token=...
 export default function ConfirmEmailPage() {
@@ -22,7 +23,8 @@ export default function ConfirmEmailPage() {
   }, [token])
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
+    <div className="g-shell g-public flex items-center justify-center p-4">
+      <AmbientBackground />
       <div className="w-full max-w-md">
         <Card className="text-center py-10 space-y-4">
           {status === 'loading' && (
